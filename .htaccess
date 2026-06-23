@@ -1,0 +1,75 @@
+# Don't show directory listings for URLs which map to a directory.
+Options -Indexes
+#IndexIgnore *.png *.jpg *.pdf *.JPG *.docs *.gif
+# Follow symbolic links in this directory.
+Options +FollowSymLinks
+RewriteRule ^\.well-known/ - [L]
+RewriteRule (^|/)\. - [F]
+
+<IfModule mod_rewrite.c>
+# Turn on URL rewriting
+RewriteEngine On
+
+# If your website begins from a folder e.g localhost/my_project then
+# you have to change it to: RewriteBase /my_project/
+# If your site begins from the root e.g. example.local/ then
+# let it as it is
+RewriteBase /ci_project/
+
+
+# Protect application and system files from being viewed when the index.php is missing
+RewriteCond $1 ^(application|system|private|logs)
+
+# Rewrite to index.php/access_denied/URL
+RewriteRule ^(.*)$ index.php/access_denied/$1 [PT,L]
+
+# Production host restriction - disabled for local development
+#RewriteCond %{HTTP_HOST} !^(.*\.)?a2ascholarships\.iccr\.gov\.in$ [NC]
+#RewriteRule .* - [L,R=403]
+
+# Allow these directories and files to be displayed directly:
+RewriteCond $1 ^(index\.php|robots\.txt|favicon\.ico|public|assets|css|js|images|2023|2024|2025)
+
+# No rewriting
+RewriteRule ^(.*)$ - [PT,L]
+
+# Rewrite to index.php/URL
+RewriteRule ^(.*)$ index.php/$1 [PT,L]
+Header append X-FRAME-OPTIONS "SAMEORIGIN"
+</IfModule>
+
+# Force HTTPS / production-domain redirects - disabled for local development
+#<IfModule mod_rewrite.c>
+##Rewrite everything to https
+#RewriteEngine On
+#RewriteCond %{HTTPS} !=on
+#RewriteRule ^(.*)$ https://a2ascholarships.iccr.gov.in/$1 [L,R=301]
+#</IfModule>
+
+#<IfModule mod_rewrite.c>
+# RewriteEngine On
+# RewriteCond %{HTTP_HOST} ^164\.100\.252\.211$
+# RewriteRule ^(.*)$ https://a2ascholarships.iccr.gov.in/$1 [L,R=301]
+#</IfModule>
+
+
+<IfModule mod_headers.c>
+        Header set X-Content-Type-Options nosniff
+        Header set X-XSS-Protection "1; mode=block"
+        Header always set X-FRAME-OPTIONS "SAMEORIGIN"
+        Header append X-Firefox-Spdy "h2"
+        # Strict-Transport-Security disabled for local development (forces HTTPS in browser)
+        #Header append Strict-Transport-Security: 'max-age=31536000; includeSubDomains'
+        Header set Access-Control-Allow-Methods "GET, POST, HEAD"
+        Header set Server " "
+        Header always unset "X-Powered-By"
+        Header unset "X-Powered-By"
+        Header set Access-Control-Allow-Origin "https://a2ascholarships.iccr.gov.in"
+        Header set Access-Control-Allow-Credentials true
+        Header set Access-Control-Allow-Headers "accept, content-type, X-Requested-With, X-Prototype-Version, X-CSRF-Token, authorization"
+        Header always edit Set-Cookie (.*) "$1; HTTPOnly"
+        Header edit Set-Cookie ^(.*)$ "$1;HttpOnly;Samesite=Strict"
+        Header set Referrer-Policy "no-referrer"
+        Header always set Permissions-Policy "autoplay=()"
+        #Header set Content-Security-Policy "default-src 'self'; script-src 'self';"
+</IfModule>
