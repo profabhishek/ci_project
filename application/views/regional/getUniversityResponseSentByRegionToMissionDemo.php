@@ -250,7 +250,8 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 
     </div>
   </div>
-        <table class="customTable1 table table-striped table-bordered detailpagepdf newApplication">
+        <style>.newApplication th, .newApplication td { white-space: nowrap; } .dataTables_wrapper { overflow-x: auto; }</style>
+        <table class="customTable1 table table-striped table-bordered detailpagepdf newApplication" style="width:100%;">
             <thead>
             <th>S.No.</th>
 			<th>Applicant No</th>
@@ -265,6 +266,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
             <th>ICCR Letter</th>
 			<th>Acceptance</th>
 			<th>Acceptance Date</th>
+			<th class="noExport">View</th>
             </thead>
             <tbody>
             </tbody>

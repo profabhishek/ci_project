@@ -53,10 +53,10 @@
 						<td><?php echo $counter;?></td>						
 						<td><?php echo $app['fullname'];?></td>						
 						<td><?php echo $app['email'];?></td>
-						<td><?php $country = $this->common_model->getCountryById($app['nationality']); 
-						echo $country[0]['country_name']
+						<td><?php $country = $this->common_model->getCountryById($app['nationality']);
+						echo (!empty($country) ? $country[0]['country_name'] : 'N/A');
 						?></td>
-						
+
 						<td><?php
 							if($app['unverisity'] == -1)
 							{
@@ -65,7 +65,7 @@
 							elseif($app['unverisity'] > 0)
 							{
 								$uni = $this->common_model->getAlumniUniversityById($app['unverisity']);
-								echo $uni[0]['name'];
+								echo (!empty($uni) ? $uni[0]['name'] : 'N/A');
 							}
 							?>
 						</td>
@@ -77,7 +77,7 @@
 							elseif($app['course'] > 0)
 							{
 								$coursee = $this->common_model->getCoursesById($app['course']);
-								echo $coursee[0]['title'];
+								echo (!empty($coursee) ? $coursee[0]['title'] : 'N/A');
 							}
 							?>
 						</td>

@@ -8708,9 +8708,10 @@ $html = $content;
 				                    $output[] = "NA";
 									}
 								
+						$output[] = '<a href="'.site_url().'regional/historyview/'.$r['application_no'].'" target="_blank"><span class="label label-primary">View</span></a>';
                         $response[] = $output;
 				        $counter++;
-					
+
 			}
 			
 				
@@ -8729,7 +8730,52 @@ $html = $content;
 }
 	
 
-	function getUniversityResponseSentByMissiontoRegion() { 
+	public function historyview()
+	{
+		try
+		{
+			$applicationId = $this->uri->segment(3);
+			$data['applicaitonStepOne'] = $this->common_model->getMsnApplicationStepOneByAppno($applicationId);
+			if(count($data['applicaitonStepOne'])>0)
+			{
+				$data['get_application_number'] = $data['applicaitonStepOne'][0]['application_no'];
+			}
+			else
+			{
+				$data['get_application_number'] = $this->random_num(15);
+			}
+			$imgArray = $this->common_model->getUserImage($data['applicaitonStepOne'][0]['uid']);
+			if(count($imgArray)> 0)
+			{
+				$image = $imgArray[0]['name'];
+			}
+			else
+			{
+				$image = '';
+			}
+			$data['registerData'] = $this->common_model->getUserData($data['applicaitonStepOne'][0]["uid"]);
+			$data['userImage'] = $image;
+			$data['missions'] = $this->common_model->getAllMissions();
+			$data['univercities'] = $this->common_model->getUnivercities();
+			$data['applicaitonStepTwo'] = $this->common_model->getApplicationStepTwoByAppno($applicationId);
+			$data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
+			$data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
+			$data['mappingData'] = $this->common_model->getMappingData($applicationId);
+			$data['university'] = $this->common_model->getconfirmationDataByMission($applicationId);
+			$data['currentyear'] = date('Y');
+			$this->load->view('regional/header_regional');
+			$this->load->view('mission/acceptanceHistory',$data);
+			$this->load->view('regional/footer');
+		}
+		catch(Exception $e)
+		{
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', 'Internal Server Error. Try After Some Time!');
+			redirect(site_url().'regional/dashboard');
+		}
+	}
+
+	function getUniversityResponseSentByMissiontoRegion() {
 		//echo "-------";die;
 		$user_data = $this->session->userdata('user_data');
 		$regionid = $user_data['state'];

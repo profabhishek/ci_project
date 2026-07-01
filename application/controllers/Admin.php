@@ -2304,21 +2304,24 @@ echo $e->getMessage();
                     $row[] = "Male";
                 } elseif ($customers->gender == 2) {
                     $row[] = "Female";
+                } else {
+                    $row[] = "Other";
                 }
                 $row[] = $customers->country_name;
                 $uni = $this->common_model->getUniversityById($customers->regional_university);
 				//echo "<pre>";print_r($uni);die;
                 $r = "";
                 $reg1 = $this->common_model->getRegionById($customers->region_one_status);
-				
+
 				$programme = $this->common_model->getProgrammeById($customers->programme);
-				$row[] = $programme[0]['name'];
+				$row[] = (!empty($programme) ? $programme[0]['name'] : 'NA');
+                $reg1Name = (!empty($reg1) ? $reg1[0]['name'] : 'NA');
                 if ($customers->region_one_status == $this->input->post("Region")) {
-                    $r .= '<b>' . $reg1[0]['name'] . '</b><br/>';
-                } 
+                    $r .= '<b>' . $reg1Name . '</b><br/>';
+                }
 				else
 				{
-					$r .= '<b>' . $reg1[0]['name'] . '</b><br/>';
+					$r .= '<b>' . $reg1Name . '</b><br/>';
 				}
                 $row[] = $r;
                 //$course = $this->common_model->getCoursesById($customers->course);
@@ -2326,53 +2329,42 @@ echo $e->getMessage();
 				$row[] = $customers->confirmed_course;
 
                 $u = "";
+                $uniName = (!empty($uni) ? $uni[0]['name'] : 'NA');
                 if ($customers->regional_university == $this->input->post("Universtiy")) {
-                    $u .= '<b>' . $uni[0]['name'] . '</b><br/>';
-                } 
+                    $u .= '<b>' . $uniName . '</b><br/>';
+                }
 				else {
-                    $u .= $uni[0]['name'] . '<br/>';
+                    $u .= $uniName . '<br/>';
                 }
                 if ($u != "") {
-
                     $row[] = $u;
                 } else {
                     $row[] = "NA";
                 }
                 $scheme = $this->common_model->getSchemeById($customers->scholarship_id);
-                if ($scheme[0]['scheme_name'] != "") {
+                if (!empty($scheme) && $scheme[0]['scheme_name'] != "") {
                     $row[] = $scheme[0]['scheme_name'];
                 } else {
                     $row[] = "NA";
                 }
 				$fn = date('Y-m-d',strtotime($customers->cu_created));
 				//echo "<pre>";print_r($customers->cu_created);
-				$date1 = '2021-03-15';
-						//$date1 = '2019-12-01';
-						$date = date_create($customers->cu_created);
-						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
-							if ($date2 >= $date1) {
-							$fy = '2021-2022';
-							$row[] = $fy;
-							}
+				$date1   = '2021-03-15';
 				$date2020 = '2019-12-01';
-						//$date1 = '2019-12-01';
-						$date = date_create($customers->cu_created);
-						$array =  (array) $date;
-						$date2020st = date("Y-m-d", strtotime($array['date']));
-							if($date2020st >=$date2020 && $date2020st <=$date1) {
-							$fy = '2020-2021';
-							$row[] = $fy;
-							}
 				$date2019 = '2018-12-15';
-						//$date1 = '2019-12-01';
-						$date = date_create($customers->cu_created);
-						$array =  (array) $date;
-						$date2019st = date("Y-m-d", strtotime($array['date']));
-							if($date2019st >= $date2019 && $date2019st <= $date1 && $date2019st <= $date2020) {
-							$fy = '2019-2020';
-							$row[] = $fy;
-							}
+				$dateObj  = date_create($customers->cu_created);
+				$dateArr  = (array) $dateObj;
+				$appDate  = date("Y-m-d", strtotime($dateArr['date']));
+				if ($appDate >= $date1) {
+					$fy = '2021-2022';
+				} elseif ($appDate >= $date2020 && $appDate < $date1) {
+					$fy = '2020-2021';
+				} elseif ($appDate >= $date2019 && $appDate < $date2020) {
+					$fy = '2019-2020';
+				} else {
+					$fy = 'N/A';
+				}
+				$row[] = $fy;
                 //$sts = $this->common_model->getApplicationUnderStatus($customers->status);
                 //$row[] = $sts[0]['status'];
 				//$row[] = date("Y-m-d",$customers->created);
@@ -2400,12 +2392,18 @@ echo $e->getMessage();
             //output to json format
             echo json_encode($output);
         } catch (Exception $e) {
-            $this->session->set_flashdata('message_type', 'error');
-            $this->session->set_flashdata('error', 'Internal Server Error. Please Try After Some Time!');
-            redirect(site_url() . 'admin/dashboard');
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    "draw" => isset($_POST['draw']) ? (int)$_POST['draw'] : 0,
+                    "recordsTotal" => 0,
+                    "recordsFiltered" => 0,
+                    "data" => [],
+                    "error" => $e->getMessage()
+                ]));
         }
     }
-	
+
 	function expenditureReportofStudent() {
         try {
             $applicationId = $this->uri->segment(3);

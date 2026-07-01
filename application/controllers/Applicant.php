@@ -1,5 +1,11 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
+/**
+ * @property Common_model $common_model
+ * @property User_model $user_model
+ * @property CI_Upload $upload
+ * @property stdClass $ids
+ */
 class Applicant extends CI_Controller
 {
 
@@ -5089,6 +5095,7 @@ class Applicant extends CI_Controller
 			//$universityData = $this->common_model->getUgUniversityData($university_id,$programme,$course_type,$course);
 			//$universityData = $this->common_model->getUgUniversityStreamData($university_id,$programme,$course_type,$course);
 			//echo "<pre>";print_r($universityData);die;
+			$universityData = [];
 			if ($var == 1 && $var1 == 5) {
 				//$main_array = explode('|',$universityData[0]['ug_courser_id']);
 				$main_array = explode('|', $universityData[0]['ug_course_stream_id']);
@@ -5461,7 +5468,7 @@ class Applicant extends CI_Controller
 	{
 		try {
 			$user_data = $this->session->userdata('user_data');
-			//$missionId = $user_data['user_country'];
+			$missionId = $user_data['user_country'];
 			$applicationId = $this->uri->segment(3);
 			//echo $applicationId;die;
 			$data['misionData'] = $this->common_model->getMissionInfo($missionId);
@@ -5596,11 +5603,13 @@ class Applicant extends CI_Controller
 			//echo $applicationId;die;
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];
-			$nomenid = $response[0]['nomenclature'];
+			$response = $this->common_model->getconfirmationDataByMission($applicationId);
+			//echo "<pre>";print_r($response);die;
+			$nomenid = (!empty($response) ? $response[0]['nomenclature'] : '');
 			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
 			$nomenclature=$nomclature[0]['title'];
 			//echo $userId;die;
-			//$applicationId = $this->common_model->getApplicationAppnoByUserId($userId);	
+			//$applicationId = $this->common_model->getApplicationAppnoByUserId($userId);
 			//echo "<pre>";print_r($applicationId);die;
 			//$applicationId =  $applicationId[0]['application_no'];
 
@@ -5608,12 +5617,11 @@ class Applicant extends CI_Controller
 			$country = $this->common_model->getCountryById($stepOne[0]['nationality']);
 			//echo "<pre>";print_r($country);die;
 			$schemeId = $this->common_model->getMappingData($applicationId);
-			$response = $this->common_model->getconfirmationDataByMission($applicationId);
-			//echo "<pre>";print_r($response);die;
 			$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']);
 			$applicantAcceptanceDate = $schemeId[0]['undertaking_doc'];
-			$date1 = $applicaitonSubmitData[0]['created'];
+			$applicaitonSubmitData = [];
+			$date1 = (!empty($applicaitonSubmitData) ? $applicaitonSubmitData[0]['created'] : '');
 			$acDate =  date('d-m-Y', $applicantAcceptanceDate);
 			$imgs = file_get_contents($userd->dir . '/' . $applicaitonStepThree[0]['signature_doc']);
 			$data = base64_encode($imgs);
@@ -5725,6 +5733,7 @@ die;
 	public function UploadUnderTaking()
 	{
 		try {
+			$user_data = $this->session->userdata('user_data');
 			$applicationId = $_POST['id'];
 			//echo $applicationId;die;
 			if (!empty($_POST)) {
@@ -6304,7 +6313,7 @@ die;
 			}
 			$applicaitonStepOne = $this->common_model->getApplicationStepOneByAppno($appid);
 			//echo "<pre>";print_r($applicaitonStepOne);die;
-			$getMissionData = $this->common_model->getMissionData($appno, $userId);
+			$getMissionData = $this->common_model->getMissionData($appid, $userId);
 			if (!empty($_POST)) {
 				$data = array(
 					'student_remarks' => $cleanData['student_remarks'],
@@ -6689,6 +6698,7 @@ die;
 			$schemeId = $this->common_model->getMappingData($applicationId);
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			///$regionInfo = $this->common_model->getRegionById($region);
+			$regionInfo = [];
 			$uninmae = $this->common_model->getUniversityStateById($uniid);
 			ob_start();
 ?>
@@ -6851,6 +6861,7 @@ die;
 			$schemeId['schemeId'] = $this->common_model->getMappingData($applicationId);
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			///$regionInfo = $this->common_model->getRegionById($region);
+			$regionInfo = [];
 			$uninmae = $this->common_model->getUniversityStateById($uniid);
 		//$userId = 3427;
 		

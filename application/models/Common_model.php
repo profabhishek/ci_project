@@ -1549,7 +1549,7 @@ class Common_model extends CI_Model {
 		$this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
         $this->db->where(array('iccr_status_mapping.status >='=> 10));
 		$this->db->where(array('iccr_university_response.confirmed_to_mission=' => 1));
-        $this->db->where_in('iccr_status_mapping.scholarship_id', $schemeids);
+        $this->db->where_in('iccr_status_mapping.scholarship_id', $schemeid);
 		$this->db->group_by('iccr_status_mapping.application_no');
 		$this->db->order_by('iccr_student_details.created', 'DESC');
 		
@@ -1561,7 +1561,7 @@ class Common_model extends CI_Model {
 		 if ($this->input->post('Application')) {
             $this->db->like('iccr_status_mapping.application_no', $this->input->post('Application'));
         }
-		if ($vars['country']) {
+		if (!empty($vars['country'])) {
             $this->db->where('iccr_student_application_details.country', $vars['country']);
         }
         if ($this->input->post('ApplicantName')) {
@@ -1570,7 +1570,7 @@ class Common_model extends CI_Model {
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
-		if ($vars['gender']) {
+		if (!empty($vars['gender'])) {
             $this->db->like('iccr_student_application_details.gender', $vars['gender']);
         }
         if ($this->input->post('Mail')) {
@@ -1579,7 +1579,7 @@ class Common_model extends CI_Model {
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
         }
-		if ($vars['programmes']){
+		if (!empty($vars['programmes'])){
             $this->db->where('iccr_student_application_details.programme', $vars['programmes']);
         }
         if ($this->input->post('Counrse')) {
@@ -1589,15 +1589,15 @@ class Common_model extends CI_Model {
 		{
 			//$sql .= " join iccr_student_expenditure ex on ex.application_id = map.application_no ";
 			$this->db->join('iccr_student_expenditure', 'iccr_student_expenditure.application_id = iccr_status_mapping.application_no');
-		}	
-		
-		 if ($vars['courses']) {
+		}
+
+		if (!empty($vars['courses'])) {
             $this->db->where('iccr_university_response.course', $vars['courses']);
         }
         if ($this->input->post('Scheme')) {
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
-		if ($vars['schemes']) {
+		if (!empty($vars['schemes'])) {
             $this->db->where('iccr_status_mapping.scholarship_id', $vars['schemes']);
         }
         if ($this->input->post('Region')) {
@@ -1608,11 +1608,11 @@ class Common_model extends CI_Model {
 			$this->db->where('iccr_university_response.regional_university', $this->input->post('Universtiy'));
 			//$this->db->where('iccr_university_response.regional_university', $this->input->post('Universtiy'));
         }
-		 if ($vars['university']) {
+		if (!empty($vars['university'])) {
 			$this->db->where('iccr_university_response.regional_university', $this->input->post('Universtiy'));
 			//$this->db->where('iccr_university_response.regional_university', $this->input->post('Universtiy'));
         }
-		if($vars['region']){
+		if(!empty($vars['region'])){
 			$this->db->where('iccr_university_response.region_one_status', $vars['region']);
             //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
         }
@@ -1621,7 +1621,7 @@ class Common_model extends CI_Model {
 			$this->db->where('iccr_student_other_details.created >=', strtotime($this->input->post('MinDate')));
             $this->db->where('iccr_student_other_details.created <=', strtotime($this->input->post('MaxDate')));
 		}
-		if($vars['min-date'] && $vars['max-date'])
+		if(!empty($vars['min-date']) && !empty($vars['max-date']))
         {
 			$this->db->where('iccr_student_other_details.created >=', strtotime($vars['min-date']));
             $this->db->where('iccr_student_other_details.created <=', strtotime($vars['max-date']));
@@ -1629,20 +1629,20 @@ class Common_model extends CI_Model {
 		if ($this->input->post('Confirmed') == 1) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 1);
 			$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
-			} 
-		if ($vars['confirmed'] == 1) {
+			}
+		if (!empty($vars['confirmed']) && $vars['confirmed'] == 1) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 1);
 			$this->db->group_by('iccr_status_mapping.application_no');
 			$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
-			} 
+			}
 		if ($this->input->post('Confirmed') == 2) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 2);
 			$this->db->group_by('iccr_status_mapping.application_no');
 			$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
 			}
-		if ($vars['confirmed']== 2) {
+		if (!empty($vars['confirmed']) && $vars['confirmed'] == 2) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 2);
-			
+
 			$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
 			}
         if (isset($_POST['order'])) { // here order processing
@@ -1891,7 +1891,7 @@ class Common_model extends CI_Model {
     }
 
     public function count_filtered($schemss) {
-        $this->_get_datatables_query($schemss,$vars);
+        $this->_get_datatables_query($schemss, null);
         $query = $this->db->get();
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -1900,7 +1900,7 @@ class Common_model extends CI_Model {
         return $query->num_rows();
     }
 
-    public function count_all() {
+    public function count_all($schemss = null) {
 		$this->_get_datatables_query($schemss);
         //$this->db->from("iccr_status_mapping");
         $code = $this->db->error();
@@ -9194,7 +9194,7 @@ function getuniversitiesall() {
     
 
 	 function getMappingDataResponse($appno) {
-        $this->db->select('joining_date,completion_date,iccr_university_response.application_id,iccr_status_mapping.scholarship_id,iccr_university_response.regional_university,iccr_university_response.university_is_accept,iccr_university_response.region_one_doc,iccr_university_response.region_one_status_date,iccr_university_response.region_one_status,travel_arrival_date,iccr_status_mapping.status,iccr_status_mapping.mission_status,mission_status_date,mission_person_name,mission_person_designation,mission_person_place,mission_person_signature,english_proficiency_test_marks,visa_from_date,visa_to_date,visa_no,visa_isuue_date,undertaking_doc,visa_grant_permission,application_no,iccr_status_mapping.scholar_acceptance,iccr_university_response.scholar_acceptance as rspo_scholar_acceptance');
+        $this->db->select('joining_date,completion_date,iccr_university_response.application_id,iccr_status_mapping.scholarship_id,iccr_university_response.regional_university,iccr_university_response.university_is_accept,iccr_university_response.region_one_doc,iccr_university_response.region_one_status_date,iccr_university_response.region_one_status,travel_arrival_date,iccr_status_mapping.status,iccr_status_mapping.mission_status,mission_status_date,mission_person_name,mission_person_designation,mission_person_place,mission_person_signature,english_proficiency_test_marks,visa_from_date,visa_to_date,visa_no,visa_isuue_date,undertaking_doc,visa_grant_permission,application_no,iccr_status_mapping.scholar_acceptance,iccr_university_response.scholar_acceptance as rspo_scholar_acceptance,iccr_status_mapping.medical_fitness');
 		$this->db->from('iccr_status_mapping');
 		$this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
         $this->db->where('iccr_status_mapping.application_no', $appno);

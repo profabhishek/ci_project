@@ -395,11 +395,11 @@ foreach ($response as $resp) {
 											
 											
 											//$response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = './'.$currentyear.'/medical_fitness/'.$mappingData[0]['medical_fitness'];
+							  $file_path_un = FCPATH.$currentyear.'/medical_fitness/'.$mappingData[0]['medical_fitness'];
 											
                                             ?>
 												
-                                            <a target="_blank" href="<?php echo site_url() . 'applicant/downloadDocs/' . base64url_encode($file_path_un); ?>" target="_blank"><span class = "label label-success">Download / Print</span></a>
+                                            <a target="_blank" href="<?php echo site_url() . 'mission/downloadDocs/' . base64url_encode($file_path_un); ?>" target="_blank"><span class = "label label-success">Download / Print</span></a>
 
                                             <?php
                                         }
@@ -619,89 +619,97 @@ foreach ($response as $resp) {
                     <thead>
                     <th>9. Visa</th>
 					<th>VISA Type</th>
-                    <th>VISA Number</th>	
-                    <th>VISA Issue Date</th>	
-                    <th>VISA Duration From</th>	
+                    <th>VISA Number</th>
+                    <th>VISA Issue Date</th>
+                    <th>VISA Duration From</th>
 					<th>VISA Duration To</th>
+					<th>VISA Issued Place</th>
+					<th>VISA Approved Status</th>
                     </thead>
                     <tbody>
-					
+
 						<tr>
-               
 					<td></td>
-						<td>
-					 <?php 
-					
+					<td><?php
 						if(!empty($mappingData[0]['visa_no'])){
-							
 							$course = $applicaitonStepOne[0]['programme'];
-					      	if($counter == 3 || $counter == 4)
-					      	{
-								echo 'Research';
-							}
-							else
-							{
-								echo 'Student';
-							}
-						}
-						
-					 ?>
-					 </td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_no']))
-							{
-								echo $mappingData[0]['visa_no'];
-								
-							}
-							
-
-							?>
-						</td>
-						
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_isuue_date']))
-							{
-								echo $mappingData[0]['visa_isuue_date'];
-								
-							}
-							
-
-							?>
-						</td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_from_date']))
-							{
-								echo $mappingData[0]['visa_from_date'];
-								
-							}
-							
-
-							?>
-						</td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_to_date']))
-							{
-								echo $mappingData[0]['visa_to_date'];
-								
-							}
-							
-				}
-							?>
-						</td>
-						</tr>
+							if($counter == 3 || $counter == 4){ echo 'Research'; } else { echo 'Student'; }
+						} else { echo 'N/A'; }
+					?></td>
+					<td><?php echo !empty($mappingData[0]['visa_no']) ? $mappingData[0]['visa_no'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_isuue_date']) ? $mappingData[0]['visa_isuue_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_from_date']) ? $mappingData[0]['visa_from_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_to_date']) ? $mappingData[0]['visa_to_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_issueplace']) ? $mappingData[0]['visa_issueplace'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_approved']) ? $mappingData[0]['visa_approved'] : 'N/A'; ?></td>
+					</tr>
                     </tbody>
                 </table>
-                    <br/>					
+				<?php
+				}
+				else
+				{
+				?>
+				<table id="tbl_visa_na" class="table" style="width: 100%;">
+					<thead>
+					<th>9. Visa</th>
+					<th>VISA Type</th>
+					<th>VISA Number</th>
+					<th>VISA Issue Date</th>
+					<th>VISA Duration From</th>
+					<th>VISA Duration To</th>
+					<th>VISA Issued Place</th>
+					<th>VISA Approved Status</th>
+					</thead>
+					<tbody>
+					<tr>
+					<td></td>
+					<td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td>
+					</tr>
+					</tbody>
+				</table>
+				<?php
+				} // end if(!empty($mappingData))
+				?>
+                    <br/>
+
+				<!------Flight/Travel Details------>
+				<?php
+				$travel = $this->common_model->getTravelData($this->uri->segment(3));
+				?>
+				<table id="tbl_travel" class="table" style="width: 100%;">
+					<thead>
+					<th>10. Flight/Train Details</th>
+					<th>Flight/Train No</th>
+					<th>Date of Departure</th>
+					<th>Time of Departure</th>
+					<th>Departure City</th>
+					<th>Date of Arrival in India</th>
+					<th>Time of Arrival</th>
+					<th>Arrival City</th>
+					<th>Airport Reception</th>
+					</thead>
+					<tbody>
+					<tr>
+					<td></td>
+					<td><?php echo !empty($travel[0]['flight_no']) ? $travel[0]['flight_no'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['departure_date']) ? $travel[0]['departure_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['time_of_departure']) ? $travel[0]['time_of_departure'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['departure_city']) ? $travel[0]['departure_city'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['travel_arrival_date']) ? $travel[0]['travel_arrival_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['time_of_arrival']) ? $travel[0]['time_of_arrival'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['final_city_arrival']) ? $travel[0]['final_city_arrival'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['airport_reseption']) ? $travel[0]['airport_reseption'] : 'N/A'; ?></td>
+					</tr>
+					</tbody>
+				</table>
+                    <br/>
 
                 </div>
 
                 <!-- /.box-body -->
 
-            </div>	
+            </div>
             <hr>
         </div>
 

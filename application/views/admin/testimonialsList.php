@@ -64,7 +64,7 @@
 					<td><?php echo $counter;?></td>
 					<td><?php echo $testimonial['title'];?></td>	
 					<td>
-					<?php $file = isset($testimonials[0]['testimonials_file_path'])?$notifications[0]['testimonials_file_path']:"" ?>
+					<?php $file = isset($testimonial['testimonials_file_path'])?$testimonial['testimonials_file_path']:"" ?>
 					<?php if(!empty($file)){?>
 					<a target="_blank" href="<?php echo site_url().'assets/site/main/testimonials/'.$testimonial['testimonials_file_path']; ?>"><i class="fa fa-file-pdf-o fa-1x text-red"></i> Click to view Document</a>
 				   <?php }else{ ?>

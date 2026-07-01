@@ -423,7 +423,7 @@ class Hqrs_model extends CI_Model {
 	
 	
 	function getAllStudentData($year,$data) {
-		
+
         $status = $data['status'];
         $iccr_status = $data['iccr_status'];
         $this->db->distinct();
@@ -551,8 +551,6 @@ class Hqrs_model extends CI_Model {
 		// $this->db->where(array('iccr_status_mapping.undertaking_doc <='=> 1731004199));
 
 		// Manoj end //
-	
-		// echo $this->db->_compile_select();exit;
 
 			if (isset($vars['Region'])&&$vars['Region'] != "") {
 				$this->db->where('iccr_university_response.region_one_status', $vars['Region']);
@@ -570,8 +568,8 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created >='=> 1738378143));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
-		
-        $code = $this->db->error(); 
+
+        $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
         }
@@ -622,6 +620,14 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1680305602));
 		}
+		if($year == 2021){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1644471556));
+		}
+		if($year == 2022){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1680305602));
+		}
 		if($year == 2023){
 			$this->db->where(array('iccr_status_mapping.created >='=> 1680315898));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1703979202));
@@ -634,8 +640,8 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created >='=> 1738378143));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
-		
-        $code = $this->db->error(); 
+
+        $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
         }

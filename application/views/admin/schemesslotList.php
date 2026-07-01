@@ -125,7 +125,7 @@
 						foreach($countryIds as $contid)
 						{
 							$contname = $this->common_model->getCountryById($contid);
-							echo $contname[0]['country_name'];
+							echo (!empty($contname) ? $contname[0]['country_name'] : $contid);
 							echo "<br/>";
 							$country_counter++;
 						}

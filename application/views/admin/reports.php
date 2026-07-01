@@ -67,7 +67,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 				 <form method="post" action="<?php echo base_url();?>admin/downloadpdf/<?php echo $this->uri->segment(3); ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
 			">
 					  <input id="approvedappId" name="approvedappId" value="<?php echo $this->uri->segment(3); ?>" type="hidden"/>
-					   <input id="pdftitle" name="pdftitle" value="<?php echo $title; ?>" type="hidden"/>
+					   <input id="pdftitle" name="pdftitle" value="<?php echo isset($title) ? $title : ''; ?>" type="hidden"/>
 					  <input class="pull-right export-btn" style="margin-right:11px;margin-top:-6px;" type="submit" value="PDF"/>	
 					  <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">			
 				</form>
@@ -349,6 +349,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 			<tbody>
 				<?php 
 				$counter=1;
+				$arrived = isset($arrived) ? $arrived : [];
 				if(count($arrived)>0)
 				{
 					foreach($arrived as $app)

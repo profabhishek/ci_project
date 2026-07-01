@@ -310,23 +310,23 @@ function confirmedStudentAPINew(){
 		$result = $this->hqrs_model->getAllStudentData($year,$res);
 
 		//print_r($result); die;
-		
+
 		$response = array();
 		if(!empty($result))
 		{
-			
+
 			foreach($result as $key=>$r)
 			{
 				$applicationDetails = $this->common_model->getApplicationStepOneByAppno($r['application_no']);
 				$country = $this->common_model->getCountryById($applicationDetails[0]['nationality']);
-				
+
 				$gender = "";
-				$output= array();	
-			
+				$output= array();
+
 				$output[$key]['fullname'] = $applicationDetails[0]['fullname'];
 				$output[$key]['email'] = $applicationDetails[0]['email'];
 				$output[$key]['application_no'] = $r['application_no'];
-						
+
 				if($applicationDetails[0]['programme'] == 3 || $applicationDetails[0]['programme'] == 4 || $applicationDetails[0]['programme'] == 8)
 				{
 					$course = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
@@ -343,7 +343,7 @@ function confirmedStudentAPINew(){
 					$fullCourse .= $course2[0]['title'].' '.$applicationDetails[0]['course_option_name_three'].'_';
 					$output[] = $fullCourse;
 				}
-				
+
 				$universityDetails = "";
 				$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
 				$uni2 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_two']);
@@ -351,9 +351,9 @@ function confirmedStudentAPINew(){
 				$universityDetails .= '1) '.$uni1[0]['name'].'_';
 				$universityDetails .= '2) '.$uni2[0]['name'].'_';
 				$universityDetails .= '3) '.$uni3[0]['name'].'_';
-				$output[] = $universityDetails;			
+				$output[] = $universityDetails;
 				$scheme = $this->common_model->getSchemeById($r['scholarship_id']);
-				$output[] =	$scheme[0]['scheme_name'];		
+				$output[] =	$scheme[0]['scheme_name'];
 				$output[] = $country[0]['country_name'];
 				$output[] = date("d-m-Y", $r['created']);
 				$response[] = $output;
@@ -362,32 +362,51 @@ function confirmedStudentAPINew(){
 
 		$returnJson['data'] = $response;
 		$responseApi = array();
-		
+
+		// Pre-fetch all lookup data in bulk to avoid N+1 queries
+		$missionsCache = []; $schemesCache = []; $programsCache = [];
+		$universitiesCache = []; $regionsCache = []; $courseTypeCache = [];
+		foreach($result as $r1) {
+			$missionsCache[$r1['application_through']] = true;
+			$schemesCache[$r1['scholarship_id']] = true;
+			$programsCache[$r1['programme']] = true;
+			$uni = $r1['course_type'] == 1 ? $r1['regional_university_ayush'] : $r1['regional_university'];
+			if($uni) $universitiesCache[$uni] = true;
+			$reg = $r1['course_type'] == 1 ? $r1['region_one_status_ayush'] : $r1['region_one_status'];
+			if($reg) $regionsCache[$reg] = true;
+			$courseTypeCache[$r1['course_type']] = true;
+		}
+		foreach(array_keys($missionsCache) as $mid) {
+			$missionsCache[$mid] = $this->db->get_where('iccr_missions', array('id'=>$mid))->row();
+		}
+		foreach(array_keys($schemesCache) as $sid) {
+			$schemesCache[$sid] = $this->common_model->getSchemeById($sid);
+		}
+		foreach(array_keys($programsCache) as $pid) {
+			$programsCache[$pid] = $this->common_model->getProgrammeById($pid);
+		}
+		foreach(array_keys($universitiesCache) as $uid) {
+			$universitiesCache[$uid] = $this->common_model->getFinalUniversityById($uid);
+		}
+		foreach(array_keys($regionsCache) as $rid) {
+			$regionsCache[$rid] = $this->common_model->getRegionById($rid);
+		}
+		foreach(array_keys($courseTypeCache) as $ctid) {
+			$row = $this->db->get_where('iccr_course_type', array('id'=>$ctid))->row();
+			$courseTypeCache[$ctid] = $row->course_type ?? '';
+		}
+
 		foreach($result as $key1=>$r1)
 		{
-			$applicationDetails = $this->common_model->getApplicationStepOneByAppno($r1['application_no']);
+			$iccr_missions = $missionsCache[$r1['application_through']] ?? null;
+			$scheme        = $schemesCache[$r1['scholarship_id']] ?? [];
+			$program       = $programsCache[$r1['programme']] ?? [];
+			$course_type   = $r1['course_type'];
 
-			//echo'<pre>'; print_r($applicationDetails); die;
-			$iccr_missions = $this->db->get_where('iccr_missions',array('id'=>$r1['application_through']))->row();
-			$scheme = $this->common_model->getSchemeById($r1['scholarship_id']);
-			// $confirmData = $this->common_model->getFinalUniversityById($r1['regional_university']);	
-			// $region = $this->common_model->getRegionById($r1['region_one_status']);
-			$program = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
-
-			
-			if($applicationDetails[0]['course_type'] == 1) {
-				if($r1['region_one_status_date']!=""){
-					$undertaking_date=date('d-m-Y',$r1['region_one_status_date']);
-				}else{
-					$undertaking_date="";
-				}
-			}
-			else {
-				if($r1['undertaking_doc']!=""){
-					$undertaking_date=date('d-m-Y',$r1['undertaking_doc']);
-				}else{
-					$undertaking_date="";
-				}
+			if($course_type == 1) {
+				$undertaking_date = !empty($r1['region_one_status_date']) ? date('d-m-Y',$r1['region_one_status_date']) : "";
+			} else {
+				$undertaking_date = !empty($r1['undertaking_doc']) ? date('d-m-Y',$r1['undertaking_doc']) : "";
 			}
 
 			 $visa_isuue_date="";
@@ -438,9 +457,6 @@ function confirmedStudentAPINew(){
 			   $region_one_status = $r1['region_one_status'];
 			}
 			}
-			$region = $this->common_model->getRegionById($region_one_status);
-
-
 
 			if($applicationDetails[0]['course_type'] == 1) {
 				$regional_university="";
@@ -454,33 +470,23 @@ function confirmedStudentAPINew(){
 			   $regional_university = $r1['regional_university'];
 			}
 			}
-			$confirmData = $this->common_model->getFinalUniversityById($regional_university);	
 
-			// echo '<pre>'; print_r($region_one_status);die;
-			
-			if($r1['gender'] == 1)
-						  {
-						  	$gender= 'Male';					  	
-						  }
-						  elseif($r1['gender'] == 2)
-						  {
-						  	$gender= 'Female';							  						  
-						  }
-			$Course_main_stream= $this->db->get_where('iccr_course_type',array('id'=>$r1['course_type']))->row();
-			$stream= $Course_main_stream->course_type??'';
-			
+			$confirmData = $universitiesCache[$regional_university] ?? [];
+			$region      = $regionsCache[$region_one_status] ?? [];
+			$gender      = $r1['gender'] == 1 ? 'Male' : ($r1['gender'] == 2 ? 'Female' : '');
+			$stream      = $courseTypeCache[$r1['course_type']] ?? '';
+
 			if (!empty($r1['new_travel_date'])) {
 				try {
-					$date = new DateTime($r1['new_travel_date']);
-					$travel_arrival_date = $date->format("d-m-Y");
+					$dt = new DateTime($r1['new_travel_date']);
+					$travel_arrival_date = $dt->format("d-m-Y");
 				} catch (Exception $e) {
-					$travel_arrival_date = null; // or set a default value
+					$travel_arrival_date = null;
 				}
 			} else {
 				$travel_arrival_date = null;
 			}
-			//$travel_arrival_date=$r1['new_travel_date'];
-			
+
 			$responseApi[$key1]['application_no']=$r1['application_no'];
 			$responseApi[$key1]['first_name']=$r1['fullname'];
 			$responseApi[$key1]['middle_name']=$r1['middlename'];
@@ -488,13 +494,13 @@ function confirmedStudentAPINew(){
 			$responseApi[$key1]['gender']=$gender;
 			$responseApi[$key1]['email']=$r1['email'];
 			$responseApi[$key1]['country_name']=$r1['country_name'];
-			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name;
-			$responseApi[$key1]['Name and Code of Scholarship Scheme']=$scheme[0]['scheme_name'];
-			$responseApi[$key1]['Level (UG/PG/ PhD/MPhil/ Post Doctoral)']=$program[0]['name'];
+			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name ?? '';
+			$responseApi[$key1]['Name and Code of Scholarship Scheme']=$scheme[0]['scheme_name'] ?? '';
+			$responseApi[$key1]['Level (UG/PG/ PhD/MPhil/ Post Doctoral)']=$program[0]['name'] ?? '';
 			$responseApi[$key1]['course_name']=$r1['final_course'];
 			$responseApi[$key1]['stream']=$stream;
-			$responseApi[$key1]['Name Of University/Institute']=$confirmData[0]['name'];
-			$responseApi[$key1]['ZO/S-ZO/RPO']=$region[0]['name'];
+			$responseApi[$key1]['Name Of University/Institute']=$confirmData[0]['name'] ?? '';
+			$responseApi[$key1]['ZO/S-ZO/RPO']=$region[0]['name'] ?? '';
 			$responseApi[$key1]['phone_number']=$r1['phone_number'];
 			$responseApi[$key1]['whatsapp_number']=$r1['whatsapp_number'];
 			$responseApi[$key1]['passport_no']=$r1['passport_no'];
@@ -508,29 +514,21 @@ function confirmedStudentAPINew(){
 			$responseApi[$key1]['visa_expiry_date']=$visa_to_date;
 			$responseApi[$key1]['date_of_arrival']=$travel_arrival_date;
 			$responseApi[$key1]['date_of_joining']=$date_of_joining;
-			// $responseApi[$key1]['duration_of_course']=$r1['duration_of_course'];
 			$responseApi[$key1]['duration_of_course']=$duration_of_course;
-			//$responseApi[$key1]['e-FRRO Date of Issue']=$visa_isuue_date;
 			$responseApi[$key1]['created_date']=$undertaking_date;
-
-
 		}
 		echo json_encode($responseApi);
 	}else{
 		$error = array(
             'message' => "secret token and secret key wrong",
             'status' => false
-        );  
+        );
 		echo json_encode($error);
 	}
 	   }
 
 
 	   function confirmedApplicationAPI(){
-
-		// ini_set('display_errors', 1);
-		// ini_set('display_startup_errors', 1);
-		// error_reporting(E_ALL);
 		$secretkey=$this->input->request_headers();
 		
      	$getTokken = $this->db->get_where('iccr_header_token',array('secret_token'=>$secretkey['Secrettoken'],'secret_key'=>$secretkey['Secretkey']))->num_rows();
@@ -1013,8 +1011,8 @@ function confirmedStudentAPINew(){
 							if($cleanPost['year']!= ''){
 								$this->session->set_flashdata('message_type', 'error');
 								$this->session->set_flashdata('error','Please select valid email id!');
-								// $this->session->set_flashdata('message_type', 'success');
-								// $this->session->set_flashdata('success', 'Kindly Check Your Email to Reset Password!');
+								$this->session->set_flashdata('message_type', 'success');
+								$this->session->set_flashdata('success', 'Kindly Check Your Email to Reset Password!');
 								redirect('home/forgotPassword');
 								return false;
 							}
@@ -1049,75 +1047,42 @@ function confirmedStudentAPINew(){
 		
 							
 							// Update okay, send email
-							$url     = site_url() . 'home/completePassword/' .$code;
-							// print_r($url); die;
+							$url     = site_url() . 'home/completePassword/' . $code;
 							$link    = '<a href="' . $url . '">Please click the link to reset the password! »</a>';
-							$message = '';                
-							$message .= 'Please click the link below to reset your password. <br>';
-							
-							$message .= $link;
-							$data = array(
-							'content' => $message					   
+							$message = 'Please click the link below to reset your password.<br>' . $link;
+							$data    = array('content' => $message);
+
+							$config = array(
+								'mailtype'     => 'html',
+								'protocol'     => 'smtp',
+								'smtp_host'    => 'relay.nic.in',
+								'smtp_port'    => '25',
+								'smtp_timeout' => '7',
+								'charset'      => 'utf-8',
+								'newline'      => "\r\n",
 							);
-							$data = array(
-							'content' => $message					   
-							);
+
+							$content    = $this->load->view('mail_signup', $data, true);
+							$from_email = $this->config->item('fromEmail');
+							$to_email   = $this->input->post('email');
+
 							$this->load->library('email');
-							$config = Array(
-							 'mailtype' => 'html'				        
-							);
-							/* $config['protocol']    = 'smtp';
-							$config['smtp_host']    = 'relay.nic.in';
-							$config['smtp_port']    = '25';
-							$config['smtp_timeout'] = '7'; */
-												
-							//$config['smtp_pass']    = 'Kip@Mea@123';
-							//$config['charset']    = 'utf-8';
-							$config['charset']    = 'utf-8';
-							$config['newline']    = "\r\n";							
 							$this->email->initialize($config);
-							
-							// $content = $this->load->view('change_password',$data, true); 							
-							// $from_email = "splspd.iccr@nic.in";  
-							// //$to_email = $email; 
-							// $to_email = $this->input->post('email'); 
-							// /* Load email library */
-										   
-							// $this->email->from($from_email, 'Indian Council for Cultural Relations (ICCR)'); 
-							// $this->email->to($to_email);
-							// $this->email->subject('Indian Council for Cultural Relations (ICCR)'); 
-							// $this->email->message($content);
-								
-							$content = $this->load->view('mail_signup',$data, true); 
-					    
-							 $from_email = $this->config->item('fromEmail'); ; 
-							 //$to_email = $this->input->post('emailId'); 
-							 $to_email = $this->input->post('email');
-							 //echo "hhh";
-							 //print_r( $to_email);DIE;
-			   
-							 /* Load email library */
-							 $this->load->library('email',$config);			   
-							 $this->email->from($from_email, 'Indian Council for Cultural Relations (ICCR)'); 
-							 $this->email->to($to_email);
-							 $this->email->subject('Indian Council for Cultural Relations (ICCR)'); 
-							 //$this->email->subject('Indian Council for Cultural Relations (ICCR) Activate Account'); 
-							 $this->email->message($content);	
-							
-							if($this->email->send()) 
+							$this->email->from($from_email, 'Indian Council for Cultural Relations (ICCR)');
+							$this->email->to($to_email);
+							$this->email->subject('Reset Your Password - ICCR Scholarship Portal');
+							$this->email->message($content);
+
+							if($this->email->send())
 							{
-								//echo "hello";die;
-								//echo $this->email->print_debugger();die;
 								$this->session->set_flashdata('message_type', 'success');
 								$this->session->set_flashdata('success', 'Kindly Check Your Email to Reset Password!');
 								redirect(site_url().'home/forgotPassword');
-								
 							}
-							else 
+							else
 							{
-								//echo $this->email->print_debugger();
 								$this->session->set_flashdata('message_type', 'error');
-								$this->session->set_flashdata('error', 'Somthing is Wrong');
+								$this->session->set_flashdata('error', 'Email could not be sent. Please try again later.');
 								redirect(site_url().'home/forgotPassword');
 							}
 							
@@ -1150,6 +1115,32 @@ function confirmedStudentAPINew(){
 								$this->session->set_flashdata('success', 'Kindly Check Your Email to Reset Password!');
 					redirect(site_url().'home/forgotPassword');
 				}
+			}
+		}
+
+		public function testSmtp()
+		{
+			$config = array(
+				'mailtype'     => 'html',
+				'protocol'     => 'smtp',
+				'smtp_host'    => 'relay.nic.in',
+				'smtp_port'    => '25',
+				'smtp_timeout' => '7',
+				'charset'      => 'utf-8',
+				'newline'      => "\r\n",
+			);
+
+			$this->load->library('email');
+			$this->email->initialize($config);
+			$this->email->from('splspd.iccr@nic.in', 'ICCR Test');
+			$this->email->to('jhaabhishek910@gmail.com');
+			$this->email->subject('SMTP Test');
+			$this->email->message('If you see this, SMTP is working.');
+
+			if($this->email->send()) {
+				echo 'Email sent successfully!';
+			} else {
+				echo $this->email->print_debugger();
 			}
 		}
 		public function completePassword() 
