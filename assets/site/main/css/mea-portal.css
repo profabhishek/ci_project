@@ -214,12 +214,32 @@ div.js_enable{background:#fce15e none repeat scroll 0 0;color:red;height:30px;le
 table.dataTable{font-size: 12px;}
 .goals{
 	  background: white none repeat scroll 0 0;
-    border: 1px solid #cecece;
-    border-radius: 85px;
-    height: 82px;
-    margin-right: 15px;   
-    padding: 7px;
-    width: 82px;
+    border: 1px solid #e5e5e5;
+    border-radius: 50%;
+    height: 88px;
+    width: 88px;
+    /* Was a flat white circle with a thin border and no depth, packed
+       edge-to-edge via a fixed margin-right - looked dated/compressed.
+       A soft shadow gives it depth without changing the color scheme,
+       and the transition/hover lift is a small, modern touch. Spacing
+       between circles is now handled by the flex `gap` on the parent
+       container in dashboard.php instead of a fixed margin, so it stays
+       even regardless of how many logos are in the row.
+       Padding removed and overflow:hidden added so the logo image
+       (now sized 100%/100% with object-fit:cover) fills the entire
+       circle edge-to-edge instead of floating in the middle with a
+       gap - that gap plus the old fixed-size image was what made it
+       look squashed/oval instead of a clean full circle. */
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+}
+.goals:hover{
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.14);
 }
 .card a{display:block}
 .card img{left:0;top:0}
@@ -321,19 +341,27 @@ footer{position: relative;bottom:0;width:100%;}
 
 
 
-#sidebar-wrapper {      
+#sidebar-wrapper {
     /* background: #222 none repeat scroll 0 0; */
     height: 100%;
     margin-left: 16px;
+    float: left;
     transition: all 0.4s ease 0s;
-    width: 150px;
+    /* Was a fixed 150px, while the boxes inside (.sidebar-nav li a) were
+       styled at a fixed 440px - the container reserved far less space than
+       its content actually needed, so the boxes visually overflowed past the
+       sidebar column and overlapped whatever content sat to their right
+       (e.g. the dashboard's map/flag column). Set to match the box width
+       below so the column is reserved correctly - still a single vertical
+       list, same pill shape and color, just no longer overlapping. */
+    width: 300px;
     z-index: 10000;
 }
 
 .sidebar-nav {
     display: block;
     float: left;
-    width: 150px;
+    width: 100%;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -350,9 +378,8 @@ footer{position: relative;bottom:0;width:100%;}
 #sidebar_menu li a, .sidebar-nav li a {
     color: #fff !important;
     display: block;
-    float: left;
     text-decoration: none;
-    width: 453px;
+    width: 100%;
    /* background: #F18F2E;*/
    background: url("../images/bg/strips2.jpg") repeat scroll 0 0 / 100% 100%;/*rgba(0, 0, 0, 0) url("../images/bg/colourback_5019.jpg") repeat scroll 0 0 / 100% auto;*/
     border-top: 1px solid #FFF;
@@ -363,9 +390,9 @@ footer{position: relative;bottom:0;width:100%;}
     -ms-transition: background .5s;
     transition: background .5s;
     font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 .left-menu-sec #sidebar-wrapper,.left-menu-sec .sidebar-nav {width:auto;}
-#sidebar_menu li a, .sidebar-nav li a{width:100%;}
 
 .sidebar_name {
     padding-top: 25px;
@@ -374,16 +401,36 @@ footer{position: relative;bottom:0;width:100%;}
 }
 
 .sidebar-nav li {
-  line-height: 40px;
-  text-indent: 10px;
+  width: 100%;
+  margin-bottom: 8px;
 }
 
 .sidebar-nav li a {
-	width: 440px;
   color: #999999;
-  display: block;
   text-decoration: none;
    border-radius: 36px;
+  /* Box is narrower now (300px vs the old 440px), so longer labels wrap to
+     2-3 lines instead of one. Switched from a fixed single-line height to
+     padding so the pill grows with its content instead of clipping/overlapping.
+     Also switched the label/count layout from float (which breaks down once
+     the label wraps to multiple lines - the count badge ends up jammed
+     against whichever line it happens to float next to) to flexbox, which
+     keeps the count pinned to the right and vertically aligned regardless of
+     how many lines the label wraps to. */
+  display: flex;
+  align-items: center;
+  line-height: 20px;
+  padding: 10px 16px;
+  min-height: 20px;
+}
+
+/* The count badge still carries Bootstrap's .pull-right (float:right) from
+   the view markup; float has no effect on a flex child, so this just makes
+   sure it's pinned to the end of the flex row instead of relying on float. */
+.sidebar-nav li a .fltright {
+  margin-left: auto;
+  padding-left: 10px;
+  flex-shrink: 0;
 }
 
 .sidebar-nav li a:hover {
@@ -705,6 +752,7 @@ body{
 	overflow: scroll;
 }
 }
+.container{width:100%;}
 @media (max-width:1366px){
 .container{width: 100%;}
 .bannerarea{width: 100%;}

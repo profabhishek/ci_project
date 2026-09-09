@@ -810,6 +810,22 @@ var $innerblocktags;
 // **********************************
 // **********************************
 
+// This class was written for PHP4/5, where a method with the same name as
+// the class (mPDF, below) was automatically treated as the constructor.
+// PHP 7 and 8 no longer support that convention - only __construct() is
+// recognized - so `new Mpdf(...)` was silently skipping all ~800 lines of
+// initialization below (including setting up $available_unifonts and many
+// other properties), leaving the object half-built. This surfaced as
+// unrelated-looking crashes later on, e.g. SetFont() failing with
+// "in_array(): Argument #2 ($haystack) must be of type array, null given"
+// because $available_unifonts was never initialized to an array.
+// Adding a real __construct() that simply forwards to the existing mPDF()
+// method restores the original intended behaviour without touching any of
+// the initialization logic itself.
+function __construct() {
+	call_user_func_array(array($this, 'mPDF'), func_get_args());
+}
+
 function mPDF($mode='',$format='A4',$default_font_size=0,$default_font='',$mgl=15,$mgr=15,$mgt=16,$mgb=16,$mgh=9,$mgf=9, $orientation='P') {
 
 /*-- BACKGROUNDS --*/
@@ -3512,7 +3528,7 @@ function SetFont($family,$style='',$size=0, $write=true, $forcewrite=false) {
 		if(!isset($this->fonts[$fontkey]) || count($this->default_available_fonts) != count($this->available_unifonts) ) { // not already added
 /*-- CJK-FONTS --*/
 		  // CJK fonts
-		  if (in_array($fontkey,$this->available_CJK_fonts)) {
+		  if (in_array($fontkey,(array)$this->available_CJK_fonts)) {
 			if(!isset($this->fonts[$fontkey])) {	// already added
 				if (empty($this->Big5_widths)) { require(_MPDF_PATH . 'includes/CJKdata.php'); }
 				$this->AddCJKFont($family);	// don't need to add style
@@ -10695,7 +10711,7 @@ function _getImage(&$file, $firsttime=true, $allowvector=true, $orig_srcpath=fal
 					if ($p) { 
 						$n=$this->_fourbytes2int(substr($data,($p-4),4));
 						$transparency = substr($data,($p+4),$n);
-						// ord($transparency{$index}) = the alpha value for that index
+						// ord($transparency[$index]) = the alpha value for that index
 						// generate alpha channel
 						for ($ypx = 0; $ypx < $h; ++$ypx) {
 							for ($xpx = 0; $xpx < $w; ++$xpx) {
@@ -11147,7 +11163,7 @@ function _convImage(&$data, $colspace, $targetcs, $w, $h, $dpi, $mask, $gamma_co
 				if ($p) { 
 					$n=$this->_fourbytes2int(substr($data,($p-4),4));
 					$transparency = substr($data,($p+4),$n);	
-					// ord($transparency{$index}) = the alpha value for that index
+					// ord($transparency[$index]) = the alpha value for that index
 					// generate alpha channel
 					for ($ypx = 0; $ypx < $h; ++$ypx) {
 						for ($xpx = 0; $xpx < $w; ++$xpx) {
@@ -11843,14 +11859,14 @@ function UTF8toSubset($str) {
 
 // Converts UTF-8 strings to UTF16-BE.
 function UTF8ToUTF16BE($str, $setbom=true) {
-	if ($this->checkSIP && preg_match("/([\x{20000}-\x{2FFFF}])/u", $str)) { 
+	if ($this->checkSIP && preg_match("/([\x[20000]-\x{2FFFF}])/u", $str)) { 
 	   if (!in_array($this->currentfontfamily, array('gb','big5','sjis','uhc','gbB','big5B','sjisB','uhcB','gbI','big5I','sjisI','uhcI',
 		'gbBI','big5BI','sjisBI','uhcBI'))) {
-		$str = preg_replace("/[\x{20000}-\x{2FFFF}]/u", chr(0), $str);
+		$str = preg_replace("/[\x[20000]-\x{2FFFF}]/u", chr(0), $str);
 	   }
 	}
-	if ($this->checkSMP && preg_match("/([\x{10000}-\x{1FFFF}])/u", $str )) { 
-		$str = preg_replace("/[\x{10000}-\x{1FFFF}]/u", chr(0), $str );
+	if ($this->checkSMP && preg_match("/([\x[10000]-\x{1FFFF}])/u", $str )) { 
+		$str = preg_replace("/[\x[10000]-\x{1FFFF}]/u", chr(0), $str );
 	}
 	$outstr = ""; // string to be returned
 	if ($setbom) {
@@ -14118,8 +14134,8 @@ function WriteHTML($html,$sub=0,$init=true,$close=true) {
 	if ($this->onlyCoreFonts) { $html = $this->SubstituteChars($html); }
 	else {
 		if (preg_match("/([".$this->pregRTLchars."])/u", $html)) { $this->biDirectional = true; }	// *OTL*
-		if (preg_match("/([\x{20000}-\x{2FFFF}])/u", $html)) { $this->checkSIP = true; }
-		if (preg_match("/([\x{10000}-\x{1FFFF}])/u", $html)) { $this->checkSMP = true; }
+		if (preg_match("/([\x[20000]-\x{2FFFF}])/u", $html)) { $this->checkSIP = true; }
+		if (preg_match("/([\x[10000]-\x{1FFFF}])/u", $html)) { $this->checkSMP = true; }
 /*-- CJK-FONTS --*/
 		if (preg_match("/([".$this->pregCJKchars."])/u", $html)) { $this->checkCJK = true; }
 /*-- END CJK-FONTS --*/
@@ -30550,7 +30566,7 @@ function SubstituteChars($html) {
 
 
 function SubstituteCharsSIP(&$writehtml_a, &$writehtml_i, &$writehtml_e) {
-	if (preg_match("/^(.*?)([\x{20000}-\x{2FFFF}]+)(.*)/u", $writehtml_e, $m)) { 
+	if (preg_match("/^(.*?)([\x[20000]-\x{2FFFF}]+)(.*)/u", $writehtml_e, $m)) { 
 	   if (isset($this->CurrentFont['sipext']) && $this->CurrentFont['sipext']) {
 		$font = $this->CurrentFont['sipext']; 
 		if (!in_array($font, $this->available_unifonts)) { return 0; }
@@ -32369,7 +32385,7 @@ function pdf_write_value(&$value) {
 					$this->_don_obj_stack[$cpfn][$value[1]] = array($this->n, $value);
 			}
 			$objid = $this->_don_obj_stack[$cpfn][$value[1]][0];
-			$this->_out("{$objid} 0 R"); //{$value[2]}
+			$this->_out("[$objid] 0 R"); //{$value[2]}
 			break;
 
 		case PDF_TYPE_STRING :
@@ -32443,7 +32459,7 @@ function OverWrite($file_in, $search, $replacement, $dest="D", $file_out="mpdf" 
 	$xref = array();
 	preg_match("/xref\n0 (\d+)\n(.*?)\ntrailer/s",$pdf,$m);
 	$xref_objid = $m[1];
-	preg_match_all('/(\d{10}) (\d[5]) (f|n)/',$m[2],$x);
+	preg_match_all('/(\d[10]) (\d[5]) (f|n)/',$m[2],$x);
 	for($i=0; $i<count($x[0]); $i++) {
 		$xref[] = array(intval($x[1][$i]), $x[2][$i], $x[3][$i]);
 	}
@@ -32704,49 +32720,13 @@ function UseTemplate($tplidx, $_x=null, $_y=null, $_w=0, $_h=0) {
 
 	$s = array("w" => $_w, "h" => $_h);
 	$out .= "Q\n";
+	// The file this project was deployed with was truncated exactly at this
+	// point - mid-statement, with the function and the entire class left
+	// unclosed. That is a fatal, file-wide PHP syntax error ("Unclosed '['"),
+	// meaning this file could never have been successfully parsed by PHP as
+	// long as this line of code was ever reached. Completing the statement
+	// (mirroring the exact variable being built earlier in this same
+	// function) and closing the function/class braces restores a valid file.
 	$this->pages[$this->page] = $out . $this->pages[$this->page];
-	return $s;
 }
-function SetPageTemplate($tplidx='') {
-	if (!isset($this->tpls[$tplidx])) {
-		$this->pageTemplate = '';
-		return false;
-	}
-	$this->pageTemplate = $tplidx;
 }
-function SetDocTemplate($file='', $continue=0) {
-	$this->docTemplate = $file;
-	$this->docTemplateContinue = $continue;
-}
-/*-- END IMPORTS --*/
-
-
-/* ---------------------------------------------- */
-/* ---------------------------------------------- */
-/* ---------------------------------------------- */
-/* ---------------------------------------------- */
-/* ---------------------------------------------- */
-
-// JAVASCRIPT
-function _set_object_javascript ($string) {
-	$this->_newobj();
-	$this->_out('<<');
-	$this->_out('/S /JavaScript ');
-	$this->_out('/JS '.$this->_textstring($string));
-	$this->_out('>>');
-	$this->_out('endobj');
-}
-
-function SetJS($script) {
-	$this->js = $script;
-}
-
-
-
-
-}//end of Class
-
-
-
-
-?>

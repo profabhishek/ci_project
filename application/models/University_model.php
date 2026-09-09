@@ -81,32 +81,50 @@ elseif($year == 2026){
 }
 $this->db->order_by('iccr_status_mapping.created','DESC');
 
-        if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+        if((isset($vars['ApplicantName']) ? $vars['ApplicantName'] : '') != "") {
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			//$this->db->or_like('iccr_student_application_details.middlename', $vars['ApplicantName']);
 			//$this->db->or_like('iccr_student_application_details.familyname', $vars['ApplicantName']);
 			
         } 		  
-        if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+        if((isset($vars['Mail']) ? $vars['Mail'] : '') != "") {
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
-        if($vars['Programme'] != "") {
+        if((isset($vars['Programme']) ? $vars['Programme'] : '') != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
         }
-		if ($vars['Country'] != "") {
+		if ((isset($vars['Country']) ? $vars['Country'] : '') != "") {
           
 		   $this->db->where('iccr_student_application_details.nationality',$vars['Country']);
         }
-        if($vars['Counrse'] != "") {
+        if((isset($vars['Counrse']) ? $vars['Counrse'] : '') != "") {
             $this->db->where('iccr_student_application_details.course',$vars['Counrse']);
         }  
-        if($vars['MinDate'] != "" && $vars['MaxDate'] != "")
+        if((isset($vars['MinDate']) ? $vars['MinDate'] : '') != "" && $vars['MaxDate'] != "")
         {
 			$this->db->where('iccr_status_mapping.created >=', strtotime($vars['MinDate']));
             $this->db->where('iccr_status_mapping.created <=', strtotime($vars['MaxDate']));
 		}
 
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
 	   //echo $this->db->_compile_select();die;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -186,13 +204,33 @@ return $query->result_array();;
 		
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-			$this->db->or_like('iccr_student_application_details.middlename', $vars['ApplicantName']);
-			$this->db->or_like('iccr_student_application_details.familyname', $vars['ApplicantName']);
-			
-        }   
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+			// middlename/familyname are latin1_swedish_ci just like fullname above -
+			// these two or_like() calls were never converted, so any search that
+			// reached this far still threw "Illegal mix of collations" even after
+			// the fullname comparison above was fixed. or_where() with the same
+			// CONVERT+COLLATE expression keeps the original OR-across-name-parts
+			// behavior while fixing the actual type mismatch.
+			$this->db->or_where("CONVERT(iccr_student_application_details.middlename USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+			$this->db->or_where("CONVERT(iccr_student_application_details.familyname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+
+        }
         if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -210,7 +248,11 @@ return $query->result_array();;
             $this->db->where('iccr_status_mapping.created <=', strtotime($vars['MaxDate']));
 		}
 
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
 	    //echo $this->db->_compile_select();die;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -259,10 +301,24 @@ return $query->result_array();;
 		
 		$this->db->where(array('iccr_status_mapping.status>=' => 1,'iccr_status_mapping.universities_status!=' => 18, 'iccr_status_mapping.universities_status' => 1));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -301,10 +357,24 @@ return $query->result_array();;
 		
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -345,7 +415,11 @@ return $query->result_array();;
             
         }
 
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
 	    //echo $this->db->_compile_select();die;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -365,10 +439,24 @@ return $query->result_array();;
 		$this->db->where('iccr_university_response.university_is_accept', 2);
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -587,19 +675,33 @@ return $query->result_array();;
             
         }
 			$this->db->order_by('iccr_status_mapping.created','DESC');
-         if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+         if ((isset($vars['ApplicantName']) ? $vars['ApplicantName'] : '') != "") {
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
-        if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+        if ((isset($vars['Mail']) ? $vars['Mail'] : '') != "") {
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
-        if ($vars['Programme'] != "") {
+        if ((isset($vars['Programme']) ? $vars['Programme'] : '') != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
         }
-        if ($vars['Counrse'] != "") {
+        if ((isset($vars['Counrse']) ? $vars['Counrse'] : '') != "") {
             $this->db->where('iccr_student_application_details.course',$vars['Counrse']);
         }  
-        if($vars['MinDate'] != "" && $vars['MaxDate'] != "")
+        if((isset($vars['MinDate']) ? $vars['MinDate'] : '') != "" && $vars['MaxDate'] != "")
         {
 			$this->db->where('iccr_status_mapping.created >=', strtotime($vars['MinDate']));
             $this->db->where('iccr_status_mapping.created <=', strtotime($vars['MaxDate']));
@@ -651,10 +753,24 @@ return $query->result_array();;
         $this->db->where_in('iccr_sfs_student_other_details.application_through', $missionId);       
         
         if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_sfs_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_sfs_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_sfs_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_sfs_student_application_details.email', $vars['Mail']);
+            // iccr_sfs_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_sfs_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_sfs_student_application_details.programme', $vars['Programme']);
@@ -672,7 +788,11 @@ return $query->result_array();;
             $this->db->where('iccr_sfs_student_details.created <=', strtotime($vars['MaxDate']));
 		}
 		
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
         $code = $this->db->error();
         if ($code['code'] > 0) {
         }
@@ -691,10 +811,24 @@ return $query->result_array();;
 		}
         $this->db->where(array('iccr_sfs_status_mapping.status' => 1, "iccr_sfs_status_mapping.mission_status" => -1, 'iccr_sfs_status_mapping.iccr_status' => -1, 'iccr_sfs_status_mapping.region_one_status' => -1, 'iccr_sfs_status_mapping.region_two_status' => -1, 'iccr_sfs_status_mapping.region_three_status' => -1,'iccr_sfs_student_other_details.mission_made_through'=>$cuntryid));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_sfs_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_sfs_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_sfs_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_sfs_student_application_details.email', $vars['Mail']);
+            // iccr_sfs_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_sfs_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_sfs_student_application_details.programme', $vars['Programme']);
@@ -1483,10 +1617,24 @@ function getCountUniversityApplications_26_27($universityId){
 		//$this->db->where('iccr_status_mapping.created' >='1615749687');
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -1533,7 +1681,11 @@ function getCountUniversityApplications_26_27($universityId){
             $this->db->where('iccr_status_mapping.created <=', strtotime($vars['MaxDate']));
 		}
 
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
 	   //echo $this->db->_compile_select();die;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -1559,10 +1711,24 @@ function getCountUniversityApplications_26_27($universityId){
 		//$this->db->where('iccr_status_mapping.created' >='1615749687');
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -1609,7 +1775,11 @@ function getCountUniversityApplications_26_27($universityId){
             $this->db->where('iccr_status_mapping.created <=', strtotime($vars['MaxDate']));
 		}
 
-        $this->db->limit($vars['length'],$vars['start']);
+        // Some AJAX callers (e.g. DataTables) may omit 'length'/'start' entirely;
+        // default to fetching everything (no limit clause) rather than crashing.
+        if (isset($vars['length']) && $vars['length'] != -1) {
+            $this->db->limit($vars['length'], isset($vars['start']) ? $vars['start'] : 0);
+        }
 	   //echo $this->db->_compile_select();die;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -1637,10 +1807,24 @@ function getCountUniversityApplications_26_27($universityId){
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);

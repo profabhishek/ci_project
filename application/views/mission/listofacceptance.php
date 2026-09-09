@@ -87,13 +87,13 @@ if($this->session->flashdata('message_type') == "success")
 						<td><?php echo $counter;?></td>
 						<?php $date1 = '2021-03-15';
 						//$date1 = '2019-12-01';
-						$date = date_create($app['created']);
+						$date = date_create(isset($app['created']) ? $app['created'] : 'now');
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? ''));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
-						$studentyreg = strtotime($app['created']);
+						$studentyreg = isset($app['created']) ? strtotime($app['created']) : 0;
 						//if($r['status'] = 4) {
 							if ($date2 >= $date1) {
 							$new='<img src="'.site_url().'assets/site/main/images/newnotification.gif.png" alt="new gif Image">';
@@ -104,7 +104,7 @@ if($this->session->flashdata('message_type') == "success")
 						<td><?php echo $app['fullname'].$app['middlename'].$app['familyname'].$new;?></td>
 						<td><?php echo $app['email'];?></td>
 						<?php $response = $this->common_model->getconfirmationDataByMission($app['application_no']); ?>
-						<td><?php echo $response[0]['confirmed_course'];?></td>
+						<td><?php echo !empty($response) ? $response[0]['confirmed_course'] : 'NA';?></td>
 						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo $uni[0]['scheme_name'];?></td>
 										
 						<td>
@@ -176,13 +176,13 @@ if($this->session->flashdata('message_type') == "success")
 						<td><?php echo $counter;?></td>
 						<?php $date1 = '2021-03-15';
 						//$date1 = '2019-12-01';
-						$date = date_create($app['created']);
+						$date = date_create(isset($app['created']) ? $app['created'] : 'now');
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? ''));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
-						$studentyreg = strtotime($app['created']);
+						$studentyreg = isset($app['created']) ? strtotime($app['created']) : 0;
 						//if($r['status'] = 4) {
 							if ($date2 >= $date1) {
 							$new='<img src="'.site_url().'assets/site/main/images/newnotification.gif.png" alt="new gif Image">';
@@ -193,7 +193,7 @@ if($this->session->flashdata('message_type') == "success")
 						<td><?php echo $app['fullname'].$app['middlename'].$app['familyname'];?></td>
 						<td><?php echo $app['email'];?></td>
 						<?php $response = $this->common_model->getconfirmationDataByMission($app['application_no']); ?>
-						<td><?php echo $response[0]['confirmed_course'];?></td>
+						<td><?php echo !empty($response) ? $response[0]['confirmed_course'] : 'NA';?></td>
 						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo $uni[0]['scheme_name'];?></td>
 										
 						<td>

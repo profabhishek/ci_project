@@ -68,18 +68,56 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 	    	 
               <div class="box-body">
               	<div class="col-xs-3 prfl pull-right" >
-              		<?php 
-              			if($userImage == "")
+              		<?php
+              			// Applicant photographs are stored in the applicant's own upload
+              			// directory (iccr_users.dir), not in assets/site/main/profile_pics.
+              			// This page only ever looked in profile_pics, so the photo was
+              			// missing for every applicant whose file lives in the user
+              			// directory - which is the normal case. viewFullApplication.php
+              			// reads it from $userd->dir and displays it correctly; the same
+              			// approach is used here.
+              			//
+              			// The file is inlined as a data URI because the user directory
+              			// sits outside the web root and cannot be linked to directly.
+              			$contactPhoto = '';
+              			if(!empty($userImage) && !empty($applicaitonStepOne[0]['uid']))
+              			{
+              				$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
+              				$userDir = ($userd && !empty($userd->dir)) ? rtrim($userd->dir, '/\\') : '';
+
+              				if($userDir !== '' && file_exists($userDir.'/'.$userImage))
+              				{
+              					$imgBytes = @file_get_contents($userDir.'/'.$userImage);
+              					if($imgBytes !== false && $imgBytes !== '')
+              					{
+              						$fi = @finfo_open(FILEINFO_MIME_TYPE);
+              						$mime = $fi ? @finfo_buffer($fi, $imgBytes, FILEINFO_MIME_TYPE) : '';
+              						if($fi) { @finfo_close($fi); }
+              						if(!empty($mime))
+              						{
+              							$contactPhoto = 'data:'.$mime.';base64,'.base64_encode($imgBytes);
+              						}
+              					}
+              				}
+
+              				// Older records still keep the photo in the public folder.
+              				if($contactPhoto === '' && file_exists(FCPATH.'assets/site/main/profile_pics/'.$userImage))
+              				{
+              					$contactPhoto = site_url().'assets/site/main/profile_pics/'.$userImage;
+              				}
+              			}
+
+              			if($contactPhoto === '')
               			{
 						?>
 						<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/images/default_avatar.png"/>
-						<?php	
+						<?php
 						}
 						else
 						{
 						?>
-						<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-						<?php		
+						<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo $contactPhoto; ?>"/>
+						<?php
 						}
               		?>
               	</div>

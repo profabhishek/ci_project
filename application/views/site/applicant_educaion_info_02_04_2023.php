@@ -1556,7 +1556,7 @@
                             <div class="name-sec col-xs-4 col-sm-2 col-md-3 pull-right">
                                 <button type="submit" class="form-control capitalLetter sbmt">Next &nbsp;&nbsp;<span class="glyphicon glyphicon-forward"></span></button>
                                 <!-- <input type="submit" class="form-control sbmt" value="Next "/>-->
-                                <!--<a href="<?php echo site_url();?>applicant/applicant_other_info?appno=<?php echo $_GET['appno']; ?>" class="form-control sbmt">Save & Continue to Page 3</a>-->
+                                <!--<a href="<?php echo site_url();?>applicant/applicant_other_info?appno=<?php echo html_escape($_GET['appno']); ?>" class="form-control sbmt">Save & Continue to Page 3</a>-->
                             </div>
 
                             <?php  
@@ -1587,7 +1587,7 @@
 
 
                             <!----<div class="name-sec col-xs-4 col-sm-2 col-md-4 pull-right">
-				  <a href="<?php echo site_url();?>applicant/applicant_personal_infoayush?appno=<?php echo $_GET['appno']; ?>" class="form-control sbmt"><span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>
+				  <a href="<?php echo site_url();?>applicant/applicant_personal_infoayush?appno=<?php echo html_escape($_GET['appno']); ?>" class="form-control sbmt"><span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>
 				</div>--->
 
                         </div>

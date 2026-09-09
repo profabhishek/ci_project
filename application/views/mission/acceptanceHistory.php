@@ -22,6 +22,16 @@
     optgroup option{color:#747474; font-size: 14px;}
 </style>
 <?php
+// The controller (Mission::historyview()) decodes the application number
+// from the URL before using it for any lookups (the "View History" link
+// base64-encodes it), but this view was reading the raw URL segment
+// directly in many places below, which re-introduced the same "everything
+// shows NA" bug for the University/ICCR Letter/Acceptance/Medical/Visa/
+// Travel sections even after the controller-level fix. Use the decoded
+// value the controller already computed and passed in, falling back to the
+// raw segment only if this view is ever reached without it.
+$appNoForView = isset($applicationId) ? $applicationId : $this->uri->segment(3);
+$controllerBase = isset($controllerBase) ? $controllerBase : 'mission';
 $stateuniversities = $this->common_model->getStateUniversities();
 $centraluniversities = $this->common_model->getCentralUniversities();
 $nits = $this->common_model->getNITUniversities();
@@ -55,9 +65,9 @@ $states_array = json_encode($statewiseUniversites);
     </div>
 
     <div  class="container" style="min-height:410px;padding:0px;">	
-        <form method="post" action="<?php echo base_url(); ?>university/downloadApplication/<?php echo $this->uri->segment(3); ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
+        <form method="post" action="<?php echo base_url(); ?>university/downloadApplication/<?php echo $appNoForView; ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
               ">
-            <input id="approvedappId" name="approvedappId" value="<?php echo $this->uri->segment(3); ?>" type="hidden"/>
+            <input id="approvedappId" name="approvedappId" value="<?php echo $appNoForView; ?>" type="hidden"/>
             <input class="pull-right export-btn" style="margin-right:11px;margin-top:-6px;" type="submit" value=""/>	
             <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">			
         </form>
@@ -68,29 +78,33 @@ $states_array = json_encode($statewiseUniversites);
                     <div class="col-xs-3 prfl pull-right" >
 					<?php
 
-$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
+$userd = $this->common_model->getUserInfo(!empty($applicaitonStepOne) ? $applicaitonStepOne[0]['uid'] : null);
 //echo "<pre>";print_r($userd);die;
-						
-          				if($userd->dir == "")
-						{
+
+          				// The image tag below used to be rendered unconditionally, so if the
+						// referenced file doesn't actually exist on disk (e.g. it was
+						// deleted/moved on the server, or never uploaded in this
+						// environment) the browser just shows a broken-image icon with no
+						// indication of why. Now we check the real path on disk first and
+						// only show a photo if the file is actually there; otherwise we
+						// show a plain "No Photo Available" placeholder instead of a
+						// broken image link - this is a missing FILE issue (data), not a
+						// code bug, so this only improves how a missing file is displayed.
+						if (!empty($userImage) && !empty($userd) && $userd->dir != "" && file_exists($userd->dir.'/'. $userImage)) {
+							$profileImgSrc = site_url().$userd->dir.'/'. $userImage;
+						} else if (!empty($userImage) && file_exists(FCPATH.'assets/site/main/profile_pics/'.$userImage)) {
+							$profileImgSrc = site_url().'assets/site/main/profile_pics/'.$userImage;
+						} else {
+							$profileImgSrc = false;
+						}
+						if ($profileImgSrc) {
 							?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php		
-						}						
-						else
-						{
-							if(file_exists($userd->dir.'/'. $userImage))
-							{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?><?php echo $userd->dir.'/'. $userImage; ?>"/>
-							<?php		
-							}
-							else{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
+							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo $profileImgSrc; ?>"/>
 							<?php
-							}
-							
+						} else {
+							?>
+							<div style="width:151px;height:171px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;color:#777;border:1px dashed #ccc;">No Photo Available</div>
+							<?php
 						}
               		?>
                     </div>
@@ -181,7 +195,7 @@ $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                                             <thead>
                                             <th>7. Level of Programme</th>
                                         <?php
-                                        if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] == 1 || $applicaitonStepOne[0]['programme'] == 2 || $applicaitonStepOne[0]['programme'] == 9) {
+                                        if (count($applicaitonStepOne) > 0 && ($applicaitonStepOne[0]['programme'] == 1 || $applicaitonStepOne[0]['programme'] == 2 || $applicaitonStepOne[0]['programme'] == 9)) {
                                             ?>
                                                 <th>Course Type </th>
                                             <?php
@@ -235,382 +249,345 @@ $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
             </div>	<br><hr>
             <div id="step3" class="tab-pane fade in active">
             <label>8. Confirmation Status</label>
-            
-                                                        <?php
-                                                        $docsArray = array();
-                                                        if (count($applicaitonDocuments) > 0) {
-                                                            foreach ($applicaitonDocuments as $docs) {
-                                                                if (!array_key_exists($docs['doc_type'], $docsArray)) {
-                                                                    $docsArray[$docs['doc_type']] = array();
-                                                                }
-                                                                $docsArray[$docs['doc_type']]['path'] = $docs['doc_path'];
-                                                                $docsArray[$docs['doc_type']]['time'] = $docs['added_on'];
-                                                            }
-                                                        }
-                                                        ?>
-<?php
-//$response = $this->common_model->getconfirmationDataforHqrs($this->uri->segment(3));
 
-$response = $this->common_model->getconfirmationDataByMission($this->uri->segment(3));
-$applicaitonsResubmitStatus = $this->common_model->getCommonApplicationStatus($this->uri->segment(3),$universityId,$flag);
-//echo "<pre>";print_r($response);die;
+<?php
+/* -------------------------------------------------------------------------
+ * Confirmation-status data
+ *
+ * WHY THIS WAS REWRITTEN
+ * This page used to show two different university names for the same student.
+ * Section 8 was built from getconfirmationDataByMission() (filter:
+ * confirmed_to_mission = 1) while the "Date of Forwarding" table below was
+ * built from getconfirmationData() (filter: university_is_accept = 1). Both
+ * read the SAME iccr_university_response table, neither had an ORDER BY, and
+ * both hard-coded row [0]. An applicant may nominate up to five universities,
+ * so both result sets can contain several rows - whichever row MySQL happened
+ * to return first won, and the two blocks disagreed.
+ *
+ * Section 8 additionally hard-coded exactly two <tbody> blocks, reading
+ * $response[0] and $response[1]. That produced a permanent empty "NA NA NA NA"
+ * row whenever there was only one response, and silently DROPPED the 3rd, 4th
+ * and 5th responses when there were more.
+ *
+ * Now: one ordered query (getUniversityResponsesForApplication) feeds every
+ * block, all responses are listed, and one row is designated the final
+ * allotment (pickFinalUniversityResponse) and reused everywhere.
+ * ---------------------------------------------------------------------- */
+$docsArray = array();
+if (!empty($applicaitonDocuments)) {
+    foreach ($applicaitonDocuments as $docs) {
+        if (!array_key_exists($docs['doc_type'], $docsArray)) {
+            $docsArray[$docs['doc_type']] = array();
+        }
+        $docsArray[$docs['doc_type']]['path'] = $docs['doc_path'];
+        $docsArray[$docs['doc_type']]['time'] = $docs['added_on'];
+    }
+}
+
+// Fall back to querying here if the view is ever rendered by a controller that
+// has not been updated to pass these in.
+$universityResponses = isset($universityResponses)
+    ? $universityResponses
+    : $this->common_model->getUniversityResponsesForApplication($appNoForView);
+
+$mappingData = (isset($mappingData) && !empty($mappingData))
+    ? $mappingData
+    : $this->common_model->getMappingData($appNoForView);
+$mappingRow  = !empty($mappingData) ? $mappingData[0] : array();
+
+if (!isset($finalConfirmation)) {
+    $finalConfirmation = $this->common_model->pickFinalUniversityResponse(
+        $universityResponses,
+        isset($mappingRow['regional_university']) ? $mappingRow['regional_university'] : null
+    );
+}
+$finalUniversityId = !empty($finalConfirmation) ? (int) $finalConfirmation['regional_university'] : 0;
+// Match on the response row id, not just the university id: a historic HQ bulk
+// update (ConfirmationofCourseToMissionByHqrs) could stamp the same
+// regional_university onto several rows, and only one of them is the real
+// allotment - keying off the id keeps exactly one row flagged "Final".
+$finalResponseId = (!empty($finalConfirmation) && isset($finalConfirmation['id'])) ? (int) $finalConfirmation['id'] : 0;
+
+/*
+ * Uploaded documents are filed under a per-year folder (2024/, 2025/, 2026/...)
+ * and the year is NOT stored with the record, so the folder has to be probed.
+ * The old code probed only three hard-coded years for university letters and
+ * only the CURRENT year for the medical certificate - a certificate uploaded in
+ * a previous year produced a dead download link. These helpers probe a widening
+ * range plus the applicant's own upload directory, and return NULL when the file
+ * genuinely is not on disk so the page can print "Not uploaded" instead of a
+ * link that 404s.
+ */
+if (!function_exists('iccr_locate_year_file')) {
+    function iccr_locate_year_file($subFolder, $fileName, $userDir = '') {
+        if (empty($fileName)) {
+            return null;
+        }
+        $candidates = array();
+        if (!empty($userDir)) {
+            $candidates[] = rtrim($userDir, '/') . '/' . $fileName;
+        }
+        $thisYear = (int) date('Y');
+        for ($y = $thisYear + 1; $y >= $thisYear - 6; $y--) {
+            $candidates[] = $y . '/' . $subFolder . '/' . $fileName;
+        }
+        $candidates[] = 'assets/site/main/' . $subFolder . '/' . $fileName;
+        foreach ($candidates as $relative) {
+            if (file_exists(FCPATH . $relative)) {
+                return FCPATH . $relative;
+            }
+        }
+        return null;
+    }
+}
+if (!function_exists('iccr_doc_download_link')) {
+    function iccr_doc_download_link($absolutePath, $controllerBase, $label = 'Download') {
+        if (empty($absolutePath)) {
+            return '<span title="File not found on the server">Not uploaded</span>';
+        }
+        return '<a target="_blank" href="' . site_url() . $controllerBase . '/downloadDocs/'
+             . base64url_encode($absolutePath) . '">' . $label . '</a>';
+    }
+}
+
+$applicantDir = (!empty($registerData) && !empty($registerData[0]['dir'])) ? $registerData[0]['dir'] : '';
 ?>
 
-			
                 <table id="tbl_relation" class="table" style="width: 100%;">
                     <thead>
-                    <!-- <th>8. University/Institute</th> -->
-                    <th >University Name</th>
-                    <th >University Status</th>	
-                    <th >University Letter</th>											
-                    <th >ICCR Letter</th>	
-					<th >Acceptance</th>
-					<th >Medical Fitness Certificate</th>
+                    <th>University Name</th>
+                    <th>University Status</th>
+                    <th>University Letter</th>
+                    <th>ICCR Letter</th>
+                    <th>Acceptance</th>
+                    <th>Medical Fitness Certificate</th>
                     </thead>
                     <tbody>
-                        <tr>											
-                            <!-- <td></td> -->
-                            <td>													
-                <?php $university_first = $this->common_model->getFinalUniversityById($response[0]['regional_university']);
-                echo $university_first[0]['name']; ?></td>
-                            <td>
-                <?php
-                $sts = 0;
-                foreach ($response as $resp) {
-                    if ($resp['regional_university'] == $response[0]['regional_university']) {
-                        $sts++;
-                        if ($resp['university_is_accept'] == 1) {
-                            echo "Confirmed";
-                        } elseif ($resp['university_is_accept'] == 2) {
-                            echo "Not Confirmed";
-                        }
-                    }
-                }
-                if ($sts == 0) {
-                    echo "NA";
-                }
-                ?>
+<?php if (empty($universityResponses)) { ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center;color:#777;">
+                                No university response has been recorded for this application yet.
                             </td>
-
-                            <td>
-
+                        </tr>
 <?php
-$sts = 0;
-foreach ($response as $resp) {
-    if ($resp['regional_university'] == $response[0]['regional_university']) {
-        $sts++;
-        if ($resp['university_is_accept'] == 1) {
-			
-			$file_path_un = './2024/university_approval/'.$resp['region_one_doc'];
-           
-		   
-			if(file_exists($file_path_un)){
-				if(strpos($resp['region_one_doc'],'.pdf')){
-							 $output = '<a href="'.site_url().'mission/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank">Download</a>';   
-						   }
-                            else {
-						    $file_path_un = './2024/university_approval/'.$resp['region_one_doc'];		
-						     $imgs = file_get_contents($file_path_un);
-							 $data = base64_encode($imgs);
-							 $f = finfo_open();
-							 $imgdata = base64_decode($data);
-                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-				            $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank">Download</a>'; 
-										
-							}
-							echo $output;
-							}
-			
-            else { ?>
-				 <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-				
-			<?php }
-			?>
-                <!--<a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a> -->
-
-                <?php
-                    } elseif ($resp['university_is_accept'] == 2) {
-                ?>
-                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
+} else {
+    foreach ($universityResponses as $resp) {
+        $thisUniversityId = (int) $resp['regional_university'];
+        $isFinal   = ($finalResponseId > 0 && isset($resp['id']))
+            ? ((int) $resp['id'] === $finalResponseId)
+            : ($finalUniversityId > 0 && $thisUniversityId === $finalUniversityId);
+        $isAccept  = ((int) $resp['university_is_accept'] === 1);
+        $isReject  = ((int) $resp['university_is_accept'] === 2);
+        $uniName   = !empty($resp['university_name']) ? $resp['university_name'] : null;
+        if ($uniName === null) {
+            // University row missing/renamed - fall back to a direct lookup so the
+            // cell shows a name rather than a blank, and only then give up.
+            $lookup  = $this->common_model->getUniversityByIdOld($thisUniversityId);
+            $uniName = !empty($lookup) ? $lookup[0]['name'] : 'NA';
+        }
+?>
+                        <tr<?php echo $isFinal ? ' style="background-color:#f4fbf4;"' : ''; ?>>
+                            <td>
+                                <?php echo htmlspecialchars($uniName, ENT_QUOTES, 'UTF-8'); ?>
+                                <?php if ($isFinal) { ?>
+                                    <span class="label label-success" style="margin-left:6px;">Final</span>
+                                <?php } ?>
+                            </td>
+                            <td>
+                                <?php
+                                if ($isAccept) {
+                                    echo 'Confirmed';
+                                } elseif ($isReject) {
+                                    echo 'Not Confirmed';
+                                } else {
+                                    echo 'Awaiting response';
                                 }
                                 ?>
                             </td>
                             <td>
                                 <?php
-                                $sts = 0;
-                                foreach ($response as $resp) {
-                                    if ($resp['regional_university'] == $response[0]['regional_university']) {
-                                        $sts++;
-                                        if ($resp['university_is_accept'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>mission/confirmationReceivedWithFormat/<?php echo $this->uri->segment(3); ?>/<?php echo $resp['regional_university']; ?>" target="_blank">Download </a>
-
-                                            <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
+                                // University's own offer/rejection letter.
+                                if ($isAccept || $isReject) {
+                                    $letterPath = iccr_locate_year_file('university_approval', $resp['region_one_doc']);
+                                    echo iccr_doc_download_link($letterPath, $controllerBase);
+                                } else {
+                                    echo 'NA';
                                 }
                                 ?>
-
                             </td>
-							
-							<td>
+                            <td>
                                 <?php
-								//$mappingData= $this->common_model->getMappingData($response[0]['application_id']);
-								$mappingData= $this->common_model->getMappingDataResponse($response[0]['application_id']);
-                              //echo "<pre>";print_r($mappingData);
-                                   if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] != -1) {
-                                        if ($response[0]['university_is_accept'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>mission/undertakingFromStudent/<?php echo $response[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
-
-                                            <?php
-                                        }
-										else{
-											echo "Decline";
-										}
-                                    }
-									else
-									{
-										echo "NA";
-									}
-                                
-                               
+                                // ICCR letter is generated on the fly, so it only depends on
+                                // the university having accepted - no file to probe.
+                                if ($isAccept) {
+                                    ?>
+                                    <a target="_blank" href="<?php echo site_url() . $controllerBase . '/confirmationReceivedWithFormat/' . $appNoForView . '/' . $thisUniversityId; ?>">Download</a>
+                                    <?php
+                                } else {
+                                    echo 'NA';
+                                }
                                 ?>
-
                             </td>
-							<td>
+                            <td>
                                 <?php
-                              //echo "<pre>";print_r($mappingData);
-                                   if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
-											
-											
-											//$response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = FCPATH.$currentyear.'/medical_fitness/'.$mappingData[0]['medical_fitness'];
-											
-                                            ?>
-												
-                                            <a target="_blank" href="<?php echo site_url() . 'mission/downloadDocs/' . base64url_encode($file_path_un); ?>" target="_blank"><span class = "label label-success">Download / Print</span></a>
+                                /*
+                                 * Acceptance (student undertaking) and the medical certificate
+                                 * only ever exist for the FINAL allotment, so they are shown on
+                                 * that row only. Previously these two cells were rendered from a
+                                 * mix of $response[0] and the separate $university array, which
+                                 * could point at a different university than the row being drawn.
+                                 * scholar_acceptance lives on iccr_status_mapping:
+                                 *   1 = accepted by student, 2 = declined, -1/0 = not answered.
+                                 */
+                                $missionStatus     = isset($mappingRow['mission_status']) ? (int) $mappingRow['mission_status'] : 0;
+                                $scholarAcceptance = isset($mappingRow['scholar_acceptance']) ? (int) $mappingRow['scholar_acceptance'] : 0;
 
-                                            <?php
-                                        }
-                                    }
-									elseif($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 2) {
-                                        if ($university[0]['university_is_accept'] == 1) {
-											echo "Decline";
-                                            ?>
-                                            <!----<a target="_blank" href="<?php echo site_url(); ?>applicant/undertakingFromStudent/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>--->
-																
-                                            <?php
-                                        }
-                                    }
-									else
-									{
-										echo "NA";
-									}
-                                
-                               
+                                if (!$isFinal || !$isAccept || $missionStatus !== 1) {
+                                    echo 'NA';
+                                } elseif ($scholarAcceptance === 1) {
+                                    ?>
+                                    <a target="_blank" href="<?php echo site_url() . $controllerBase . '/undertakingFromStudent/' . $appNoForView . '/' . $thisUniversityId; ?>"><span class="label label-success">Download</span></a>
+                                    <?php
+                                } elseif ($scholarAcceptance === 2) {
+                                    echo 'Declined';
+                                } else {
+                                    echo 'Awaiting student response';
+                                }
                                 ?>
-
+                            </td>
+                            <td>
+                                <?php
+                                if (!$isFinal || !$isAccept || $missionStatus !== 1) {
+                                    echo 'NA';
+                                } elseif ($scholarAcceptance === 2) {
+                                    echo 'Declined';
+                                } elseif ($scholarAcceptance !== 1) {
+                                    echo 'Awaiting student response';
+                                } elseif (empty($mappingRow['medical_fitness'])) {
+                                    echo 'Not uploaded';
+                                } else {
+                                    $medicalPath = iccr_locate_year_file('medical_fitness', $mappingRow['medical_fitness'], $applicantDir);
+                                    echo iccr_doc_download_link($medicalPath, $controllerBase, 'Download / Print');
+                                }
+                                ?>
                             </td>
                         </tr>
-
-                        </tr>
-                    </tbody>
-					         <tbody>
-                        <tr>											
-                            <td></td>
-                            <td>													
-                <?php $university_first = $this->common_model->getFinalUniversityById($response[1]['regional_university']);
-                echo $university_first[0]['name']; ?></td>
-                            <td>
-                <?php
-                $sts = 0;
-                foreach ($response as $resp) {
-                    if ($resp['regional_university'] == $response[1]['regional_university']) {
-                        $sts++;
-                        if ($resp['university_is_accept'] == 1) {
-                            echo "Confirmed";
-                        } elseif ($resp['university_is_accept'] == 2) {
-                            echo "Not Confirmed";
-                        }
-                    }
-                }
-                if ($sts == 0) {
-                    echo "NA";
-                }
-                ?>
-                            </td>
-
-                            <td>
-
 <?php
-$sts = 0;
-foreach ($response as $resp) {
-    if ($resp['regional_university'] == $response[1]['regional_university']) {
-        $sts++;
-        if ($resp['university_is_accept'] == 1) {
-            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
-                                        } elseif ($resp['university_is_accept'] == 2) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
-                                }
-                                ?>
-                            </td>
-                            <td>
-                                <?php
-                                $sts = 0;
-                                foreach ($response as $resp) {
-                                    if ($resp['regional_university'] == $response[1]['regional_university']) {
-                                        $sts++;
-                                        if ($resp['university_is_accept'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>mission/confirmationReceivedWithFormat/<?php echo $this->uri->segment(3); ?>/<?php echo $resp['regional_university']; ?>" target="_blank">Download</a>
-
-                                            <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
-                                }
-                                ?>
-
-                            </td>
-							<!-----<td>
-                                <?php
-								$mappingData= $this->common_model->getMappingData($response[0]['application_id']);
-                              //echo "<pre>";print_r($mappingData);
-                                   if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($response[0]['university_is_accept'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>mission/undertakingFromStudent/<?php echo $response[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
-
-                                            <?php
-                                        }
-										else{echo "NA";}
-                                    }
-									else
-									{
-										echo "NA";
-									}
-                                
-                               
-                                ?>
-
-                            </td>--->
-                        </tr>
-
-                        </tr>
+    }
+}
+?>
                     </tbody>
                 </table>
-                
 
-                <!--<h3 class="text-center" id="h5_cnetr">Applicant's Acceptance Forwarded to Hqrs/RO</h3>-->	 
+
+                <!--<h3 class="text-center" id="h5_cnetr">Applicant's Acceptance Forwarded to Hqrs/RO</h3>-->
                 <hr/>
                 <div class="box-body">
 
                     <table class="table" id="tbl_relation" style="width:100%;">
                         <thead>
-                        <th >University Name</th>
-                        <th >Scheme</th>
-                        <th >ICCR Regional Office</th>
-                        <th >Date of Forwarding</th>
+                        <th>University Name</th>
+                        <th>Scheme</th>
+                        <th>ICCR Regional Office</th>
+                        <th>Date of Forwarding</th>
                         </thead>
-                                <?php
-                                if (($applicaitonStepOne[0]['programme'] == 1 && $applicaitonStepOne[0]['course'] == 58) || ($applicaitonStepOne[0]['programme'] == 2 && $applicaitonStepOne[0]['course'] == 59)) {
-                                    ?>
-                            <tbody>
-                                <tr>
-    <?php
-    $data = $this->common_model->getconfirmationDataforfourthoptionHqrs($this->uri->segment(3));
-    ?>
-                                    <td>
-                                    <?php
-                                    $univ = $this->common_model->getUniversityById($data[0]['regional_university']);
-                                    echo $univ[0]['ngame'];
-                                    ?>
-                                    </td>
-                                    <td>
-                                    <?php
-                                    $sch = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-                                    echo $sch[0]['scheme_name'];
-                                    ?>
-                                    </td>
-                                    <td>
-                                    <?php
-                                    $reg = $this->common_model->getRegionById($data[0]['region_one_status']);
-                                    echo $reg[0]['name'];
-                                    ?>
-                                    </td>
-                                    <td>
-                                    <?php
-                                    echo date('d M Y h:i:s A', $data[0]['region_one_status_date']);
-                                    ?>
-                                    </td>
-                                </tr>
-                            </tbody>
-    <?php
-} else {
-    ?>
-                            <tbody>
-                                <tr>
-    <?php
-	
-    $data = $this->common_model->getconfirmationData($this->uri->segment(3));
-    ?>
-                                    <td>
-    <?php
-    $univ = $this->common_model->getUniversityById($data[0]['regional_university']);
-    echo $univ[0]['fname'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    $sch = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-    echo $sch[0]['scheme_name'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    $reg = $this->common_model->getRegionById($response[0]['region_one_status']);
-    echo $reg[0]['name'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    echo date('d M Y h:i:s A', $data[0]['region_one_status_date']);
-    ?>
-                                    </td>
-                                </tr>
-                            </tbody>
-                            <?php
-                        }
-                        ?>
+                        <tbody>
+                            <tr>
+<?php
+/* -------------------------------------------------------------------------
+ * Forwarding block
+ *
+ * This is the block that used to disagree with section 8. It now renders the
+ * SAME row that section 8 marks "Final", so one application can only ever show
+ * one final university name.
+ *
+ * Two special cases are preserved:
+ *  - The Ayush/ICAR "fourth option" flow stores its allotment in a different
+ *    table (iccr_university_response_by_hqrs), so that table is consulted first
+ *    for those programme/course combinations.
+ *  - "ICCR Regional Office" used to always print NA. The column was read from
+ *    $response[0]['region_one_status'], but the query behind $response
+ *    (getconfirmationDataByMission) does not even SELECT region_one_status, so
+ *    the isset() check could never pass. It is now read from the same row that
+ *    supplies the university name.
+ * ---------------------------------------------------------------------- */
+$forwardRow          = $finalConfirmation;
+$forwardUniversityId = $finalUniversityId;
+$forwardUniversityNm = (!empty($finalConfirmation) && !empty($finalConfirmation['university_name']))
+    ? $finalConfirmation['university_name']
+    : null;
 
+$isFourthOptionFlow = (!empty($applicaitonStepOne) && (
+        ((int) $applicaitonStepOne[0]['programme'] === 1 && (int) $applicaitonStepOne[0]['course'] === 58) ||
+        ((int) $applicaitonStepOne[0]['programme'] === 2 && (int) $applicaitonStepOne[0]['course'] === 59)
+    ));
+
+if ($isFourthOptionFlow) {
+    $hqrsRows = $this->common_model->getconfirmationDataforfourthoptionHqrs($appNoForView);
+    if (!empty($hqrsRows)) {
+        $forwardRow          = $hqrsRows[0];
+        $forwardUniversityId = (int) $hqrsRows[0]['regional_university'];
+        $forwardUniversityNm = null; // resolved below
+    }
+}
+
+if ($forwardUniversityNm === null && $forwardUniversityId > 0) {
+    $univ = $this->common_model->getUniversityByIdOld($forwardUniversityId);
+    $forwardUniversityNm = !empty($univ) ? $univ[0]['name'] : null;
+}
+
+// Scheme lives on iccr_status_mapping, not on the response row.
+$schemeName = 'NA';
+if (!empty($mappingRow['scholarship_id'])) {
+    $sch = $this->common_model->getSchemeById($mappingRow['scholarship_id']);
+    if (!empty($sch)) {
+        // scheme_name already carries the scheme code in brackets in this data
+        // set (e.g. "... [A1209]"), so the code column is deliberately not
+        // appended again here.
+        $schemeName = $sch[0]['scheme_name'];
+    }
+}
+
+// Regional office: prefer the forwarding row, fall back to iccr_status_mapping.
+$regionId = 0;
+if (!empty($forwardRow) && !empty($forwardRow['region_one_status'])) {
+    $regionId = (int) $forwardRow['region_one_status'];
+} elseif (!empty($mappingRow['region_one_status'])) {
+    $regionId = (int) $mappingRow['region_one_status'];
+}
+$regionName = 'NA';
+if ($regionId > 0) {
+    $reg = $this->common_model->getRegionById($regionId);
+    if (!empty($reg)) {
+        $regionName = $reg[0]['name'];
+    }
+}
+
+// Date of forwarding is a unix timestamp; guard against 0/empty/non-numeric so
+// the page never prints "01 Jan 1970".
+$forwardDate = 'NA';
+$rawDate = null;
+if (!empty($forwardRow) && !empty($forwardRow['region_one_status_date'])) {
+    $rawDate = $forwardRow['region_one_status_date'];
+} elseif (!empty($mappingRow['region_one_status_date'])) {
+    $rawDate = $mappingRow['region_one_status_date'];
+}
+if (!empty($rawDate) && is_numeric($rawDate) && (int) $rawDate > 0) {
+    $forwardDate = date('d M Y h:i:s A', (int) $rawDate);
+}
+?>
+                                <td><?php echo $forwardUniversityNm !== null ? htmlspecialchars($forwardUniversityNm, ENT_QUOTES, 'UTF-8') : 'NA'; ?></td>
+                                <td><?php echo htmlspecialchars($schemeName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($regionName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo $forwardDate; ?></td>
+                            </tr>
+                        </tbody>
                     </table>
 					</hr>
 					</br>
 								<!------Visa Details------>
 				<?php
-				 $mappingData = $this->common_model->getMappingData($this->uri->segment(3));
+				 $mappingData = $this->common_model->getMappingData($appNoForView);
 				 //echo "<pre>";print_r($mappingData);die;
 				if(!empty($mappingData))
 				{
@@ -631,9 +608,14 @@ foreach ($response as $resp) {
 						<tr>
 					<td></td>
 					<td><?php
+						// VISA type is derived from the level of programme:
+						// 3 = M.Phil, 4 = Ph.D -> Research visa, everything else -> Student
+						// visa. The old code tested an undefined $counter variable (it was
+						// never assigned anywhere in this view), so this cell could only
+						// ever print "Student" and emitted an undefined-variable notice.
 						if(!empty($mappingData[0]['visa_no'])){
-							$course = $applicaitonStepOne[0]['programme'];
-							if($counter == 3 || $counter == 4){ echo 'Research'; } else { echo 'Student'; }
+							$programmeId = !empty($applicaitonStepOne) ? (int) $applicaitonStepOne[0]['programme'] : 0;
+							if($programmeId === 3 || $programmeId === 4){ echo 'Research'; } else { echo 'Student'; }
 						} else { echo 'N/A'; }
 					?></td>
 					<td><?php echo !empty($mappingData[0]['visa_no']) ? $mappingData[0]['visa_no'] : 'N/A'; ?></td>
@@ -675,7 +657,7 @@ foreach ($response as $resp) {
 
 				<!------Flight/Travel Details------>
 				<?php
-				$travel = $this->common_model->getTravelData($this->uri->segment(3));
+				$travel = $this->common_model->getTravelData($appNoForView);
 				?>
 				<table id="tbl_travel" class="table" style="width: 100%;">
 					<thead>

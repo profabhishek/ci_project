@@ -222,7 +222,14 @@ class HtmlParser {
             $this->iCurrentChar = -1;
         }
         else {
-            $this->iCurrentChar = $this->iHtmlText{$index};
+            // Was $this->iHtmlText{$index}. Curly-brace string offsets were
+            // deprecated in PHP 7.4 and REMOVED in PHP 8.0, where they are a
+            // compile error - not a runtime one. That is why this failed so
+            // silently: the file never compiled, so the request died before any
+            // code in it (or in the controller that included it) could run,
+            // returning a blank HTTP 500. Square brackets are the supported
+            // syntax and behave identically.
+            $this->iCurrentChar = $this->iHtmlText[$index];
         }
     }
 

@@ -155,29 +155,29 @@ var niftList = JSON.parse('<?php echo $nift;?>');
 										  ?>
 										<option value="">Title</option>
 										<option  selected="selected" value="1">Mr.</option>
-										<option  value="3">Miss</option>
-										<option  value="2">Mrs</option>
+										<option  value="3">Mrs</option>
+										<option  value="2">Ms</option>
 										<?php
 										} elseif ( $title == 2 ) {
 											?>
 										<option value="">Title</option>
 										<option value="1">Mr.</option>
-										<option  value="3">Miss</option>
-										<option selected="selected" value="2">Mrs</option>
+										<option  value="3">Mrs</option>
+										<option selected="selected" value="2">Ms</option>
 										<?php
 										} elseif ( $title == 3 ) {
 											?>
 										<option value="">Title</option>
 										<option value="1">Mr.</option>
-										<option selected="selected" value="3">Miss</option>
-										<option  value="2">Mrs</option>
+										<option selected="selected" value="3">Mrs</option>
+										<option  value="2">Ms</option>
 										<?php
 										} else {
 										  ?>
 										<option value="">Title</option>
 										<option value="1">Mr.</option>
-										<option  value="3">Miss</option>
-										<option value="2">Mrs</option>
+										<option  value="3">Mrs</option>
+										<option value="2">Ms</option>
 										<?php
 										}
 										?>

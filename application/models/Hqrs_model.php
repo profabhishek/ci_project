@@ -60,7 +60,10 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
 		if($year == 2026){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1772150400));
+			// Was 1772150400 (27 Feb 2026), leaving every application created
+			// between 1 Jan and 26 Feb 2026 invisible under both the 2025 and
+			// 2026 filters. Starts immediately after the 2025 range ends instead.
+			$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
 		}
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
@@ -71,17 +74,38 @@ class Hqrs_model extends CI_Model {
 			
         }
 			if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
 			
 			} 
 		if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
 			
 			}       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -146,13 +170,137 @@ class Hqrs_model extends CI_Model {
         $this->db->limit($vars['length'],$vars['start']);
 		//$this->db->limit(0,20);
 		$this->db->order_by('iccr_status_mapping.created','DESC');
-        $code = $this->db->error();
-        if ($code['code'] > 0) {
-            //show_error('Message');
-        }
 		//echo $this->db->_compile_select();exit;
-        return $this->db->get()->result_array();
+		// getNewAllApplicaitons() (Headquarter.php) has no try/catch and calls
+		// ->result_array() straight off this return value. When db_debug is off
+		// (production), a failed query makes $this->db->get() return FALSE instead
+		// of a result object, so ->result_array() on FALSE is a fatal PHP Error -
+		// the whole request dies with an empty body and DataTables reports
+		// "Invalid JSON response" with no clue why. Logging the real DB error and
+		// returning an empty result set instead lets the page degrade to "no
+		// data" and puts the actual cause in application/logs instead of losing it.
+		$q_ = $this->db->get();
+		if ($q_ === false) {
+			log_message('error', 'getHqrsAllNewApplication() query failed: ' . json_encode($this->db->error()));
+			return array();
+		}
+        return $q_->result_array();
     }
+
+    /**
+     * Same filter set as getHqrsAllNewApplication() (year range, status,
+     * ApplicantName/Mail/Programme/Counrse/Universtiy/Country/Scheme/
+     * Confirmed/Application/MinDate/MaxDate) but returns every matching
+     * application_no with no pagination - used by the "Download All (ZIP)"
+     * export so it captures the exact same set of students the HQ user is
+     * currently looking at on screen, not just the current DataTables page.
+     */
+    function getHqrsAllApplicationNosForExport($schemeids,$vars,$year) {
+
+        $this->db->distinct('iccr_university_response.application_id');
+        $this->db->select('iccr_status_mapping.application_no');
+        $this->db->from('iccr_status_mapping');
+		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+		if($vars['ApplicantName'] != "" || $vars['Mail'] != "" || $vars['Programme'] != "" || $vars['Counrse'] != "" || $vars['Universtiy'] != "" || $vars['Country'] != "" || $vars['Scheme'] != "" || $vars['Confirmed'] != "")
+        {
+			$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+		}
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+		$this->db->where(array('iccr_status_mapping.status >=' => 1));
+		$this->db->where(array('iccr_status_mapping.status !=' => 6));
+		$this->db->where(array('iccr_status_mapping.status !=' => 15));
+		if($year == 2021){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1644471556));
+		}
+		if($year == 2022){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1680305602));
+		}
+		if($year == 2023){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1680315898));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1703979202));
+		}
+		if($year == 2024){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1711983082));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1735656682));
+		}
+		if($year == 2025){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1738378143));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
+		}
+		if($year == 2026){
+			$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
+			$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
+		}
+		$this->db->order_by('iccr_status_mapping.created', 'DESC');
+		if ($vars['Application'] != "") {
+            $this->db->like('iccr_student_application_details.application_no', $vars['Application']);
+        }
+		if ($vars['ApplicantName'] != "") {
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+		}
+        if ($vars['Mail'] != "") {
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
+        }
+        if ($vars['Programme'] != "") {
+            $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
+        }
+        if ($vars['Counrse'] != "") {
+			$this->db->where(' (iccr_student_application_details.course=' . $vars['Counrse'] . ' or iccr_student_application_details.course_two=' . $vars['Counrse'] . ' or iccr_student_application_details.course_three=' . $vars['Counrse'] . ' or iccr_student_application_details.course_fourth=' . $vars['Counrse'] . ' or iccr_student_application_details.course_fifth=' . $vars['Counrse'] . ')');
+        }
+        if ($vars['Universtiy'] != "") {
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_two=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_three=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fourth=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fifth=' . $vars['Universtiy'] . ')');
+        }
+		if ($vars['Country'] != "") {
+		   $this->db->where('iccr_student_application_details.nationality',$vars['Country']);
+        }
+		if ($vars['Scheme'] != "") {
+		   $this->db->where('iccr_status_mapping.scholarship_id', $vars['Scheme']);
+        }
+		if ($vars['Confirmed'] == 4) {
+				$this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
+				$this->db->where(array('iccr_university_response.fee_structure !=' => NULL));
+			}
+		if ($vars['Confirmed'] == 10) {
+				$this->db->where(array('iccr_student_application_details.course_type =' => 1));
+			}
+		else{
+			$this->db->where(array('iccr_student_application_details.course_type !=' => 1));
+		}
+		if ($vars['Confirmed'] == 11) {
+				$this->db->where(array('iccr_student_details.apply_course_type =' => 11));
+			}
+		else{
+			$this->db->where(array('iccr_student_details.apply_course_type !=' => 11));
+		}
+		if ($vars['Confirmed'] == 12) {
+				$this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
+				$this->db->where(array('iccr_university_response.university_is_accept =' => 1));
+			}
+		if ($vars['Confirmed'] == 13) {
+				$this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
+				$this->db->where(array('iccr_university_response.university_is_accept =' => 2));
+			}
+		if ($vars['Confirmed'] == 2) {
+				$this->db->where(array('iccr_student_application_details.course_type =' => 2));
+				$this->db->where(array('iccr_status_mapping.status >=' => 1));
+			}
+ 		if($vars['MinDate'] != "" && $vars['MaxDate'] != "")
+        {
+			$this->db->where('iccr_student_other_details.created >=', strtotime($vars['MinDate']));
+            $this->db->where('iccr_student_other_details.created <=', strtotime($vars['MaxDate']));
+		}
+		$this->db->order_by('iccr_status_mapping.created','DESC');
+		$q_ = $this->db->get();
+		if ($q_ === false) {
+			log_message('error', 'getHqrsAllApplicationNosForExport() query failed: ' . json_encode($this->db->error()));
+			return array();
+		}
+        return $q_->result_array();
+    }
+
     function getHqrsAllTotalNewApplication($schemeids,$vars,$year) {
 		$this->db->distinct('iccr_university_response.application_id');
         $this->db->select('count(iccr_status_mapping.application_no) as total');
@@ -171,11 +319,25 @@ class Hqrs_model extends CI_Model {
 			
         } 
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -254,7 +416,10 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
 		if($year == 2026){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1772150400));
+			// Was 1772150400 (27 Feb 2026), leaving every application created
+			// between 1 Jan and 26 Feb 2026 invisible under both the 2025 and
+			// 2026 filters. Starts immediately after the 2025 range ends instead.
+			$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
 		}
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
@@ -264,12 +429,17 @@ class Hqrs_model extends CI_Model {
 			$this->db->where('iccr_student_other_details.created >=', strtotime($vars['MinDate']));
             $this->db->where('iccr_student_other_details.created <=', strtotime($vars['MaxDate']));
 		}
-        $code = $this->db->error();
-        if ($code['code'] > 0) {
-            //show_error('Message');
-        }
-		
-        return $this->db->get()->result_array();
+		// See getHqrsAllNewApplication() above for why this needs to guard
+		// against $this->db->get() returning FALSE. getNewAllApplicaitons()
+		// unconditionally reads $totalResult[0]['total'], so the fallback here
+		// must still be shaped like a successful count row (total => 0), not an
+		// empty array, or that read would itself trigger a fatal.
+		$q_ = $this->db->get();
+		if ($q_ === false) {
+			log_message('error', 'getHqrsAllTotalNewApplication() query failed: ' . json_encode($this->db->error()));
+			return array(array('total' => 0));
+		}
+        return $q_->result_array();
     }
     function getHqrsNewApplication($schemeids,$vars,$year) {
 	
@@ -313,10 +483,24 @@ class Hqrs_model extends CI_Model {
 			
         }
 		if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			}       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -364,10 +548,24 @@ class Hqrs_model extends CI_Model {
 			
         }
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -427,7 +625,7 @@ class Hqrs_model extends CI_Model {
         $status = $data['status'];
         $iccr_status = $data['iccr_status'];
         $this->db->distinct();
-		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.gender,iccr_student_application_details.course_type,iccr_student_application_details.email,iccr_countries.country_name,iccr_university_response_by_hqrs.region_one_status_date,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_status_mapping.final_course,iccr_university_response_by_hqrs.regional_university AS regional_university_ayush,iccr_university_response_by_hqrs.region_one_status AS region_one_status_ayush,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.undertaking_doc,iccr_university_response_by_hqrs.date_of_joining AS date_of_joining_ayush,iccr_university_response_by_hqrs.duration_of_course AS duration_of_course_ayush,iccr_travelplan.travel_arrival_date,iccr_travelplan.new_travel_date,iccr_university_response.regional_university AS regional_university,iccr_university_response.region_one_status AS region_one_status,iccr_university_response.date_of_joining AS date_of_joining,iccr_university_response.duration_of_course');
+		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.gender,iccr_student_application_details.course_type,iccr_student_application_details.email,iccr_countries.country_name,iccr_university_response_by_hqrs.region_one_status_date,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_status_mapping.final_course,iccr_status_mapping.nomenclature,iccr_university_response_by_hqrs.regional_university AS regional_university_ayush,iccr_university_response_by_hqrs.region_one_status AS region_one_status_ayush,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.undertaking_doc,iccr_university_response_by_hqrs.date_of_joining AS date_of_joining_ayush,iccr_university_response_by_hqrs.duration_of_course AS duration_of_course_ayush,iccr_travelplan.travel_arrival_date,iccr_travelplan.new_travel_date,iccr_university_response.regional_university AS regional_university,iccr_university_response.region_one_status AS region_one_status,iccr_university_response.date_of_joining AS date_of_joining,iccr_university_response.duration_of_course');
 		$this->db->from('iccr_status_mapping');
 		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
 		$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
@@ -449,6 +647,7 @@ class Hqrs_model extends CI_Model {
 		$this->db->group_end(); // End of grouping
 		$this->db->order_by("iccr_university_response_by_hqrs.id", 'ASC');
 		$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
+		$this->db->group_by('iccr_status_mapping.application_no'); // Collapse duplicate rows caused by multiple matching records in left-joined tables (iccr_university_response, iccr_travelplan, iccr_university_response_by_hqrs)
 
 		// Manoj start
 
@@ -557,16 +756,16 @@ class Hqrs_model extends CI_Model {
 			}
 
 		if($year == 2023){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1680315898));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1703979202));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2023', 'after');
 		}
 		if($year == 2024){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1711983082));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1735656682));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2024', 'after');
 		}
 		if($year == 2025){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1738378143));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2025', 'after');
+		}
+		if($year == 2026){
+			$this->db->like('iccr_student_application_details.acedemic_year', '2026', 'after');
 		}
 
         $code = $this->db->error();
@@ -583,7 +782,7 @@ class Hqrs_model extends CI_Model {
         $status = $data['status'];
         $iccr_status = $data['iccr_status'];
         $this->db->distinct();
-		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_university_response.lable_of_course,iccr_status_mapping.final_course,iccr_university_response.regional_university,iccr_university_response.region_one_status,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_travelplan.travel_arrival_date,iccr_university_response.date_of_joining,iccr_university_response.duration_of_course,iccr_status_mapping.undertaking_doc');
+		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_university_response.lable_of_course,iccr_status_mapping.final_course,iccr_status_mapping.nomenclature,iccr_university_response.regional_university,iccr_university_response.region_one_status,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_travelplan.travel_arrival_date,iccr_university_response.date_of_joining,iccr_university_response.duration_of_course,iccr_status_mapping.undertaking_doc');
 		//,iccr_travelplan.travel_arrival_date
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
@@ -620,25 +819,17 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1680305602));
 		}
-		if($year == 2021){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1644471556));
-		}
-		if($year == 2022){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1680305602));
-		}
 		if($year == 2023){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1680315898));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1703979202));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2023', 'after');
 		}
 		if($year == 2024){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1711983082));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1735656682));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2024', 'after');
 		}
 		if($year == 2025){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1738378143));
-			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
+			$this->db->like('iccr_student_application_details.acedemic_year', '2025', 'after');
+		}
+		if($year == 2026){
+			$this->db->like('iccr_student_application_details.acedemic_year', '2026', 'after');
 		}
 
         $code = $this->db->error();
@@ -656,7 +847,7 @@ class Hqrs_model extends CI_Model {
 	$status = $data['status'];
         $iccr_status = $data['iccr_status'];
         $this->db->distinct();
-		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_university_response_by_hqrs.region_one_status_date,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_status_mapping.final_course,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_status,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.undertaking_doc,iccr_university_response_by_hqrs.date_of_joining AS date_of_joining_ayush,iccr_university_response_by_hqrs.duration_of_course,iccr_travelplan.travel_arrival_date,iccr_university_response.regional_university,iccr_university_response.region_one_status,iccr_university_response.date_of_joining AS date_of_joining,iccr_university_response.duration_of_course');
+		$this->db->select('iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_university_response_by_hqrs.region_one_status_date,iccr_student_other_details.application_through,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_status_mapping.final_course,iccr_status_mapping.nomenclature,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_status,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.undertaking_doc,iccr_university_response_by_hqrs.date_of_joining AS date_of_joining_ayush,iccr_university_response_by_hqrs.duration_of_course,iccr_travelplan.travel_arrival_date,iccr_university_response.regional_university,iccr_university_response.region_one_status,iccr_university_response.date_of_joining AS date_of_joining,iccr_university_response.duration_of_course');
 		$this->db->from('iccr_status_mapping');
 		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
 		$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
@@ -759,69 +950,56 @@ class Hqrs_model extends CI_Model {
 
 	
 	
-	function getUniversityResponseSentByHqrsToMission($year,$vars,$data) {
-		
-        $status = $data['status'];
-        $iccr_status = $data['iccr_status'];
-        $this->db->distinct('iccr_status_mapping.application_no');
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.uid,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_countries.country_name,iccr_status_mapping.created as SubmitDate,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_status_mapping.university_is_accept,iccr_student_application_details.course,iccr_status_mapping.scholarship_id,iccr_university_response.region_one_doc,iccr_university_response.course,iccr_student_other_details.created,iccr_status_mapping.iccr_status_date,iccr_university_response.regional_university,iccr_university_response.confirmed_course,iccr_university_response.date_of_joining,iccr_university_response.duration_of_course,iccr_university_response.university_is_accept,iccr_university_response.region_one_status,iccr_university_response.fee_structure,iccr_status_mapping.scholar_acceptance,iccr_status_mapping.undertaking_doc,iccr_status_mapping.final_course,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_travelplan.travel_arrival_date');
-		//,iccr_travelplan.travel_arrival_date
-        $this->db->from('iccr_status_mapping');
-        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
-        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
-        $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
-		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
-		$this->db->join('iccr_travelplan', 'iccr_travelplan.application_id = iccr_status_mapping.application_no','left');
-		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
-        $this->db->where(array('iccr_status_mapping.status>=' => $status));
-		$this->db->where(array('iccr_status_mapping.status!=' => 15));
-        //$this->db->where(array('iccr_status_mapping.iccr_status' => $iccr_status));
-		$this->db->where(array('iccr_university_response.confirmed_to_mission=' => 1));
-		$this->db->where(array('iccr_university_response.university_is_accept=' => 1));
-		//$this->db->where('iccr_status_mapping.iccr_status_date >=', 1590624000);
-		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
-		//$this->db->order_by("str_to_date('iccr_student_other_details.CREATED', '%Y-%m-%d'),'ASC'");
-		//comment by adarsh//$this->db->group_by('iccr_university_response.application_id');
-		$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
+	// Applies the shared filter conditions used by both the id-lookup query
+	// and the count query below. Kept in one place so the two stay in sync.
+	private function _applyUniversityResponseSentByHqrsToMissionFilters($year,$vars) {
 		if (isset($vars['ApplicantName'])&&$vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-			
-			
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			}
 		if (isset($vars['Application'])&&$vars['Application'] != "") {
             $this->db->like('iccr_status_mapping.application_no', $vars['Application']);
-			
         }
 		if (isset($vars['Mail'])&&$vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if (isset($vars['Programme'])&&$vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
         }
         if (isset($vars['Counrse'])&&$vars['Counrse'] != "") {
             $this->db->where('iccr_student_application_details.course',$vars['Counrse']);
-        }  
+        }
        if (isset($vars['Country'])&&$vars['Country'] != "") {
 		   $this->db->where('iccr_student_application_details.nationality',$vars['Country']);
-        } 
+        }
 		if (isset($vars['Scheme'])&&$vars['Scheme'] != "") {
 		   $this->db->where('iccr_status_mapping.scholarship_id', $vars['Scheme']);
-        } 
+        }
 		if (isset($vars['Region'])&&$vars['Region'] != "") {
 			$this->db->where('iccr_university_response.region_one_status', $vars['Region']);
-            //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
         }
         if (isset($vars['Universtiy'])&&$vars['Universtiy'] != "") {
-			
 			 $this->db->where('iccr_university_response.regional_university', $vars['Universtiy']);
-            //$this->db->where(' (iccr_student_application_details.universty_choice='.$vars['Universtiy'].' or iccr_student_application_details.universty_choice_two='.$vars['Universtiy'].' or iccr_student_application_details.universty_choice_three='.$vars['Universtiy'].')');
         }
 		if (isset($vars['Confirmed'])&&$vars['Confirmed'] == 1) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 1);
-			} 
+			}
 		if (isset($vars['Confirmed'])&&$vars['Confirmed'] == 2) {
             $this->db->where('iccr_status_mapping.scholar_acceptance', 2);
-			} 
+			}
 		if(isset($vars['MinDate'])&&$vars['MinDate'] != "" && $vars['MaxDate'] != "")
         {
 			$this->db->where('iccr_student_other_details.created >=', strtotime($vars['MinDate']));
@@ -848,32 +1026,67 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
 		if($year == 2026){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1772150400));
+			// Was 1772150400 (27 Feb 2026), leaving every application created
+			// between 1 Jan and 26 Feb 2026 invisible under both the 2025 and
+			// 2026 filters. Starts immediately after the 2025 range ends instead.
+			$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
 		}
-		
-        $code = $this->db->error(); 
-        if ($code['code'] > 0) {
-            //show_error('Message');
-        }
-		//$this->db->limit(isset($vars['length'])&&$vars['length'],isset($vars['start'])&&$vars['start']);
+	}
+
+	function getUniversityResponseSentByHqrsToMission($year,$vars,$data) {
+
+        $status = $data['status'];
+        $iccr_status = $data['iccr_status'];
+
+		// Phase 1: cheap narrow query to work out which application_no values
+		// belong on this page. Grouping/sorting a single-column result is far
+		// faster than doing it on the full wide join below.
+		$this->db->select('iccr_status_mapping.application_no');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
+		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->where(array('iccr_status_mapping.status>=' => $status));
+		$this->db->where(array('iccr_status_mapping.status!=' => 15));
+		$this->db->where(array('iccr_university_response.confirmed_to_mission=' => 1));
+		$this->db->where(array('iccr_university_response.university_is_accept=' => 1));
+		$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
+		$this->_applyUniversityResponseSentByHqrsToMissionFilters($year,$vars);
+		$this->db->group_by('iccr_status_mapping.application_no');
 		$this->db->limit($vars['length'],$vars['start']);
-		//echo $this->db->_compile_select();
-       //echo $this->db->_compile_select();exit;
+		$idRows = $this->db->get()->result_array();
+
+		if(empty($idRows)) {
+			return array();
+		}
+		$appNos = array_column($idRows, 'application_no');
+
+		// Phase 2: fetch the full detail row for just this page's applications.
+		// The IN() list is small (page size), so the wide joins + left join
+		// onto iccr_travelplan are cheap here even without perfect indexes.
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.uid,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_student_application_details.phone_number,iccr_student_application_details.whatsapp_number,iccr_student_application_details.passport_no,iccr_student_application_details.passport_issue_date,iccr_student_application_details.passport_expiry_date,iccr_student_application_details.passport_issue_place,iccr_student_application_details.acedemic_year,iccr_student_application_details.city,iccr_countries.country_name,iccr_status_mapping.created as SubmitDate,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_status_mapping.university_is_accept,iccr_student_application_details.course,iccr_status_mapping.scholarship_id,iccr_university_response.region_one_doc,iccr_university_response.course,iccr_student_other_details.created,iccr_status_mapping.iccr_status_date,iccr_university_response.regional_university,iccr_university_response.confirmed_course,iccr_university_response.date_of_joining,iccr_university_response.duration_of_course,iccr_university_response.university_is_accept,iccr_university_response.region_one_status,iccr_university_response.fee_structure,iccr_status_mapping.scholar_acceptance,iccr_status_mapping.undertaking_doc,iccr_status_mapping.final_course,iccr_status_mapping.nomenclature,iccr_status_mapping.visa_no,iccr_status_mapping.visa_isuue_date,iccr_status_mapping.visa_to_date,iccr_travelplan.travel_arrival_date');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
+		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_travelplan', 'iccr_travelplan.application_id = iccr_status_mapping.application_no','left');
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+		$this->db->where_in('iccr_status_mapping.application_no', $appNos);
+		$this->db->group_by('iccr_status_mapping.application_no');
+		$this->db->order_by("iccr_status_mapping.undertaking_doc",'DESC');
         return $this->db->get()->result_array();
     }
 	
 		function getTotalUniversityResponseSentByHqrsToMission($year,$vars,$data) {
         $status = $data['status'];
         $iccr_status = $data['iccr_status'];
-        $this->db->distinct('iccr_status_mapping.application_no');
         $this->db->select('count(DISTINCT(iccr_status_mapping.application_no)) as total');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
-        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no');
 		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
-		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
         $this->db->where(array('iccr_status_mapping.status>=' => $status));
 		$this->db->where(array('iccr_status_mapping.status!=' => 15));
 		$this->db->where(array('iccr_university_response.confirmed_to_mission=' => 1));
@@ -888,10 +1101,24 @@ class Hqrs_model extends CI_Model {
 			
         }
         if (isset($vars['ApplicantName'])&&$vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			}
 		if (isset($vars['Mail'])&&$vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if (isset($vars['Programme'])&&$vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -948,7 +1175,10 @@ class Hqrs_model extends CI_Model {
 			$this->db->where(array('iccr_status_mapping.created <='=> 1767149343));
 		}
 		if($year == 2026){
-			$this->db->where(array('iccr_status_mapping.created >='=> 1772150400));
+			// Was 1772150400 (27 Feb 2026), leaving every application created
+			// between 1 Jan and 26 Feb 2026 invisible under both the 2025 and
+			// 2026 filters. Starts immediately after the 2025 range ends instead.
+			$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
 			$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
 		}
 
@@ -974,10 +1204,24 @@ class Hqrs_model extends CI_Model {
         $this->db->order_by('iccr_university_response.id', 'DESC');
 		
 			if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			}
 		if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -1026,10 +1270,24 @@ class Hqrs_model extends CI_Model {
         $this->db->order_by('iccr_university_response.id', 'DESC');
         $code = $this->db->error();
 			if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			}
 		if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -1211,17 +1469,38 @@ WHERE `iccr_status_mapping`.`status` >= 10 AND `iccr_status_mapping`.`iccr_statu
 			
         }
 			if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
 			
 			} 
 		if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
 			
 			}       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -1305,11 +1584,25 @@ WHERE `iccr_status_mapping`.`status` >= 10 AND `iccr_status_mapping`.`iccr_statu
 			
         } 
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
 			
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);

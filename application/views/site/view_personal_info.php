@@ -171,6 +171,8 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
             if ($title == 1) {
                 echo 'Mr. ';
             } elseif ($title == 2) {
+                echo 'Ms. ';
+            } elseif ($title == 3) {
                 echo 'Mrs. ';
             }
 

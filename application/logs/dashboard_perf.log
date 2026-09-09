@@ -1,0 +1,104 @@
+2026-07-09 12:07:20 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:07:20 | +2.9ms | total 2.9ms | getRegionById
+2026-07-09 12:07:21 | +1434.1ms | total 1437ms | getRegionalApplicationsCount
+2026-07-09 12:07:22 | +1010.5ms | total 2447.6ms | getRegionalTwentyTwoApplicationsCount
+2026-07-09 12:07:23 | +1347.6ms | total 3795.2ms | getRegionalApplicationsDemoCount
+2026-07-09 12:07:25 | +1813.1ms | total 5608.3ms | getRegionalTotalNewApplication(2024)
+2026-07-09 12:07:26 | +871.2ms | total 6479.5ms | getRegionalTotalNewApplication(2025)
+2026-07-09 12:07:27 | +801.4ms | total 7280.9ms | getRegionalTotalNewApplication(2026)
+2026-07-09 12:07:27 | +1.3ms | total 7282.2ms | getRegionalApplicationsForwardtoHqrs
+2026-07-09 12:07:27 | +138.3ms | total 7420.4ms | countRegionalReceivedApplication
+2026-07-09 12:07:28 | +706.1ms | total 8126.6ms | countRegionalPendingUniversityApplications
+2026-07-09 12:07:28 | +37.1ms | total 8163.6ms | getTotalUniversityResponseSentByMission
+2026-07-09 12:07:28 | +7.2ms | total 8170.8ms | countAlumaniApplicationsByRegion
+2026-07-09 12:07:28 | +0.8ms | total 8171.6ms | countDemands
+2026-07-09 12:07:28 | +0.7ms | total 8172.3ms | countProcessedDemands
+2026-07-09 12:07:28 | +6.3ms | total 8178.7ms | view render (header + dashboard + footer)
+2026-07-09 12:20:01 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:20:01 | +3.8ms | total 3.8ms | getRegionById
+2026-07-09 12:20:02 | +1466.5ms | total 1470.3ms | getRegionalApplicationsCount
+2026-07-09 12:20:03 | +1173.4ms | total 2643.7ms | getRegionalTwentyTwoApplicationsCount
+2026-07-09 12:20:04 | +937.2ms | total 3580.9ms | getRegionalApplicationsDemoCount
+2026-07-09 12:20:05 | +680.7ms | total 4261.7ms | getRegionalTotalNewApplication(2024)
+2026-07-09 12:20:06 | +735.8ms | total 4997.4ms | getRegionalTotalNewApplication(2025)
+2026-07-09 12:20:06 | +680.1ms | total 5677.6ms | getRegionalTotalNewApplication(2026)
+2026-07-09 12:20:06 | +1.5ms | total 5679.1ms | getRegionalApplicationsForwardtoHqrs
+2026-07-09 12:20:06 | +167.6ms | total 5846.7ms | countRegionalReceivedApplication
+2026-07-09 12:20:07 | +657.6ms | total 6504.3ms | countRegionalPendingUniversityApplications
+2026-07-09 12:20:07 | +48.5ms | total 6552.9ms | getTotalUniversityResponseSentByMission
+2026-07-09 12:20:07 | +8.699999999999999ms | total 6561.6ms | countAlumaniApplicationsByRegion
+2026-07-09 12:20:07 | +0.9ms | total 6562.5ms | countDemands
+2026-07-09 12:20:07 | +0.7ms | total 6563.2ms | countProcessedDemands
+2026-07-09 12:20:07 | +2.8ms | total 6566ms | view render (header + dashboard + footer)
+2026-07-09 12:24:17 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:24:17 | +2.2ms | total 2.2ms | getRegionById
+2026-07-09 12:24:18 | +1132.7ms | total 1134.9ms | countRegionalApplications
+2026-07-09 12:24:19 | +1086.2ms | total 2221.1ms | countRegionalTwentyTwoApplications
+2026-07-09 12:24:20 | +1111.6ms | total 3332.7ms | countRegionalApplicationsDemo
+2026-07-09 12:24:21 | +1009.7ms | total 4342.4ms | getRegionalTotalNewApplication(2024)
+2026-07-09 12:24:22 | +1068.5ms | total 5410.9ms | getRegionalTotalNewApplication(2025)
+2026-07-09 12:24:23 | +1037.2ms | total 6448.1ms | getRegionalTotalNewApplication(2026)
+2026-07-09 12:24:23 | +3.2ms | total 6451.3ms | getRegionalApplicationsForwardtoHqrs
+2026-07-09 12:24:23 | +253.1ms | total 6704.4ms | countRegionalReceivedApplication
+2026-07-09 12:24:24 | +925.7ms | total 7630.1ms | countRegionalPendingUniversityApplications
+2026-07-09 12:24:24 | +101.8ms | total 7732ms | getTotalUniversityResponseSentByMission
+2026-07-09 12:24:24 | +13.4ms | total 7745.3ms | countAlumaniApplicationsByRegion
+2026-07-09 12:24:24 | +2.7ms | total 7748ms | countDemands
+2026-07-09 12:24:24 | +1.1ms | total 7749.1ms | countProcessedDemands
+2026-07-09 12:24:24 | +5.9ms | total 7755ms | view render (header + dashboard + footer)
+2026-07-09 12:39:22 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:39:22 | +2.5ms | total 2.5ms | getRegionById
+2026-07-09 12:39:24 | +1738ms | total 1740.5ms | countRegionalApplications
+2026-07-09 12:39:25 | +1068.6ms | total 2809.1ms | countRegionalTwentyTwoApplications
+2026-07-09 12:39:26 | +1404.8ms | total 4213.9ms | countRegionalApplicationsDemo
+2026-07-09 12:39:27 | +1122.9ms | total 5336.8ms | getRegionalTotalNewApplication(2024)
+2026-07-09 12:39:28 | +677.7ms | total 6014.5ms | getRegionalTotalNewApplication(2025)
+2026-07-09 12:39:28 | +679.4ms | total 6693.8ms | getRegionalTotalNewApplication(2026)
+2026-07-09 12:39:28 | +1.4ms | total 6695.2ms | getRegionalApplicationsForwardtoHqrs
+2026-07-09 12:39:29 | +157ms | total 6852.2ms | countRegionalReceivedApplication
+2026-07-09 12:39:29 | +683.9ms | total 7536.1ms | countRegionalPendingUniversityApplications
+2026-07-09 12:39:29 | +38.9ms | total 7575ms | getTotalUniversityResponseSentByMission
+2026-07-09 12:39:29 | +6.8ms | total 7581.8ms | countAlumaniApplicationsByRegion
+2026-07-09 12:39:29 | +0.8ms | total 7582.6ms | countDemands
+2026-07-09 12:39:29 | +0.7ms | total 7583.4ms | countProcessedDemands (cache miss - all queries ran)
+2026-07-09 12:39:29 | +6.4ms | total 7589.8ms | view render (header + dashboard + footer)
+2026-07-09 12:39:50 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:39:50 | +3.6ms | total 3.6ms | getRegionById
+2026-07-09 12:39:50 | +4.4ms | total 8ms | badge counts (from cache)
+2026-07-09 12:39:50 | +3.3ms | total 11.3ms | view render (header + dashboard + footer)
+2026-07-09 12:39:52 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:39:52 | +3.1ms | total 3.1ms | getRegionById
+2026-07-09 12:39:52 | +6.5ms | total 9.6ms | badge counts (from cache)
+2026-07-09 12:39:52 | +2.4ms | total 12ms | view render (header + dashboard + footer)
+2026-07-09 12:40:43 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:40:43 | +3.5ms | total 3.5ms | getRegionById
+2026-07-09 12:40:43 | +4.2ms | total 7.7ms | badge counts (from cache)
+2026-07-09 12:40:43 | +5.2ms | total 12.9ms | view render (header + dashboard + footer)
+2026-07-09 12:48:17 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:48:17 | +2.3ms | total 2.3ms | getRegionById
+2026-07-09 12:48:18 | +1555.7ms | total 1558ms | countRegionalApplications
+2026-07-09 12:48:20 | +1420.3ms | total 2978.3ms | countRegionalTwentyTwoApplications
+2026-07-09 12:48:21 | +1389.9ms | total 4368.1ms | countRegionalApplicationsDemo
+2026-07-09 12:48:22 | +735.3ms | total 5103.5ms | getRegionalTotalNewApplication(2024)
+2026-07-09 12:48:23 | +1219ms | total 6322.4ms | getRegionalTotalNewApplication(2025)
+2026-07-09 12:48:24 | +850ms | total 7172.4ms | getRegionalTotalNewApplication(2026)
+2026-07-09 12:48:24 | +1.2ms | total 7173.6ms | getRegionalApplicationsForwardtoHqrs
+2026-07-09 12:48:24 | +155.4ms | total 7329ms | countRegionalReceivedApplication
+2026-07-09 12:48:25 | +812ms | total 8141ms | countRegionalPendingUniversityApplications
+2026-07-09 12:48:25 | +49.4ms | total 8190.5ms | getTotalUniversityResponseSentByMission
+2026-07-09 12:48:25 | +7.6ms | total 8198ms | countAlumaniApplicationsByRegion
+2026-07-09 12:48:25 | +0.8ms | total 8198.799999999999ms | countDemands
+2026-07-09 12:48:25 | +0.6ms | total 8199.4ms | countProcessedDemands (cache miss - all queries ran)
+2026-07-09 12:48:25 | +6.6ms | total 8206ms | view render (header + dashboard + footer)
+2026-07-09 12:48:32 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:48:32 | +1.7ms | total 1.7ms | getRegionById
+2026-07-09 12:48:32 | +0.5ms | total 2.2ms | badge counts (from DB cache)
+2026-07-09 12:48:32 | +2.3ms | total 4.5ms | view render (header + dashboard + footer)
+2026-07-09 12:50:37 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:50:37 | +2.7ms | total 2.7ms | getRegionById
+2026-07-09 12:50:37 | +1.1ms | total 3.9ms | badge counts (from DB cache)
+2026-07-09 12:50:37 | +3.1ms | total 7ms | view render (header + dashboard + footer)
+2026-07-09 12:50:57 | +0ms | total 0ms | --- start (session loaded) ---
+2026-07-09 12:50:57 | +1.9ms | total 1.9ms | getRegionById
+2026-07-09 12:50:57 | +0.9ms | total 2.8ms | badge counts (from DB cache)
+2026-07-09 12:50:57 | +5.6ms | total 8.5ms | view render (header + dashboard + footer)

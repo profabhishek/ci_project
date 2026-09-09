@@ -37,7 +37,12 @@ class Mission extends CI_Controller {
         $this->load->library('form_validation');
         $this->load->library('session');	
         $this->load->library('encryption');
-        $this->load->library('mpdf60/Mpdf');   
+        // mpdf60/Mpdf was loaded here unconditionally, on every single request
+        // to any Mission controller action (dashboard included), even though
+        // it's only actually used by 4 of ~100 functions. The mPDF library is
+        // heavy to bootstrap (loads font metrics, many classes), so this was
+        // adding real overhead to every page load, most visibly the dashboard.
+        // Moved to load only inside the specific functions that call `new Mpdf(...)`.
        // $this->load->library('fpdi/PDF_HTML');
 		$this->load->helper('status_helper');
         $this->load->helper('download');
@@ -261,8 +266,14 @@ class Mission extends CI_Controller {
 			}
 		}
 		$returnJson['draw'] = isset($vars['draw']) ? $vars['draw'] : 0;
-		$returnJson['recordsTotal'] = $totalResult[0]['total'];
-		$returnJson['recordsFiltered'] = $totalResult[0]['total'];
+		// The matching "getTotal..." count query normally always returns exactly
+		// one row (a plain COUNT(*)), but when a GROUP BY is added for certain
+		// filters, zero matching rows means zero rows returned (instead of one
+		// row with total=0) - which was throwing "Undefined array key 0" here.
+		// Falling back to 0 is the correct result (zero matching applications).
+		$totalCount = isset($totalResult[0]['total']) ? $totalResult[0]['total'] : 0;
+		$returnJson['recordsTotal'] = $totalCount;
+		$returnJson['recordsFiltered'] = $totalCount;
 		$returnJson['data'] = $response;
 		echo json_encode($returnJson);
 	}
@@ -610,11 +621,11 @@ class Mission extends CI_Controller {
 					$strm4 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fourth']);
 					$strm5 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fifth']);
 					//echo "<pre>";print_r($applicationDetails[0]);
-					$fullCourse .= '1) '.$nomenclature[0]['title'].'<br/>';
-					$fullCourse .= '2) '.$nomenclature1[0]['title'].'<br/>';
-					$fullCourse .= '3) '.$nomenclature2[0]['title'].'<br/>';
-					$fullCourse .= '4) '.$nomenclature3[0]['title'].'<br/>';
-					$fullCourse .= '5) '.$nomenclature4[0]['title'].'<br/>';
+					$fullCourse .= '1) '.(!empty($nomenclature) ? $nomenclature[0]['title'] : 'NA').'<br/>';
+					$fullCourse .= '2) '.(!empty($nomenclature1) ? $nomenclature1[0]['title'] : 'NA').'<br/>';
+					$fullCourse .= '3) '.(!empty($nomenclature2) ? $nomenclature2[0]['title'] : 'NA').'<br/>';
+					$fullCourse .= '4) '.(!empty($nomenclature3) ? $nomenclature3[0]['title'] : 'NA').'<br/>';
+					$fullCourse .= '5) '.(!empty($nomenclature4) ? $nomenclature4[0]['title'] : 'NA').'<br/>';
 					$output[] = $fullCourse;
 				}
 				$universityDetails = "";
@@ -623,11 +634,11 @@ class Mission extends CI_Controller {
 				$uni3 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_three']);
 				$uni4 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fourth']);
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
-				$universityDetails .= '1) '.$uni1[0]['name'].'<br/>';
-				$universityDetails .= '2) '.$uni2[0]['name'].'<br/>';
-				$universityDetails .= '3) '.$uni3[0]['name'].'<br/>';
-				$universityDetails .= '4) '.$uni4[0]['name'].'<br/>';
-				$universityDetails .= '5) '.$uni5[0]['name'].'<br/>';
+				$universityDetails .= '1) '.(!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';
+				$universityDetails .= '2) '.(!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
+				$universityDetails .= '3) '.(!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
+				$universityDetails .= '4) '.(!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';
+				$universityDetails .= '5) '.(!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 				$output[] = $universityDetails;				
 				
 				
@@ -664,20 +675,35 @@ class Mission extends CI_Controller {
 				} */
 				
 				
-					 if($r['status'] == 10)
+					 // The Process button is enabled ONLY for CONFIRMED AYUSH applications.
+					//   course_type 1  = AYUSH
+					//   status      10 = the university has been confirmed - set by
+					//                    Headquarter.php when it forwards the
+					//                    application (ConfirmationForwardToMissionByHqrs)
+					//
+					// This used to enable the button for ANY row with status 10,
+					// including non-AYUSH applications, and separately for EVERY
+					// AYUSH row via a course_type-only branch - which let staff
+					// open AYUSH applications no university had confirmed yet.
+					// Both are now closed: every other row is disabled.
+					if((isset($r['course_type']) && (int) $r['course_type'] === 1) && (isset($r['status']) && (int) $r['status'] === 10))
 				{ 
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Process'.$applicationDetails[0]['country'].'" href="'.site_url().'mission/viewApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt">Process</a>';
+					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Process this confirmed AYUSH application" href="'.site_url().'mission/viewApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt">Process</a>';
 				}
-				 elseif($r['course_type'] == 1)
+				 // AYUSH, but the university has not been confirmed yet - disabled,
+					// with a tooltip saying what is being waited on.
+					elseif(isset($r['course_type']) && (int) $r['course_type'] === 1)
 				{ 
 					
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "hello" href="'.site_url().'mission/viewApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt">Process</a>';
+					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "This button will be enabled once admission is confirmed by University." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
 				}
+				// Not an AYUSH application - cannot be processed from this screen
+				// at all, so say that rather than implying it is waiting on a
+				// university confirmation that will never enable it.
 				else
 				{
-					//$output[] = 'Not Allowed';
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "This button will be enabled once admission is confirmed by University." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
-				}  
+					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Only confirmed AYUSH applications can be processed from this screen." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
+				}
 				
 				$output[] = '<a style="float:left;width:104px;" href="'.site_url().'mission/viewfullApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt1" target = "__blank" >View</a>';
 				$output[] ='<a href="javascript:void(0);" style="float:left;width:104px;" onclick =openStatus("'.$applicationDetails[0]['application_no'].'") class="form-control sbmt1">Status</a>';
@@ -686,8 +712,14 @@ class Mission extends CI_Controller {
 			}
 		}
 		$returnJson['draw'] = isset($vars['draw']) ? $vars['draw'] : 0;
-		$returnJson['recordsTotal'] = $totalResult[0]['total'];
-		$returnJson['recordsFiltered'] = $totalResult[0]['total'];
+		// The matching "getTotal..." count query normally always returns exactly
+		// one row (a plain COUNT(*)), but when a GROUP BY is added for certain
+		// filters, zero matching rows means zero rows returned (instead of one
+		// row with total=0) - which was throwing "Undefined array key 0" here.
+		// Falling back to 0 is the correct result (zero matching applications).
+		$totalCount = isset($totalResult[0]['total']) ? $totalResult[0]['total'] : 0;
+		$returnJson['recordsTotal'] = $totalCount;
+		$returnJson['recordsFiltered'] = $totalCount;
 		$returnJson['data'] = $response;
 		echo json_encode($returnJson);
 	}
@@ -802,8 +834,14 @@ class Mission extends CI_Controller {
 			}
 		}
 		$returnJson['draw'] = isset($vars['draw']) ? $vars['draw'] : 0;
-		$returnJson['recordsTotal'] = $totalResult[0]['total'];
-		$returnJson['recordsFiltered'] = $totalResult[0]['total'];
+		// The matching "getTotal..." count query normally always returns exactly
+		// one row (a plain COUNT(*)), but when a GROUP BY is added for certain
+		// filters, zero matching rows means zero rows returned (instead of one
+		// row with total=0) - which was throwing "Undefined array key 0" here.
+		// Falling back to 0 is the correct result (zero matching applications).
+		$totalCount = isset($totalResult[0]['total']) ? $totalResult[0]['total'] : 0;
+		$returnJson['recordsTotal'] = $totalCount;
+		$returnJson['recordsFiltered'] = $totalCount;
 		$returnJson['data'] = $response;
 		echo json_encode($returnJson);
 	}
@@ -1071,9 +1109,31 @@ public function historyview()
 {
     try
     {
-        $applicationId = $this->uri->segment(3);
+        // The "View History" link on the acceptance/decline listing page
+        // (mission/listofacceptance) encodes the application number with
+        // base64_encode() before putting it in the URL, but this function
+        // was reading the raw encoded string straight from the URL and using
+        // it as-is - every lookup below was searching for the base64 string
+        // itself instead of the real application number, so every query
+        // returned nothing and the page rendered blank with no error.
+        // Decoding it here (matching the plain base64_encode() used when the
+        // link was built) fixes that mismatch.
+        //
+        // NOTE: not every "View" link that points here encodes the value first
+        // (e.g. views/mission/approved_applications.php builds this link from
+        // $response[0]['application_id'] with no base64_encode() at all), so a
+        // blind base64_decode() would break that caller instead. A real
+        // application number in this system always looks like two letters
+        // followed by digits (e.g. "GK1574076665805"), so we only trust the
+        // decoded value if it matches that shape; otherwise we fall back to
+        // treating the raw URL segment as an already-plain application number.
+        $rawAppSegment = $this->uri->segment(3);
+        $decodedAppSegment = base64_decode($rawAppSegment, true);
+        $applicationId = (is_string($decodedAppSegment) && preg_match('/^[A-Za-z]{2}[0-9]+$/', $decodedAppSegment))
+            ? $decodedAppSegment
+            : $rawAppSegment;
         $user_data = $this->session->userdata('user_data');
-        $userId = $user_data['userid'];			
+        $userId = $user_data['userid'];
         $data['applicaitonStepOne'] = $this->common_model->getMsnApplicationStepOneByAppno($applicationId);
         if(count($data['applicaitonStepOne'])>0)
         {
@@ -1083,16 +1143,17 @@ public function historyview()
         {
             $data['get_application_number'] = $this->random_num(15);
         }	
-        $imgArray = $this->common_model->getUserImage($data['applicaitonStepOne'][0]['uid']);		
+        $stepOneUid = !empty($data['applicaitonStepOne']) ? $data['applicaitonStepOne'][0]['uid'] : null;
+        $imgArray = $this->common_model->getUserImage($stepOneUid);
         if(count($imgArray)> 0)
         {
             $image = $imgArray[0]['name'];
-        }		
+        }
         else
         {
             $image = '';
         }
-        $data['registerData'] = $this->common_model->getUserData($data['applicaitonStepOne'][0]["uid"]);
+        $data['registerData'] = $this->common_model->getUserData($stepOneUid);
         $data['userImage'] = $image;
         $data['missions'] = $this->common_model->getAllMissions();
         $data['univercities'] = $this->common_model->getUnivercities();	
@@ -1102,6 +1163,34 @@ public function historyview()
         $data['mappingData'] = $this->common_model->getMappingData($applicationId);
         $data['university'] = $this->common_model->getconfirmationDataByMission($applicationId);  // ADDED
         $data['currentyear'] = date('Y');  // ADDED
+
+        // ---------------------------------------------------------------
+        // University responses (section 8 + the "Date of Forwarding" block)
+        //
+        // These two blocks used to run two different queries against the same
+        // iccr_university_response table - one filtered on confirmed_to_mission,
+        // the other on university_is_accept - and each printed row [0] of its own
+        // unordered result set. An applicant can select up to five universities,
+        // so both result sets can hold several rows, and the page ended up
+        // printing TWO DIFFERENT university names for one student.
+        // Now the rows are fetched once, in a stable order, and the single
+        // "final" university is resolved here so every block agrees.
+        // ---------------------------------------------------------------
+        $data['universityResponses'] = $this->common_model->getUniversityResponsesForApplication($applicationId);
+        $mappingUniversityId = (!empty($data['mappingData']) && !empty($data['mappingData'][0]['regional_university']))
+            ? $data['mappingData'][0]['regional_university']
+            : null;
+        $data['finalConfirmation'] = $this->common_model->pickFinalUniversityResponse(
+            $data['universityResponses'],
+            $mappingUniversityId
+        );
+        // The view (acceptanceHistory.php) independently re-reads the URL
+        // segment in many places instead of using the decoded application
+        // number computed above - passing it through explicitly lets the
+        // view use the correct, decoded value everywhere instead of the
+        // still-base64-encoded raw URL segment.
+        $data['applicationId'] = $applicationId;
+        $data['controllerBase'] = 'mission';
         $this->load->view('mission/header_mission');
         $this->load->view('mission/acceptanceHistory',$data);
         $this->load->view('mission/footer');	
@@ -1404,8 +1493,24 @@ public function historyview()
 			$data['univercities'] = $this->common_model->getUnivercities();	
 			$data['applicaitonStepTwo'] = $this->common_model->getApplicationStepTwoByAppno($applicationId);
 			$data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
-			$data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);	
+			$data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
 			$data['applicaitonSubmitData'] = $this->common_model->getApplicationSubmitDatabyAppNo($applicationId);
+
+			// Supplied so the view can show the confirmed university's approval
+			// letter next to the five university choices, along with the scheme
+			// and nomenclature. All read-only lookups; nothing here changes what
+			// was already passed to the view.
+			//
+			// The allotment lives in iccr_university_response_by_hqrs, NOT in
+			// iccr_university_response. This previously read the latter and
+			// filtered on university_is_accept = 1, which returned no rows and
+			// made the screen say "No university has confirmed this application
+			// yet" even though the university and course were recorded. On the
+			// by_hqrs table the university is regional_university and the
+			// nomenclature is the course column.
+			$data['universityResponses'] = $this->common_model->getconfirmationDataforfourthoptionHqrs($applicationId);
+			$data['schemeNomenclature'] = $this->common_model->getSchemeAndNomenclatureByAppNo($applicationId);
+
 			$this->load->view('mission/header_mission');
 			$this->load->view('mission/viewApplication',$data);
 			$this->load->view('mission/footer');	
@@ -1909,72 +2014,82 @@ public function historyview()
 	public function dashboard()
 	{
 		try{
-			$user_data = $this->session->userdata('user_data');			
+			$user_data = $this->session->userdata('user_data');
 			$missionId = $user_data['user_country'];
 			$data['mission'] = $user_data['user_country'];
-			
-			
+
+
 			$data['misionData'] = $this->common_model->getMissionInfo($missionId);
 //print_r($missionId);die;
+			// newTwentryTwoCountApplication2627 (2026-27) not yet backed by a query;
+			// the view references it, so default to 0 rather than leave it undefined.
+			$data['newTwentryTwoCountApplication2627'] = 0;
 			$data['newTwentryTwoCountApplication2526'] = $this->common_model->getCountTwentyTwoMissionApplications2526($this->ids);
 
 			$data['newTwentryTwoCountApplication2425'] = $this->common_model->getCountTwentyTwoMissionApplications2425($this->ids);
 
 			$data['newTwentryTwoCountApplication2324'] = $this->common_model->getCountTwentyTwoMissionApplications2324($this->ids);
-			
+
 			$data['newTwentryTwoCountApplication'] = $this->common_model->getCountTwentyTwoMissionApplications($this->ids);
-			
+
 			$data['newCountApplication'] = $this->common_model->getCountMissionApplications($this->ids);
-			
-			
+
+
 			//$data['approvedApplication'] = count($this->common_model->getMissionsProcessedApplications($this->ids));
-			
+
 			$data['countapprovedApplication'] = $this->common_model->countgetMissionsProcessedApplications($this->ids);
 			$data['countapprovedApplication25'] = $this->common_model->countgetMissionsProcessedApplications25($this->ids);
-			
-			$data['rejectedApplication'] = count($this->common_model->getMissionsRejectedApplications($this->ids));
-			
+			// countapprovedApplication26 (2026-27) not yet backed by a query; view
+			// references it, default to 0 rather than leave it undefined.
+			$data['countapprovedApplication26'] = 0;
+
+			// Was count(getMissionsRejectedApplications(...)) - fetched every
+			// joined column for every matching row just to count them in PHP.
+			// Switched to a dedicated COUNT query for speed.
+			$data['rejectedApplication'] = $this->common_model->countgetMissionsRejectedApplications($this->ids);
+
 			//$data['results'] = count($this->common_model->getEnglishProficiencyTestResults($this->ids));
 			//$data['confirmationForwardtoMissionbyHqrs'] = count($this->common_model->getConfirmationofHqrs($this->ids));
-			
+
 			$data['countconfirmationForwardtoMissionbyHqrs'] = $this->common_model->countgetConfirmationofHqrs($this->ids);
-			
-			
+
+
 			$data['countconfirmationForwardtoMissionbyHqrsDemo'] = $this->common_model->countgetConfirmationofHqrsDemo($this->ids);
 			//$data['confirmaitonofuniversityformhqrs'] = count($this->common_model->getConfirmationofFourthOptionByHqrs($this->ids));
-			
+
 			$data['countconfirmaitonofuniversityformhqrs'] = $this->common_model->countgetConfirmationofFourthOptionByHqrs($this->ids);
-			
+
 			//$data['listofacceptance'] = count($this->common_model->getConfirmationofCandidates($this->ids));
-			
-			
+
+
 			$data['countlistofacceptance'] = $this->common_model->countgetConfirmationofCandidates($this->ids);
-			
+
 			$data['countlistofacceptance2025'] = $this->common_model->countgetConfirmationofCandidates2025($this->ids);
-			
+			$data['countlistofacceptance26'] = $this->common_model->countgetConfirmationofCandidates26($this->ids);
+
 			$data['countlistofacceptanceDemo'] = $this->common_model->countgetConfirmationofCandidatesDemo($this->ids);
 			//$data['visaendrosment'] = count($this->common_model->getAcceptedCandidates($this->ids));
-			
+
 			$data['countvisaendrosment'] = $this->common_model->countgetAcceptedCandidates($this->ids);
-			
+
 			//$data['travel'] = count($this->common_model->getVisaConveyedApplicatgion($this->ids));
-			
+
 			$data['counttravel'] = $this->common_model->countgetVisaConveyedApplicatgion($this->ids);
-			
-			
+
+
 			//$data['holdapplications']= count($this->common_model->hold_applications($this->ids));
-			
+
 			$data['countholdapplications']= $this->common_model->counthold_applications($this->ids);
-			
+
 			//$data['pending_application']= count($this->common_model->pending_applications($this->ids));
-			
+
 			$data['countpending_application']= $this->common_model->countpending_applications($this->ids);
-			
+
 			//$data['resubmitapplication']= count($this->common_model->resubmitapplication($this->ids));
-			
+
 			$data['countresubmitapplication']= $this->common_model->countresubmitapplication($this->ids);
-			
-			$data['alumanidata'] = count($this->common_model->getAlumaniApplications($missionId));
+
+			$data['alumanidata'] = $this->common_model->countAlumaniApplications($missionId);
 			$this->load->view('mission/header_mission');
 			$this->load->view('mission/dashboard',$data);
 			$this->load->view('mission/footer');
@@ -2164,7 +2279,7 @@ public function historyview()
 							</tr>
 							<tr>
 								<td>05. Course admitted to</td>
-								<td>:&nbsp;&nbsp;<?php echo $course[0]['title']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo !empty($course) ? $course[0]['title'] : 'NA'; ?></td>
 							</tr>
 							<tr>
 								<td>06. University admitted to</td>
@@ -2172,18 +2287,18 @@ public function historyview()
 							</tr>
 							<tr>
 								<td>07. Date of Departure</td>
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['departure_date']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['departure_date']) ? $travel[0]['departure_date'] : ''); ?></td>
 							</tr>
 							<tr>
 								<td>08. Date of arrival in India</td>
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['travel_arrival_date']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['travel_arrival_date']) ? $travel[0]['travel_arrival_date'] : ''); ?></td>
 							</tr>
 							<tr>
 								<td>09. Flight Number</td>
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['flight_no']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['flight_no']) ? $travel[0]['flight_no'] : ''); ?></td>
 							</tr>
 
-							<?php if($travel[0]['final_city_arrival'] == 7) { ?>
+							<?php if((isset($travel[0]['final_city_arrival']) ? $travel[0]['final_city_arrival'] : '') == 7) { ?>
 							<tr>
 								<td>10. Final city of arrival</td>
 								<td>:&nbsp;&nbsp;<?php echo $travel[0]['city_other']; ?></td>
@@ -2191,35 +2306,27 @@ public function historyview()
 							<?php } else { ?>
 								<tr>
 								<td>10. Final city of arrival</td>
-								<!--<td>:&nbsp;&nbsp;<?php echo $cities; ?></td>-->
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['final_city_arrival']; ?></td>
+								<!--<td>:&nbsp;&nbsp;<?php echo is_array($cities) ? implode(', ', $cities) : $cities; ?></td>-->
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['final_city_arrival']) ? $travel[0]['final_city_arrival'] : ''); ?></td>
 							</tr>
 							<?php }	?>
 
 							<tr>
 								<td>11. Regional Office to be contacted</td>
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['regional_office_contacted']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['regional_office_contacted']) ? $travel[0]['regional_office_contacted'] : ''); ?></td>
 							</tr>
 							<tr>
 								<td>12. Cost of Ticket (INR)</td>
-								<td>:&nbsp;&nbsp;<?php echo $travel[0]['cost_of_ticket']; ?></td>
+								<td>:&nbsp;&nbsp;<?php echo (isset($travel[0]['cost_of_ticket']) ? $travel[0]['cost_of_ticket'] : ''); ?></td>
 							</tr>
 						</tbody>
 					</table>
 
-					<!--<p style="text-align: left;">1. Name of scholar <?php echo 'Mr/Ms/Mrs' .$stepOne[0]['fullname']; ?></p>
-					<p style="text-align: left;">2. Country <?php echo $country[0]['country_name']; ?></p>
-					<p style="text-align: left;">3. Mission dealing <?php echo $mission[0]['mission_name']; ?></p>
-					<p style="text-align: left;">4. Scheme <?php echo $schemename[0]['scheme_name']; ?></p>
-					<p style="text-align: left;">5. Course admitted to <?php echo $course[0]['title']; ?></p>
-					<p style="text-align: left;">6. University admitted to <?php echo $uni[0]['name']; ?></p>
-					<p style="text-align: left;">7. Date of Departure <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">8. Date of arrival in India <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">9. Flight Number <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">10. Final city of arrival <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">11. Regional Office to be contacted <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">12. Cost of Ticket (INR) <?php echo $schemename[0]['']; ?></p>
-					<p style="text-align: left;">Signature: <?php echo $new; //$schemename[0]['mission_person_signature'];?></p>-->
+					<!-- Dead duplicate block removed: was inside an HTML comment,
+					but PHP still executed it on every load (undefined $course
+					use, and $schemename[0]['']  lookups that never existed),
+					purely to render markup that was never actually displayed
+					since it duplicates the live table just above. -->
 					</br></br>
 					
 					<p style="text-align: left;"><?php echo $new;?> <br><br>Signature</p>	
@@ -2712,7 +2819,11 @@ public function historyview()
 			$missionId = $user_data['user_country'];
                         
 			$data['misionData'] = $this->common_model->getMissionInfo($missionId);
-			$data['listofacceptance'] = $this->common_model->getConfirmationofCandidates($this->ids);
+			// Pass $data['year'] (the "2026" from the URL) through so this list
+			// is actually scoped to that academic year instead of always
+			// returning all-time accepted/declined candidates regardless of
+			// which year link was clicked.
+			$data['listofacceptance'] = $this->common_model->getConfirmationofCandidates($this->ids, $data['year']);
 			$data['listofoldacceptance'] = $this->common_model->getConfirmationofoldCandidates($this->ids);
 			//echo "<pre>";print_r($data['listofacceptance']);die;
 			$this->load->view('mission/header_mission');
@@ -2726,7 +2837,7 @@ public function historyview()
 			redirect(site_url().'mission/dashboard');
 		}
 	}
-	
+
 	function listofacceptances()
 	{
 		try
@@ -2765,11 +2876,19 @@ public function historyview()
 		//echo "<pre>";print_r($vars);die;pending_application
 		//$counter = $_POST['start'];
 		$missionId = $user_data['user_country'];
-		$data['misionData'] = $this->common_model->getMissionInfo($universityId);
-		//$data['misionData'] = $this->common_model->getMissionInfo($missionId);
-		$result = $this->mission_model->getMissionAcceptance($vars,$universityId,$year);
+		// Was $universityId, which is never defined in this function (this is a
+		// Mission controller endpoint, not University's) - the missionId lookup
+		// and the two model calls below were always running against an
+		// undefined/null value, which meant they could never correctly filter
+		// to the logged-in mission and would return no matching rows.
+		$data['misionData'] = $this->common_model->getMissionInfo($missionId);
+		// The sibling Applications listing (getNewApplicaitons(), above) passes
+		// $this->ids here rather than a single mission id, since a mission can
+		// be linked to more than one id for where_in() scoping - matching that
+		// same convention here instead of a single raw value.
+		$result = $this->mission_model->getMissionAcceptance($vars,$this->ids,$year);
 		//echo "<pre>";print_r($result);die;
-		$totalResult = $this->mission_model->getTotalMissionAcceptance($vars,$universityId,$year);
+		$totalResult = $this->mission_model->getTotalMissionAcceptance($vars,$this->ids,$year);
 		
 		$response = array();
 		//$counter++;
@@ -2814,8 +2933,14 @@ public function historyview()
 			}
 		}
 		$returnJson['draw'] = isset($vars['draw']) ? $vars['draw'] : 0;
-		$returnJson['recordsTotal'] = $totalResult[0]['total'];
-		$returnJson['recordsFiltered'] = $totalResult[0]['total'];
+		// The matching "getTotal..." count query normally always returns exactly
+		// one row (a plain COUNT(*)), but when a GROUP BY is added for certain
+		// filters, zero matching rows means zero rows returned (instead of one
+		// row with total=0) - which was throwing "Undefined array key 0" here.
+		// Falling back to 0 is the correct result (zero matching applications).
+		$totalCount = isset($totalResult[0]['total']) ? $totalResult[0]['total'] : 0;
+		$returnJson['recordsTotal'] = $totalCount;
+		$returnJson['recordsFiltered'] = $totalCount;
 		$returnJson['data'] = $response;
 		echo json_encode($returnJson);
 	}
@@ -3086,7 +3211,7 @@ public function historyview()
 			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
 			//echo "<pre>";print_r($stepOne);die;
 			$uniid = $this->uri->segment(4);
-			if($stepOne[0]['course_type']== 2)
+			if(!empty($stepOne) && $stepOne[0]['course_type']== 2)
 			{
 				$response = $this->common_model->isAyurvedaApplication($applicationId);
 			}
@@ -3096,24 +3221,22 @@ public function historyview()
 			}
 			
 			$region = 0;$coursename = "";$respFile="";
-			if($stepOne[0]['course_type']== 2)
-			{
-			$course = $response[0]['course'];
-			}
-			else
-			{
-				$course = $response[0]['final_course'];
-			}
+			// $course removed: only ever used in a dead "//echo $course;die;"
+			// debug comment below, and the else-branch read a 'final_course' key
+			// that doesn't exist on $response (only threw warnings). The actual
+			// letter template uses $nomenclature instead.
 
-			//echo $course;die;
-			
+
 			$current = date('d-m-Y');
 			$fy = $this->getFinancialYears($current,1);
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];			
-			$nomenid = $response[0]['nomenclature'];
+			$nomenid = !empty($response) ? $response[0]['nomenclature'] : null;
 			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
-			$nomenclature=$nomclature[0]['title'];
+			// getnomenclatureByid(null) (when $response was empty above) returns
+			// no rows, so $nomclature[0] doesn't exist - guard instead of
+			// assuming a match was always found.
+			$nomenclature = !empty($nomclature[0]['title']) ? $nomclature[0]['title'] : '';
 			
 			$studentOther = $this->common_model->getStudentOtherDetails($applicationId);
 			$missionDetails = $this->common_model->getMissionDetails($applicationId);
@@ -3167,7 +3290,7 @@ public function historyview()
 					<p style="text-align: right;"><?php echo  $mission[0]['mission_type'] . ': ' . $mission[0]['mission_name'].',<br>'.$mission[0]['country_name']; ?></p>
 					<p><b>Subject:-</b> Offer of Provisional admission with award of ICCR Scholarship for A.Y 2026-27</p>
 					<p>Dear: Mr./Ms./Mrs. <?php echo  $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname']; ?></p>
-					<p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . $uninmae[0]['name'] . ' ' . $schemename[0]['scheme_name'] . ' for the Academic Year 2026-2027. You are requested to report ' . $regionInfo[0]['name'] . ' University physically along with all original certificate and testimonials latest by '   . $response[0]['date_of_joining'] . ' and also to Regional Office through Email.'; ?></p>
+					<p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . $uninmae[0]['name'] . ' ' . $schemename[0]['scheme_name'] . ' for the Academic Year 2026-2027. You are requested to report ' . (!empty($regionInfo) ? $regionInfo[0]['name'] : '') . ' University physically along with all original certificate and testimonials latest by '   . (!empty($response[0]['date_of_joining']) ? $response[0]['date_of_joining'] : '') . ' and also to Regional Office through Email.'; ?></p>
 					<p style="text-align: justify;">2)  Hostel accommodation will be provided to you subject to its availability by University authorities. You are required to report at the nearest “Foreign Regional Registration Office” within fourteen days of arrival in India.</p>
 					<p style="text-align: justify;">3)  You are advised to contact the Education Wing of this Mission immediately along with your passport for grant of visa and finalization of your date of departure. You are also hereby directed to obtain your final departure letter from the Mission before joining the concerned Institution in India failing which this offer letter stands cancelled. Furthermore no request of change of course and University will be entertained.</p>
 					<p style="text-align: justify;">4)  Scholarship expenses will be managed into two parts, which are as follows:-</p>
@@ -3342,14 +3465,24 @@ public function historyview()
 			$response = $this->common_model->getconfirmationDataByMission($applicationId);
 			if(count($response) >1){
 				$uni1 = $this->common_model->getUniversityById($response[1]['regional_university']);
-				$course = $response[1]['final_course'];
+				$nomenid = $response[1]['nomenclature'];
+			}
+			elseif(!empty($response))
+			{
+				$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
+				$nomenid = $response[0]['nomenclature'];
+
 			}
 			else
 			{
-				$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
-				$course = $response[0]['final_course'];
-				
+				$uni1 = array();
+				$nomenid = null;
 			}
+			// $course removed: was computed from a 'final_course' key that
+			// doesn't exist on $response (only threw warnings) and was never
+			// used below — the letter uses $nomenclature instead.
+			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+			$nomenclature = $nomclature[0]['title'];
 			//echo "<pre>";print_r($schemeId);die;
 			$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']); 
@@ -3357,24 +3490,21 @@ public function historyview()
 			$getDir = $this->common_model->getDirUserInfo($userd->id); 
 			//echo "<pre>";print_r($getDir);die;
 			$applicantAcceptanceDate = $schemeId[0]['undertaking_doc'];
-			$date1 = $applicaitonSubmitData[0]['created'];						
+			// $date1 removed: was read from undefined $applicaitonSubmitData and
+			// never used anywhere below (only threw warnings). $acDate below
+			// already uses $applicantAcceptanceDate directly.
 			$acDate =  date('d-m-Y',$applicantAcceptanceDate);
-			
-			$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-			$data = base64_encode($imgs);
-			$f = finfo_open();
-			$imgdata = base64_decode($data);
-            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-			$img_base64_encoded = 'data:'.$mime_type.';base64,'.$data.'';
-			$imageContent = file_get_contents($img_base64_encoded);
-			$imgPath = tempnam(sys_get_temp_dir(), 'prefix');
-			file_put_contents ($imgPath, $imageContent);
-			/*if($getDir->dir == ''){
+
+			// The block that used to be here (file_get_contents + base64-encode
+			// into a temp file) was entirely dead: $imgPath gets reassigned
+			// immediately below regardless, so none of that work was ever used.
+			// It also threw "file not found" warnings whenever $userd->dir was
+			// empty. Removed; the fallback-aware logic below is what's actually used.
+			if(empty($userd->dir)){
 				$imgPath = site_url().'assets/site/main/profile_signature/'.$applicaitonStepThree[0]['signature_doc'];
 			}else{
 				$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
-			}*/
-			$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
+			}
 			$new='<img src="'.$imgPath.'" style="width:100px;">';
 
 			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
@@ -3414,17 +3544,26 @@ public function historyview()
         <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
 		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 40px;margin: 0;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
 
-        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP</b></p>
+        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP/Undertaking</b></p>
 		<br>
-		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue course  ' . $course;?> 
-    	<p style="text-align: justify;">1)  I Mr./Ms./Mrs. <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' do hereby affirm that I have read the Terms and Conditions including Financial Terms of ICCR’s scholarship with due diligence and agree to abide by them.'; ?></p>
-        <p style="text-align: justify;">2)  I also confirm that the course <?php echo $course . ' offered to me in ' . $uni1[0]['name'] . ' is accepted to me and that I will not ask for a change in course or university.'; ?></p>
-        <p style="text-align: justify;">3)  I will complete the entire course of study in which I have been admitted.</p>
-        <p style="text-align: justify;">4)  I will purchase medical insurance of minimum sum assured of INR (Rs.) 5 lakhs / equivalent to approximate US$ 6700 per year. I understand that it is compulsory for continuation of ICCR Scholarship.</p>
-        <p style="text-align: justify;">5)  I certify that I do not suffer from terminal illness or ailments affecting vital organs. I also certify that I am not in family way. In case of illness require long absence of my course of study, I undertake to return to my country.</p>
-        <p style="text-align: justify;">6)  I agree to deliberately study in India.  In case I fail to get promoted to next level of course / fail, I understand that ICCR will stop scholarship. If such situation arises, I undertake that I will clear the level of study in which I have failed with my own financial resources and once I clear the level, I will request for revival of scholarship.</p>
-        <p style="text-align: justify;">7)  I agree to abide by and respect the law of India.  In case if I get involved in illegal activities and /or events concerning law and order issues, I understand that I will be prosecuted as per the law of India and I also agree on being deported to my country.</p>
-		<p style="text-align: justify;">8)  I understand that ICCR has right to change its Scholarship Policy (ies) including financial terms of scholarship from time to time.  I agree to abide by them.  If I disagree to follow the revised terms and conditions, ICCR will have right to discontinue my scholarship.</p>	
+		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue nomenclature  ' . $nomenclature;?>
+    	<p style="text-align: justify;">1.  That I have accepted the award of scholarship for the Course and University as mentioned above and will not ask for the change of course or University at any later stage.</p>
+        <p style="text-align: justify;">2.  That I have read and understood fully the Guidelines/Rules of the scholarship as provided on the A2A Portal and undertake to abide by the same.</p>
+        <p style="text-align: justify;">3.  That I have also understood that the said Guidelines/Rules are subject to change at the discretion of ICCR and I undertake to abide by the Guidelines/Rules as amended from time to time. I have also noted and understand the provisions regarding deductions from scholarship dues, including the quarterly submission of attendance records, the half-yearly submission of academic progress reports, compliance with medical insurance and so on.</p>
+        <p style="text-align: justify;">4.  That I have understood the following norms regarding ex-India period and any violation of these norms will attract deduction of my scholarship dues- Student must note that the paid ex-India period for students of any levels of courses will not exceed 60 days in an academic year with the conditions that (a) Ex-India period can be availed maximum twice in an academic year; (b) Ex-India period upto 30 days at a time will not attract any deduction in scholarship allowances; (c) Any number of days of continuous ex-India period beyond 30 days and upto 60 days will attract 50% deduction on the amount of stipend; (d) Any number of days beyond 60 days limit will attract deduction of entire scholarship allowances excluding HRA; (e) Any number of days beyond the second time even if it is within the total 60 days limit will attract deduction of entire scholarship allowances excluding HRA.</p>
+        <p style="text-align: justify;">5.  That I will complete the entire course of study and abide by all the rules, regulations, guidelines or any instructions of the University/Institution as prevalent at the time of admission or amended from time to time.</p>
+        <p style="text-align: justify;">6.  That I certify that documents related to my eligibility for study in India with regard age and educational qualification are correct and in case of any discrepancy the award of admission and scholarship will be terminated without any notice and that I will go back to my country on my own expenses within the permissible duration as per the law of India.</p>
+        <p style="text-align: justify;">7.  That I will respect and abide by the laws of India and not indulge in any illegal, unlawful, anti-social, criminal, political, religious, demonstrations, protest activities and any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">8.  That I will abide by all the rules, regulations, guidelines, laws of the Government of India or any other Indian authorities in its entirety. I will be sensible in using social media handles and will not post/comment any content against India, its people, culture, institutions or any entity and/or the content/post that can disturb relations between India and other countries. Any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">9.  That I undertake to follow visa / immigration rules and keep my registration as temporary foreign resident in India valid during my entire stay in India. I also undertake to pay any charges, penalties, fines etc. involved in keeping my Visa/residential permit status valid all the time. In case of any violation of Visa/immigration norms, I will be prosecuted under the laws of India and its authorities which may lead to heavy penalties/charges/fines, deportation, detention/confinement/imprisonment etc. as per prevailing laws.</p>
+		<p style="text-align: justify;">10.  That I certify that I am physically and mentally fit, not suffering from any chronic contagious/non-communicable diseases, terminal illness or ailments affecting vital organs, not pregnant (applicable for a female candidate) and having undergone mandatory and obligatory vaccinations.</p>
+		<p style="text-align: justify;">11.  That I will be responsible for my health and purchase Medical Health Insurance Policy with a minimum cover of Rs.5,00,000/- (Rupees Five Lacs) to cover my medical expenses. I also undertake that the expenses not covered under the Medical Insurance Policy will be borne by me and I will not raise any claim for the same to ICCR or University or any other authorities of India and understand that in absence of sufficient medical cover or funds, I myself would be responsible for any repercussions on account of my health conditions. I will return to my country on my own expenses in case of any illness requiring long absence from course of study and in that case the scholarship will be terminated. I also undertake to keep my insurance cover valid during my entire stay in India and submit the copy of valid insurance to the concerned Zonal Office annually for their records.</p>
+		<p style="text-align: justify;">12.  That I undertake to be regular in attendance and academics, failing which ICCR, University and other authorities have the right to terminate my scholarship and under any such circumstances, I shall bear all my expenses on my return to my native country. I will also submit the self-declaration, signed by the Dean FSR every month, in this regard in December and June by email for the release of my stipend.</p>
+		<p style="text-align: justify;">13.  That in case I fail in an academic year, my scholarship will be suspended and will be re-instated only after I will pass my examination and during such intervening period, I will study an self-finance basis.</p>
+		<p style="text-align: justify;">14.  That I understood that the Indian Mission and ICCR have the right to terminate my scholarship at any stage without assigning any reason whatsoever.</p>
+		<p style="text-align: justify;">15.  That I undertake to refund voluntarily in case any excess or over disbursement is made to me on account of scholarship allowances to ICCR in India or through the Indian Mission in my country if such wrong disbursement is noticed after completion of my course in India.</p>
+		<p style="text-align: justify;">16.  That I undertake to pay, in a timely manner and/or as per the schedule of the demanding authority, any dues payable by me on account of any charges of the University, which are not covered by ICCR under the tuition fees and other compulsory fees, such as Library fee, security deposit, caution money, lab charges, hostel/utility charges, private accommodation/utility charges, any other charges etc. Any violation will attract suspension of my scholarship dues till the pending dues are settled by me.</p>
+		<p style="text-align: justify;">17.  That I understand that the admission granted to me is provisional and confirmed only after my arrival in India on the basis of original documents with transcripts and if I am not found eligible, I will go back to my country on my own expenses.</p>
 	</br>
 
 		<p style="text-align: left;"><?php echo $new;?></p>
@@ -3581,7 +3720,16 @@ die;
 			$data['applicaitonStepThree']= $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$data['applicaitonDocuments']= $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
 			//echo "<pre>";print_r($data['applicaitonDocuments']);die;
-			$data['univercities'] = $this->common_model->getAllUnivercities();	
+			$data['univercities'] = $this->common_model->getAllUnivercities();
+
+			// The "Select Scholarship Programme" dropdown has been removed from
+			// this screen, but the scheme it supplied is still needed: the saved
+			// scholarship_id and the generated reference number both depend on
+			// it. Pass the scheme already recorded against the application so
+			// the view can carry it in a hidden field, keeping the saved data
+			// exactly as it is today.
+			$data['mappingData'] = $this->common_model->getMappingData($applicationId);
+
 			$this->load->view('mission/header_mission');
 			$this->load->view('mission/checklist_old',$data);
 			$this->load->view('mission/footer');
@@ -3695,7 +3843,8 @@ die;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',12);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3738,7 +3887,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',8);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3781,7 +3931,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3855,6 +4006,7 @@ $html = $content;
 	{
 		try{
 			header("Content-type: application/pdf");
+			$this->load->library('mpdf60/Mpdf');
 	    	$mpdf = new Mpdf('c','A4','','',10,10,05,10,10,10);
 	    	
 	    	$html1 = "<div style='text-align:center;'><img width='300px' src='".site_url()."assets/site/main/images/mea-logo.png'></div>";       	 				
@@ -3943,24 +4095,151 @@ $html = $content;
 	//echo "-------------------";die;
 		try{
 			$referenceNumber = "";$appno = '';
-			$user_data = $this->session->userdata('user_data');				
-			$missionEmail = $user_data['email'];	
-			$imgname = "";			
+			$user_data = $this->session->userdata('user_data');
+			$missionEmail = $user_data['email'];
+			$userId = $user_data['userid'];
+			$imgname = "";
 			if(!empty($_FILES))
-			{	
-				$files = $_FILES['signature']; 
-				
-								
+			{
+				$files = $_FILES['signature'];
+
+
 				if($files["name"] != "")
-				{				
+				{
 				  $name = str_replace(" ","_",$files['name']);
 				  $imgname = time().'_mission_signature_'.$name;
-				  
-				  $target_file = 'assets/site/main/mission_signature/'.$imgname; 
+
+				  $target_file = 'assets/site/main/mission_signature/'.$imgname;
 				  move_uploaded_file($_FILES["signature"]["tmp_name"], $target_file);
 			    }
-					
-			}	
+
+			}
+
+			// -----------------------------------------------------------------
+			// Medical Fitness Certificate and Undertaking Form.
+			//
+			// Both are uploaded by the Mission on the process screen. They are
+			// stored under assets/site/main/mission_documents/ (created on
+			// demand, alongside the existing mission_signature folder) and
+			// their filenames are written to the two columns added for this
+			// purpose:
+			//     iccr_status_mapping.mission_medical_fitness
+			//     iccr_status_mapping.mission_undertaking_form
+			//
+			// They are NOT written to the existing medical_fitness /
+			// undertaking_doc columns: those belong to a later stage and are
+			// set by the applicant, and undertaking_doc holds a UNIX timestamp
+			// that Home.php passes to date(). Putting a filename there would
+			// corrupt the applicant's status and date display.
+			//
+			// The browser already checks type and size, but that can be
+			// bypassed, so the same rules are enforced again here: PDF only,
+			// 2 MB maximum. iccr_safe_move_upload() additionally verifies the
+			// file really was uploaded, blocks path traversal, and refuses
+			// anything whose extension is not whitelisted.
+			// -----------------------------------------------------------------
+			$missionMedicalName     = '';
+			$missionUndertakingName = '';
+			$missionUploadError     = '';
+
+			$missionDocsDir = 'assets/site/main/mission_documents/';
+			if (!is_dir(FCPATH . $missionDocsDir)) {
+				@mkdir(FCPATH . $missionDocsDir, 0755, TRUE);
+			}
+			// Fail loudly if the folder cannot be created or written to.
+			// Previously this was silent: the move failed, the columns stayed
+			// empty, and the submission still reported success, so nobody knew
+			// the documents had not been stored.
+			if (!is_dir(FCPATH . $missionDocsDir) || !is_writable(FCPATH . $missionDocsDir)) {
+				log_message('error', 'Mission uploads: folder missing or not writable: ' . FCPATH . $missionDocsDir);
+				echo json_encode(array('status' => FALSE, 'message' => 'The server cannot save documents right now (upload folder is not writable). Nothing has been submitted. Please report this.'));
+				return;
+			}
+
+			$missionDocFields = array(
+				'medical_fitness_doc'  => array('label' => 'Medical Fitness Certificate', 'prefix' => 'mission_medical_fitness'),
+				'undertaking_form_doc' => array('label' => 'Undertaking Form',            'prefix' => 'mission_undertaking_form'),
+			);
+
+			foreach ($missionDocFields as $fieldName => $meta) {
+				if (empty($_FILES[$fieldName]) || $_FILES[$fieldName]['name'] === '') {
+					// Not attached. Both are required when the application is
+					// being submitted, so record it rather than skipping
+					// quietly - a silent skip is what made it impossible to
+					// tell whether the documents had been saved.
+					if ($this->input->post('type') === 'Submit Application') {
+						$missionUploadError = $meta['label'] . ' was not received by the server. Please attach it and submit again.';
+						log_message('error', 'Mission uploads: ' . $fieldName . ' missing from $_FILES for ' . $this->input->post('appid'));
+						break;
+					}
+					continue;
+				}
+				$oneFile = $_FILES[$fieldName];
+
+				if (!empty($oneFile['error'])) {
+					$missionUploadError = $meta['label'] . ' could not be uploaded (PHP upload error code ' . $oneFile['error'] . ').';
+					log_message('error', 'Mission uploads: ' . $fieldName . ' PHP error code ' . $oneFile['error']);
+					break;
+				}
+				if (strtolower(pathinfo($oneFile['name'], PATHINFO_EXTENSION)) !== 'pdf') {
+					$missionUploadError = $meta['label'] . ' must be a PDF file.';
+					break;
+				}
+				if ($oneFile['size'] > 2097152) {
+					$missionUploadError = $meta['label'] . ' must be 2 MB or smaller.';
+					break;
+				}
+
+				$safeName   = preg_replace('/[^A-Za-z0-9._-]/', '_', $oneFile['name']);
+				$storedName = time() . '_' . $meta['prefix'] . '_' . $this->input->post('appid') . '_' . $safeName;
+
+				if (iccr_safe_move_upload($oneFile, FCPATH . $missionDocsDir . $storedName, 'pdf')) {
+					// Confirm the file really is on disk before recording the
+					// name in the database - otherwise the row could point at
+					// a file that does not exist.
+					if (!file_exists(FCPATH . $missionDocsDir . $storedName)) {
+						$missionUploadError = $meta['label'] . ' was not written to disk. Please try again.';
+						log_message('error', 'Mission uploads: move reported success but file absent: ' . $storedName);
+						break;
+					}
+					if ($fieldName === 'medical_fitness_doc') {
+						$missionMedicalName = $storedName;
+					} else {
+						$missionUndertakingName = $storedName;
+					}
+					log_message('info', 'Mission uploads: stored ' . $storedName);
+				} else {
+					$missionUploadError = $meta['label'] . ' was rejected by the upload check (type or size). Please upload a valid PDF.';
+					log_message('error', 'Mission uploads: iccr_safe_move_upload failed for ' . $oneFile['name']);
+					break;
+				}
+			}
+
+			if ($missionUploadError !== '') {
+				echo json_encode(array('status' => FALSE, 'message' => $missionUploadError));
+				return;
+			}
+
+			// Trace what is about to be written, so a submission can be checked
+			// against the log later without guessing.
+			log_message('info', 'Mission uploads for ' . $this->input->post('appid')
+				. ' - medical: ' . ($missionMedicalName !== '' ? $missionMedicalName : '(none)')
+				. ' | undertaking: ' . ($missionUndertakingName !== '' ? $missionUndertakingName : '(none)'));
+
+			// The scheme drives two saved values - scholarship_id and the
+			// generated reference number (COUNTRY-YEAR-SCHEME-rand-no). Saving
+			// it blank would leave a gap in every reference number and blank the
+			// scheme on every later screen, so refuse the submission outright
+			// rather than write a broken record. Only enforced on the approval
+			// path, since a rejection does not assign a scheme.
+			if ($this->input->post('type') === 'Submit Application') {
+				$postedScheme = trim((string) $this->input->post('schloarship_name'));
+				if ($postedScheme === '') {
+					echo json_encode(array('status' => FALSE, 'message' => 'Please select the Scholarship Programme before submitting.'));
+					return;
+				}
+			}
+
 			$checklist = ""; $notSelected = array();$messages_for_mail = "";
 			$ocunter = 1;
 			$current_checklist = $this->getApplicantCheckList($this->input->post('appid'));			
@@ -4041,7 +4320,16 @@ $html = $content;
 							$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 							$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
 							$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-							$update['mission_person_signature'] = $imgname;							
+							$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+							
 							$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 							$update['mission_cheklist_avail'] = $data['xss_data']['mission_cheklist_avail'];	
 							$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4073,7 +4361,16 @@ $html = $content;
 						$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 						$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
 						$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-						$update['mission_person_signature'] = $imgname;	
+						$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+	
 						$update['scholarship_id'] = $data['xss_data']['schloarship_name'];
 						$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 						$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4110,7 +4407,16 @@ $html = $content;
 						$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 						$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
 						$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-						$update['mission_person_signature'] = $imgname;	
+						$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+	
 						$update['scholarship_id'] = $data['xss_data']['schloarship_name'];
 						$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 						$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4145,9 +4451,10 @@ $html = $content;
 		// echo '<pre>'; print_r($post);die;
 		try{
 			$referenceNumber = "";$appno = '';
-			$user_data = $this->session->userdata('user_data');				
-			$missionEmail = $user_data['email'];	
-			$imgname = "";			
+			$user_data = $this->session->userdata('user_data');
+			$missionEmail = $user_data['email'];
+			$userId = $user_data['userid'];
+			$imgname = "";
 			if(!empty($_FILES))
 			{	
 				$files = $_FILES['signature']; 
@@ -4244,7 +4551,16 @@ $html = $content;
 							$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 							$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
 							$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-							$update['mission_person_signature'] = $imgname;							
+							$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+							
 							$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 							$update['mission_cheklist_avail'] = $data['xss_data']['mission_cheklist_avail'];	
 							$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4277,7 +4593,16 @@ $html = $content;
 						$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 						$update['mission_person_designation'] = $data['xss_data']['mission_desg'];	
 						$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-						$update['mission_person_signature'] = $imgname;	
+						$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+	
 						$update['scholarship_id'] = $data['xss_data']['schloarship_name'];
 						$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 						$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4304,6 +4629,11 @@ $html = $content;
 						  $messages .= '<strong>Hi '.$userdata[0]['username'].',</strong><br><br>';
 						 
 						  $messages .= "<br/><br/>Mr./Ms./Mrs. ".$userdata[0]['username'] .", your admission in Course has been provisionally confirmed at ".$uninmae[0]['name']." under ".$schemename[0]['scheme_name']."  (".$schemename[0]['code'].").You may login on a2a portal page and accept or reject the offer of admissions with in stipulate time ".$this->input->post("timeline")."(see Timeline).";	
+						  // $body was appended to (.=) without ever being initialized in this
+						  // branch, causing an undefined-variable warning; $messages already
+						  // holds the full built-up text just like the sibling branch below,
+						  // so start $body the same way that branch does.
+						  $body = '';
 						  $body .= $messages;						
 						  $mailsend = $this->sendMail($body,$email_to,"Indian Council for Cultural Relations.","mail_not_process");
 					
@@ -4337,7 +4667,16 @@ $html = $content;
 						$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 						$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
 						$update['mission_person_place'] = $data['xss_data']['mission_place'];		
-						$update['mission_person_signature'] = $imgname;	
+						$update['mission_person_signature'] = $imgname;
+						// Store the two documents the Mission uploaded on the
+						// process screen. Guarded with empty() so this is a
+						// no-op when nothing was attached - that way an earlier
+						// upload is never overwritten with a blank value, and
+						// this line is harmless on the code paths where these
+						// variables were never set.
+						if (!empty($missionMedicalName))     { $update['mission_medical_fitness']  = $missionMedicalName; }
+						if (!empty($missionUndertakingName)) { $update['mission_undertaking_form'] = $missionUndertakingName; }
+	
 						$update['scholarship_id'] = $data['xss_data']['schloarship_name'];
 						$update['english_proficiency_test_marks'] = $data['xss_data']['testmarks'];	
 						$update['checklist_ids'] = $data['xss_data']['checklist_ids'];	
@@ -4364,6 +4703,11 @@ $html = $content;
 						  $messages .= '<strong>Hi '.$userdata[0]['username'].',</strong><br><br>';
 						 
 						  $messages .= "<br/><br/>Mr./Ms. ".$userdata[0]['username'] .", your admission in Course has been provisionally confirmed at ".$uninmae[0]['name']." under ".$schemename[0]['scheme_name']."  (".$schemename[0]['code'].").You may login on a2a portal page and accept or reject the offer of admissions with in stipulate time ".$this->input->post("timeline")."(see Timeline).";	
+						  // $body was appended to (.=) without ever being initialized in this
+						  // branch, causing an undefined-variable warning; $messages already
+						  // holds the full built-up text just like the sibling branch above,
+						  // so start $body the same way that branch does.
+						  $body = '';
 						  $body .= $messages;						
 						  $mailsend = $this->sendMail($body,$email_to,"Indian Council for Cultural Relations.","mail_not_process");
 					
@@ -4396,14 +4740,14 @@ $html = $content;
 		$applicant_checklist = array("1","2","5","6","9");
 		$mission_checklist = array("3","4","8","11");
 		$applicant_check = array();$mission_check = array();
-		$applicant = $this->common_model->getApplicationStepOneByAppno($applicationId);
+		$applicant = $this->common_model->getApplicationStepOneByAppno($appid);
 		for($i=1; $i<=11;$i++)
 		{
 			if($i!= 7)
 			{
 				if($i == 4)
 				{
-					if($applicant[0]['course'] == 12)
+					if(!empty($applicant) && $applicant[0]['course'] == 12)
 					{
 						array_push($mission_check,$i);
 						array_push($fulllist,$i);
@@ -4411,7 +4755,9 @@ $html = $content;
 				}
 				elseif($i == 5)
 				{
-					if($applicant[0]['programee'] == 5 || $applicant[0]['programee'] == 6)
+					// 'programee' is a legacy typo'd key upstream (not renaming it
+					// here to avoid touching business logic) - guard the read only.
+					if(!empty($applicant) && (isset($applicant[0]['programee']) && ($applicant[0]['programee'] == 5 || $applicant[0]['programee'] == 6)))
 					{
 						array_push($applicant_check,$i);
 						array_push($fulllist,$i);
@@ -4419,7 +4765,9 @@ $html = $content;
 				}
 				elseif($i == 6)
 				{
-					if($applicaitonStepOne[0]['programee'] == 3 || $applicaitonStepOne[0]['programee'] == 4)
+					// 'programee' is a legacy typo'd key upstream (not renaming it
+					// here to avoid touching business logic) - guard the read only.
+					if(!empty($applicant) && (isset($applicant[0]['programee']) && ($applicant[0]['programee'] == 3 || $applicant[0]['programee'] == 4)))
 					{
 						array_push($applicant_check,$i);
 						array_push($fulllist,$i);
@@ -5086,7 +5434,8 @@ $html = $content;
 		//echo "sadsad";die;
     	$user_data = $this->session->userdata('user_data');
 		$missionId = $user_data['user_country'];
-		$countryid = $misionData[0]['country']; 
+		// $countryid removed: was computed from undefined $misionData and never
+		// used anywhere in this function (only threw warnings).
 		$vars = $this->input->post();
 		$nowtime = time();
 		//print_r($user_data);die;

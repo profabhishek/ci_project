@@ -74,7 +74,7 @@
 	  <h5 class="text-center">Please Upload All Documents Listed Below <br/><span style="color:red;">Note: (All document should be in PDF/Image format) <br/> All file names should be in english language like (physicalfiltness.pdf..etc.) not in other language like:-> غفران_الحلبي_كشف.pdf.
 	  <br/>
 	  </span></h5>
-	  <form id="form-two-application" action="<?php echo site_url();?>Sfs?appno=<?php echo $_GET['appno']; ?>" method="post" enctype="multipart/form-data">   
+	  <form id="form-two-application" action="<?php echo site_url();?>Sfs?appno=<?php echo html_escape($_GET['appno']); ?>" method="post" enctype="multipart/form-data">   
 	  <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
               <div class="box-body">
               	<div class="passport-sec col-xs-12 col-sm-12 col-md-12 pdleft pdright">
@@ -918,7 +918,7 @@
                 ?>                
                 </div> 
                   <div class="name-sec col-xs-4 col-sm-2 col-md-4 pull-right">
-				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_other_info?appno=<?php echo $_GET['appno']; ?>" class="form-control btn btn-info"><< Previous</a>
+				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_other_info?appno=<?php echo html_escape($_GET['appno']); ?>" class="form-control btn btn-info"><< Previous</a>
 				  </div>               
               	</div>
               </div>

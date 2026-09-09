@@ -2211,6 +2211,18 @@ $(document).on('change', '.nomenclature', function () {
 		$.each($('#signature')[0].files, function (i, file) {
 			datafiles.append('signature', file);
 		});
+		// The Mission process screen also collects a Medical Fitness
+		// Certificate and an Undertaking Form. serializeArray() below copies
+		// only normal form fields - it does NOT include file inputs - so
+		// without appending them here the two PDFs would never reach the
+		// server. Guarded so this handler keeps working unchanged on any page
+		// that posts this form without those two inputs present.
+		if ($('#medical_fitness_doc').length && $('#medical_fitness_doc')[0].files.length) {
+			datafiles.append('medical_fitness_doc', $('#medical_fitness_doc')[0].files[0]);
+		}
+		if ($('#undertaking_form_doc').length && $('#undertaking_form_doc')[0].files.length) {
+			datafiles.append('undertaking_form_doc', $('#undertaking_form_doc')[0].files[0]);
+		}
 		var formDetails = $('#' + formID);
 		var process = $(".process-submit").val();
 		var appno = $('#applicaiton_number').val();
@@ -2257,13 +2269,32 @@ $(document).on('change', '.nomenclature', function () {
 				}
 				if (data.status == false) {
 					$('.form_head').scrollTop();
-					BootstrapDialog.show({ type: BootstrapDialog.TYPE_SUCCESS, title: "Success", message: "Application " + data.ref + " Submitted Successfully!", buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); location.href = baseURL + "mission/dashboard"; } }] });
+					// This used to show a GREEN "Submitted Successfully" dialog
+					// even though the server had just reported a FAILURE, and
+					// then redirected to the dashboard. Any real problem - a
+					// document that could not be saved, a missing scheme - was
+					// therefore invisible: staff saw "Success", left the page,
+					// and the form data was lost.
+					//
+					// Show the server's actual message as an error and stay on
+					// the page so the submission can be corrected and retried.
+					if (data.message) {
+						BootstrapDialog.show({ type: BootstrapDialog.TYPE_DANGER, title: "Not submitted", message: data.message, buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); } }] });
+					}
+					else {
+						BootstrapDialog.show({ type: BootstrapDialog.TYPE_DANGER, title: "Not submitted", message: "The application could not be submitted. Please try again.", buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); } }] });
+					}
 					$("#loader").hide();
 				}
 
 			},
 			error: function (jqXHR, text, error) {
-
+				// The server returned something that was not valid JSON - most
+				// often a PHP fatal error. Previously this was swallowed
+				// silently and the page just sat there with the loader
+				// spinning, which looked like the form had hung.
+				$("#loader").hide();
+				BootstrapDialog.show({ type: BootstrapDialog.TYPE_DANGER, title: "Not submitted", message: "The server did not accept the submission. Nothing has been saved. Please try again, and report this if it keeps happening.", buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); } }] });
 			}
 		});
 		return false;

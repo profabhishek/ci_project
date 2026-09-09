@@ -92,7 +92,7 @@ class User extends CI_Controller {
 			$this->form_validation->set_rules('username', 'Email', 'required|valid_email');
 	        $this->form_validation->set_rules('pass', 'Password', 'required');	
 			$year = date("Y");
-	        $actual_link =  $_SERVER['HTTP_REFERER'];
+	        $actual_link =  isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url();
 	        if ($this->form_validation->run() == FALSE) { 	
 				$this->session->set_flashdata('message_type', 'error');
 				$this->session->set_flashdata('error', 'Wrong Username/Password!');
@@ -142,7 +142,7 @@ class User extends CI_Controller {
 					
 					else
 					{
-						if($userType->user_type == 1){
+						if(!empty($userType) && $userType->user_type == 1){
 							$this->session->set_flashdata('message_type', 'error');
 							$this->session->set_flashdata('error','Please select registration year');
 							redirect($actual_link);
@@ -166,7 +166,13 @@ class User extends CI_Controller {
 		            if (is_object($userInfo) && property_exists($userInfo,"username")) {	
 		            	
 		            	$password = $this->input->post('pass');		            	
-						$Pass = sha1($userInfo->password.$_SESSION['salt']);
+						// The login salt is only set when the login page itself renders
+					// (site/home.php etc). If the session lost it before submit (expired
+					// session, resubmitted form, etc.) this used to throw an "Undefined
+					// array key 'salt'" warning; falling back to an empty string instead
+					// just makes the password check below fail normally, no warning.
+					$loginSalt = isset($_SESSION['salt']) ? $_SESSION['salt'] : '';
+					$Pass = sha1($userInfo->password.$loginSalt);
 						if(trim($password) !=$Pass){					
 							$this->session->set_flashdata('message_type', 'error');		
 							$this->session->set_flashdata('error', 'Wrong Username/Password!');
@@ -247,7 +253,7 @@ class User extends CI_Controller {
 			$this->form_validation->set_rules('username', 'Email', 'required|valid_email');
 	        $this->form_validation->set_rules('pass', 'Password', 'required');	
 			$year = date("Y");
-	        $actual_link =  $_SERVER['HTTP_REFERER'];
+	        $actual_link =  isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url();
 	        if ($this->form_validation->run() == FALSE) { 	
 				$this->session->set_flashdata('message_type', 'error');
 				$this->session->set_flashdata('error', 'Wrong Username/Password!');
@@ -260,7 +266,7 @@ class User extends CI_Controller {
 	            if($this->isValidCaptch($clean['captchatext']))
 	            {
 					$userType = $this->user_model->checkType($clean);
-					if($clean['year']!= '' && !empty($clean['year']) && $userType->user_type == 1)
+					if(!empty($userType) && $clean['year']!= '' && !empty($clean['year']) && $userType->user_type == 1)
 					{
 						$userInfo = $this->user_model->checkLoginYear($clean,$clean['year']);
 						//echo "<pre>";print_r($userInfo);die;
@@ -280,7 +286,7 @@ class User extends CI_Controller {
 					}
 					else
 					{
-						if($userType->user_type == 1){
+						if(!empty($userType) && $userType->user_type == 1){
 							$this->session->set_flashdata('message_type', 'error');
 							$this->session->set_flashdata('error','Please select registration year');
 							redirect($actual_link);
@@ -302,7 +308,13 @@ class User extends CI_Controller {
 		            if (is_object($userInfo) && property_exists($userInfo,"username")) {	
 		            	
 		            	$password = $this->input->post('pass');		            	
-						$Pass = sha1($userInfo->password.$_SESSION['salt']);
+						// The login salt is only set when the login page itself renders
+					// (site/home.php etc). If the session lost it before submit (expired
+					// session, resubmitted form, etc.) this used to throw an "Undefined
+					// array key 'salt'" warning; falling back to an empty string instead
+					// just makes the password check below fail normally, no warning.
+					$loginSalt = isset($_SESSION['salt']) ? $_SESSION['salt'] : '';
+					$Pass = sha1($userInfo->password.$loginSalt);
 						if(trim($password) !=$Pass){					
 							$this->session->set_flashdata('message_type', 'error');		
 							$this->session->set_flashdata('error', 'Wrong Username/Password!');
@@ -376,9 +388,11 @@ class User extends CI_Controller {
     {        
        
 		$userInfo =$this->session->userdata('user_data');
-		$lastLoginHistry = $this->user_model->updateLogoutHistry($userInfo);
-		$roles = $this->config->item('roles_id');
-		$role = $roles[$userInfo['user_type']];
+		if (!empty($userInfo)) {
+			$lastLoginHistry = $this->user_model->updateLogoutHistry($userInfo);
+		}
+		// $role removed: computed here but never used anywhere in this
+		// function (also threw a warning when $userInfo was already empty).
 		$this->session->unset_userdata('user_data');
 		$this->session->sess_destroy();
 		redirect('home');    	       
@@ -386,8 +400,8 @@ class User extends CI_Controller {
 	function isValidCaptch($captchText)
 	{
 		$sessionData = $this->session->userdata('captcha_code');
-		$sessionText = $sessionData['code'];
-		
+		$sessionText = !empty($sessionData) ? $sessionData['code'] : null;
+
 		return ($captchText == $sessionText) ? TRUE : FALSE;
 	}
 	
@@ -439,17 +453,17 @@ class User extends CI_Controller {
 		   }
    }
    public function login()
-	{ 
+	{
 		try
 		{
 			$this->form_validation->set_rules('username', 'Email', 'required|valid_email');
-	        $this->form_validation->set_rules('pass', 'Password', 'required');	
+	        $this->form_validation->set_rules('pass', 'Password', 'required');
 			$year = date("Y");
-	        $actual_link =  $_SERVER['HTTP_REFERER'];
-	        if ($this->form_validation->run() == FALSE) { 	
+	        $actual_link =  isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url();
+	        if ($this->form_validation->run() == FALSE) {
 				$this->session->set_flashdata('message_type', 'error');
 				$this->session->set_flashdata('error', 'Wrong Username/Password!');
-				redirect($actual_link);				            
+				redirect($actual_link);
 	        } else {
 	            $post     = $this->input->post();
 	            //$clean    = $this->security->xss_clean($post);
@@ -458,16 +472,17 @@ class User extends CI_Controller {
 	            if($this->isValidCaptch($clean['captchatext']))
 	            {
 					$userType = $this->user_model->checkType($clean);
-					if($clean['year']!= '' && !empty($clean['year']) && $userType->user_type == 1)
+					if(!empty($userType) && $clean['year']!= '' && !empty($clean['year']) && $userType->user_type == 1)
 					{
 						$userInfo = $this->user_model->checkLoginYear($clean,$clean['year']);
 						//echo "<pre>";print_r($userInfo);die;
 						//$userLastDateSubmit = $this->user_model->checkSubmitDetails($userInfo->id);
-						
-						//echo "<pre>";var_dump($userCountry);die;
-						$userLastDateSubmit = $this->user_model->checkSubmitDetails($userInfo->id);
-					    
-						if($userInfo->apply_course_type != 100 && $userInfo->user_country != 188){
+
+						// Note: checkSubmitDetails() query removed — its result (formerly
+						// $userLastDateSubmit) was only used by the "Login Restriction" block
+						// below, which is fully commented out. The query ran on every single
+						// login for no effect, adding an extra DB round-trip.
+						if(is_object($userInfo) && $userInfo->apply_course_type != 100 && $userInfo->user_country != 188){
 							
 						/* Login Restriction*/
 							
@@ -488,7 +503,7 @@ class User extends CI_Controller {
 					}
 					else
 					{
-						if($userType->user_type == 1){
+						if(!empty($userType) && $userType->user_type == 1){
 							$this->session->set_flashdata('message_type', 'error');
 							$this->session->set_flashdata('error','Please select registration year');
 							redirect($actual_link);
@@ -505,12 +520,18 @@ class User extends CI_Controller {
 							}
 							$userInfo = $this->user_model->checkLogin($clean);
 						}
-						
-					} 	            
-		            if (is_object($userInfo) && property_exists($userInfo,"username")) {	
-		            	
-		            	$password = $this->input->post('pass');		            	
-						$Pass = sha1($userInfo->password.$_SESSION['salt']);
+
+					}
+		            if (is_object($userInfo) && property_exists($userInfo,"username")) {
+
+		            	$password = $this->input->post('pass');
+						// The login salt is only set when the login page itself renders
+					// (site/home.php etc). If the session lost it before submit (expired
+					// session, resubmitted form, etc.) this used to throw an "Undefined
+					// array key 'salt'" warning; falling back to an empty string instead
+					// just makes the password check below fail normally, no warning.
+					$loginSalt = isset($_SESSION['salt']) ? $_SESSION['salt'] : '';
+					$Pass = sha1($userInfo->password.$loginSalt);
 						if(trim($password) !=$Pass){
                              
 												
@@ -538,7 +559,7 @@ class User extends CI_Controller {
 						//$this->session->regenerate_id();
 						$this->user_model->updateLogin($userInfo->id);
 			   			$this->session->set_userdata('user_data',$datas);
-						
+
 						//$lastLoginHistry = $this->user_model->updateLoginHistry($datas);
 			   			$roles = $this->config->item('roles_id');
 			   			$role = $roles[$userInfo->user_type];
@@ -547,7 +568,6 @@ class User extends CI_Controller {
 		            	switch($role)
 		            	{
 							case "Student":
-							
 							redirect(site_url() . 'applicant/dashboard');
 							break;
 							case "University":
@@ -565,7 +585,7 @@ class User extends CI_Controller {
 							case "Super Admin":
 							redirect(site_url() . 'admin/dashboard');
 							break;
-						}          
+						}
 		            }
 		            else
 		            {
@@ -596,7 +616,7 @@ class User extends CI_Controller {
     $post = $this->input->post(NULL, TRUE);
     $parent_type = $post['parent_type'] ?? '';
 
-    $actual_link = $_SERVER['HTTP_REFERER'];
+    $actual_link = $_SERVER['HTTP_REFERER'] ?? site_url();
     $year = date("Y");
 
     // ======== Conditional Parents Validation ==========
@@ -754,7 +774,7 @@ class User extends CI_Controller {
 	        $this->form_validation->set_rules('isindian', 'Is Indian', 'required');
 	        $post     = $this->input->post();
 			$year = date("Y");
-	        $actual_link =  $_SERVER['HTTP_REFERER'];
+	        $actual_link =  isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url();
 	        //$clean    = $this->security->xss_clean($post);
 			$cleanData = $this->security->xss_clean($post);
 			$clean =  $this->strip_quotes($cleanData);

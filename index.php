@@ -68,7 +68,7 @@ if( ! ini_get('date.timezone') )
 }
 //echo $_SERVER['CI_ENV'];
 //define('ENVIRONMENT', 'production');
-define('ENVIRONMENT', 'development');
+define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : ((isset($_SERVER['SERVER_NAME']) && in_array($_SERVER['SERVER_NAME'], array('localhost', '127.0.0.1', '::1'))) ? 'development' : 'production'));
 
 /*
  *---------------------------------------------------------------

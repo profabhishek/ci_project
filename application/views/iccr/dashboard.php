@@ -160,8 +160,7 @@ if(!empty($notifications))
                 <ul class="sidebar-nav"
                     id="sidebar">
                     <?php
-
-$division = $user_data['state']; 
+$division = $user_data['state'];
 switch ($division) {
     case "0":
         ?>
@@ -225,27 +224,27 @@ switch ($division) {
                                     href="<?php echo site_url(); ?>headquarter/newapplications/2026"><img
                                         src="<?php echo site_url();?>assets/site/main/images/newnotification.gif.png"
                                         alt="new gif Image">Application Received (2026-2027)
-                                        <!-- <span class="pull-right fltright"><?php echo getCountUniversityApplications();?></span> -->
+                                        <!-- span removed: was silently running a live 5-table join query (getCountUniversityApplications) on every page load even though never displayed -->
                                     </a>
                             </li>
                         <li><a class="example"
                                     href="<?php echo site_url(); ?>headquarter/newapplications/2025">Application Received (2025-2026)
-                                        <!-- <span class="pull-right fltright"><?php echo getCountUniversityApplications();?></span> -->
+                                        <!-- span removed: see note above -->
                                     </a>
                             </li>
                         <li><a class="example"
                                     href="<?php echo site_url(); ?>headquarter/newapplications/2024">Application Received (2024-2025)
-                                        <!-- <span class="pull-right fltright"><?php echo getCountUniversityApplications();?></span> -->
+                                        <!-- span removed: see note above -->
                                     </a>
                             </li>
                             <li><a class="example"
                                     href="<?php echo site_url(); ?>headquarter/newapplications/2023">Application Received (2023-2024)
-                                    <!-- <span class="pull-right fltright"><?php echo getCountUniversityApplications();?></span> -->
+                                    <!-- span removed: see note above -->
                                 </a>
                             </li>
                             <li><a class="example"
                                     href="<?php echo site_url(); ?>headquarter/newapplications/2022">Application Received (2022-2023)
-                                    <!-- <span class="pull-right fltright"><?php echo getCountUniversityApplications();?></span> -->
+                                    <!-- span removed: see note above -->
                                 </a>
                             </li>
                             <li><a class="example"
@@ -313,29 +312,16 @@ switch ($division) {
                 
 
                 <?php
-
+                // NOTE: this block previously ran getUniversityResponseSentByHqrsToMission()
+                // (a 6-table-join query, unbounded, since vars length/start are never set
+                // here since this runs on a plain page load, not the AJAX/DataTables endpoint)
+                // purely to compute counter/total2022, which are only ever referenced inside
+                // HTML comments below (never actually rendered). Removed the query; kept the
+                // variables at 0 so those still-executing echo tags inside the comments
+                // below don't throw undefined-variable warnings.
                 $year = '2020';
-                $res = array(
-                    'iccr_status' => 1,
-                    'status' => 10
-                );      
-                
-                $vars = $this->input->post();
-                $counter = isset($_POST['start'])?$_POST['start']:0;
-                $result = $this->hqrs_model->getUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $totalResult = $this->hqrs_model->getTotalUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $response = array();
-                $counter++;
-                if(!empty($result))
-                {
-                    $counter = 0;
-                    foreach($result as $r)
-                    {
-                        $counter++;					
-                    }	
-                }
-                    $total2022 =  $counter;
-       
+                $counter = 0;
+                $total2022 = 0;
                 ?>
 
                 <!-- Commented Start Manoj 27-02-2025
@@ -345,30 +331,11 @@ switch ($division) {
                 Commented Start Manoj 27-02-2025 -->
 
                 <?php
-
+                // NOTE: see removed-query comment above — same dead computation, different year.
                 $year = '2022';
-                $res = array(
-                    'iccr_status' => 1,
-                    'status' => 10
-                );      
-                
-                $vars = $this->input->post();
-                $counter = isset($_POST['start'])?$_POST['start']:0;
-                $result = $this->hqrs_model->getUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $totalResult = $this->hqrs_model->getTotalUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $response = array();
-                $counter++;
-                if(!empty($result))
-                {
-                    $counter = 0;
-                    foreach($result as $r)
-                    {
-                        $counter++;					
-                    }	
-                }
-                    $total2022 =  $counter;
- 
-			    ?> 
+                $counter = 0;
+                $total2022 = 0;
+			    ?>
 
 
                 <li><a href="<?php echo site_url(); ?>headquarter/getUniversityResponseSentByHqarsToMissiondemo/2021">Total Confirmation sent by Mission(2021-2022)
@@ -378,54 +345,20 @@ switch ($division) {
                 <!-- <span class="pull-right fltright"> <?php echo $counter; ?></span> -->
                     </a></li>
                 
-                <?php $year = '2023';
-                $res = array(
-                    'iccr_status' => 1,
-                    'status' => 10
-                );      
-                
-                $vars = $this->input->post();
-                $counter = isset($_POST['start'])?$_POST['start']:0;
-                $result = $this->hqrs_model->getUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $totalResult = $this->hqrs_model->getTotalUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $response = array();
-                $counter++;
-                if(!empty($result))
-                {
-                    $counter = 0;
-                    foreach($result as $r)
-                    {
-                        $counter++;					
-                    }	
-                }
-                    $total2022 =  $counter;
+                <?php
+                // NOTE: see removed-query comment above — same dead computation, different year.
+                $year = '2023';
+                $counter = 0;
 				?>
 
                 <li><a href="<?php echo site_url(); ?>headquarter/getUniversityResponseSentByHqarsToMissiondemo/2023">Total Confirmation sent by Mission(2023-2024)
                     <!-- <span class="pull-right fltright"><?php echo $counter; ?></span> -->
                 </a></li>
 
-            <?php $year = '2024';
-                $res = array(
-                    'iccr_status' => 1,
-                    'status' => 10
-                );      
-                
-                $vars = $this->input->post();
-                $counter = isset($_POST['start'])?$_POST['start']:0;
-                $result = $this->hqrs_model->getUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $totalResult = $this->hqrs_model->getTotalUniversityResponseSentByHqrsToMission($year,$vars,$res);
-                $response = array();
-                $counter++;
-                if(!empty($result))
-                {
-                    $counter = 0;
-                    foreach($result as $r)
-                    {
-                        $counter++;					
-                    }	
-                }
-                    $total2022 =  $counter;
+            <?php
+                // NOTE: see removed-query comment above — same dead computation, different year.
+                $year = '2024';
+                $counter = 0;
             ?>
                 <li>
                     <a href="<?php echo site_url(); ?>headquarter/getUniversityResponseSentByHqarsToMissiondemo/2024">

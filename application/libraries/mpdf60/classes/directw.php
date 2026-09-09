@@ -4,7 +4,11 @@ class directw {
 
 var $mpdf = null;
 
-function directw(&$mpdf) {
+// Renamed from the old PHP4-style same-as-class-name constructor to
+// __construct() - PHP 8 no longer calls the former automatically, which
+// left $this->mpdf null and caused "Attempt to read property on null"
+// warnings anywhere direct-write text placement was used.
+function __construct(&$mpdf) {
 	$this->mpdf = $mpdf;
 }
 

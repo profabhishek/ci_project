@@ -71,33 +71,11 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
               	<?php              			 
               			
               			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
-							//echo $imgs;
-							$data = base64_encode($imgs);
-							$f = finfo_open();
-							$imgdata = base64_decode($data);
-                            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-          				if($userd->dir == "")
-						{
-							?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php		
-						}						
-						else
-						{
-							if(file_exists($userd->dir.'/'. $userImage))
-							{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="data:<?php if(!empty($mime_type)){echo $mime_type;}?>;base64,<?php if(!empty($data)){echo $data;}?>"/>
-							<?php		
-							}
-							else{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php
-							}
-							
-						}
+						if (!function_exists('iccr_profile_img_src') && file_exists(APPPATH.'helpers/image_helper.php')) { $this->load->helper('image'); }
+						$profSrc = function_exists('iccr_profile_img_src') ? iccr_profile_img_src($userd->dir, $userImage) : site_url().'assets/site/main/profile_pics/'.$userImage;
+						?>
+						<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo $profSrc; ?>"/>
+						<?php
               		?>
               	</div>
               	<!-----<div class="col-xs-3 prfl pull-right" >

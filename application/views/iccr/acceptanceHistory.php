@@ -21,76 +21,44 @@
                      text-decoration: underline;}
     optgroup option{color:#747474; font-size: 14px;}
 </style>
-<?php
-$stateuniversities = $this->common_model->getStateUniversities();
-$centraluniversities = $this->common_model->getCentralUniversities();
-$nits = $this->common_model->getNITUniversities();
-$yogas = $this->common_model->getYogaGurus();
-$states = $this->common_model->getAllStates();
-$statewiseUniversites = array();
-foreach ($states as $st) {
-    if (!array_key_exists($st['id'], $statewiseUniversites)) {
-        $statewiseUniversites[$st['id']] = array();
-    }
-}
-//print_r($states);
-$stateuniversities_one = str_replace("'", "\'", json_encode($stateuniversities));
-$centraluniversities_one = str_replace("'", "\'", json_encode($centraluniversities));
-$nits_one = str_replace("'", "\'", json_encode($nits));
-$yogas_one = str_replace("'", "\'", json_encode($yogas));
-$states_array = json_encode($statewiseUniversites);
-?>
-<script type="text/javascript">
-    var stateuniversities = JSON.parse('<?php echo $stateuniversities_one; ?>');
-    var centralUniversities = JSON.parse('<?php echo $centraluniversities_one; ?>');
-    var nits = JSON.parse('<?php echo $nits_one; ?>');
-    var yogas = JSON.parse('<?php echo $yogas_one; ?>');
-    var statesarray = JSON.parse('<?php echo $states_array; ?>');
-</script>
-<section class="meacontent">	
-    <div class="col-xs-10 form_head">		
+<section class="meacontent">
+    <div class="col-xs-10 form_head">
         <img src="<?php echo site_url(); ?>assets/site/main/images/indian-embelam.png" alt="Indian Embelam">
         <h3 class="text-center caps">Application Details For Scholarship through ICCR</h3>
         <h5 class="text-center">FILLED BY APPLICANT</h5>
     </div>
 
-    <div  class="container" style="min-height:410px;padding:0px;">	
-        <form method="post" action="<?php echo base_url(); ?>university/downloadApplication/<?php echo $this->uri->segment(3); ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
-              ">
-            <input id="approvedappId" name="approvedappId" value="<?php echo $this->uri->segment(3); ?>" type="hidden"/>
-            <input class="pull-right export-btn" style="margin-right:11px;margin-top:-6px;" type="submit" value=""/>	
-            <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">			
-        </form>
-        <div class="tab-content detailpagepdf">		
-            <div id="home" class="tab-pane fade in active">	
+    <div  class="container" style="min-height:410px;padding:0px;">
+        <div class="tab-content detailpagepdf">
+            <div id="home" class="tab-pane fade in active">
 
                 <div class="box-body">
                     <div class="col-xs-3 prfl pull-right" >
 					<?php
 
-$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
+$userd = $this->common_model->getUserInfo(!empty($applicaitonStepOne) ? $applicaitonStepOne[0]['uid'] : null);
 //echo "<pre>";print_r($userd);die;
-						
-          				if($userd->dir == "")
+
+          				if(empty($userd) || $userd->dir == "")
 						{
 							?>
 							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php		
-						}						
+							<?php
+						}
 						else
 						{
 							if(file_exists($userd->dir.'/'. $userImage))
 							{
 								?>
 							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?><?php echo $userd->dir.'/'. $userImage; ?>"/>
-							<?php		
+							<?php
 							}
 							else{
 								?>
 							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
 							<?php
 							}
-							
+
 						}
               		?>
                     </div>
@@ -122,7 +90,7 @@ $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                                             } elseif ($title == 2) {
                                                 echo 'Mrs';
                                             }
-                                            ?>	
+                                            ?>
                                         <?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname']; ?>	</td>
                                 </tr>
                                 <tr >
@@ -148,26 +116,40 @@ $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                                 </tr>
                                 <tr>
                                     <td style="height:35px;font-weight: bold;">
-                                        <label>4. Country</label></td>
+                                        <label>4. Email</label></td>
+                                    <td>:&nbsp;&nbsp;<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['email']; ?>
+
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="height:35px;font-weight: bold;">
+                                        <label>5. Mobile/Phone</label></td>
+                                    <td>:&nbsp;&nbsp;<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['phone_number']; ?>
+
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="height:35px;font-weight: bold;">
+                                        <label>6. Country</label></td>
                                     <td>:&nbsp;&nbsp;<?php
                                         $nationalities = $this->common_model->getCountries();
                                         foreach ($nationalities as $na) {
                                             if (!empty($applicaitonStepOne)) {
-                                                if ($applicaitonStepOne[0]['country'] == $na['id']) {
+                                                if ($applicaitonStepOne[0]['nationality'] == $na['id']) {
                                                     echo $na['country_name'];
                                                 }
                                             }
                                         }
                                         ?>
                                     </td>
-                                </tr>							
+                                </tr>
                                 <tr>
                                     <td colspan="2" style="height:35px;max-width:120px">
                                         <table style="width:100%;" id="tbl_course">
                                             <thead>
-                                            <th>5. Level of Programme</th>
+                                            <th>7. Level of Programme</th>
                                         <?php
-                                        if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] == 1 || $applicaitonStepOne[0]['programme'] == 2 || $applicaitonStepOne[0]['programme'] == 9) {
+                                        if (count($applicaitonStepOne) > 0 && ($applicaitonStepOne[0]['programme'] == 1 || $applicaitonStepOne[0]['programme'] == 2 || $applicaitonStepOne[0]['programme'] == 9)) {
                                             ?>
                                                 <th>Course Type </th>
                                             <?php
@@ -211,51 +193,37 @@ $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                         </table>
 
                     </div>
-                    <div class="name-sec col-xs-12 col-sm-9 col-md-9 pdleft pdright">   
+                    <div class="name-sec col-xs-12 col-sm-9 col-md-9 pdleft pdright">
 
                     </div>
 
                     <!-- /.box-body -->
 
                 </div>
-            </div>		
-            <div id="step3" class="tab-pane fade in active">	 
-                                                        <?php
-                                                        $docsArray = array();
-                                                        if (count($applicaitonDocuments) > 0) {
-                                                            foreach ($applicaitonDocuments as $docs) {
-                                                                if (!array_key_exists($docs['doc_type'], $docsArray)) {
-                                                                    $docsArray[$docs['doc_type']] = array();
-                                                                }
-                                                                $docsArray[$docs['doc_type']]['path'] = $docs['doc_path'];
-                                                                $docsArray[$docs['doc_type']]['time'] = $docs['added_on'];
-                                                            }
-                                                        }
-                                                        ?>
-<?php
-//$response = $this->common_model->getconfirmationDataforHqrs($this->uri->segment(3));
+            </div>	<br><hr>
+            <div id="step3" class="tab-pane fade in active">
+            <label>8. Confirmation Status</label>
 
+<?php
 $response = $this->common_model->getconfirmationDataByMission($this->uri->segment(3));
-$applicaitonsResubmitStatus = $this->common_model->getCommonApplicationStatus($this->uri->segment(3),$universityId,$flag);
 //echo "<pre>";print_r($response);die;
 ?>
 
-			
                 <table id="tbl_relation" class="table" style="width: 100%;">
                     <thead>
-                    <th>6. University/Institute</th>
                     <th >University Name</th>
-                    <th >University Status</th>	
-                    <th >University Letter</th>											
-                    <th >ICCR Letter</th>	
-					 <th >Acceptance</th>	
+                    <th >University Status</th>
+                    <th >University Letter</th>
+                    <th >ICCR Letter</th>
+					<th >Acceptance</th>
+					<th >Medical Fitness Certificate</th>
                     </thead>
                     <tbody>
-                        <tr>											
-                            <td></td>
-                            <td>													
-                <?php $university_first = $this->common_model->getFinalUniversityById($response[0]['regional_university']);
-                echo $university_first[0]['name']; ?></td>
+					<?php if (!empty($response)) { ?>
+                        <tr>
+                            <td>
+                <?php $university_first = !empty($response[0]['regional_university']) ? $this->common_model->getFinalUniversityById($response[0]['regional_university']) : [];
+                echo !empty($university_first) ? $university_first[0]['name'] : 'NA'; ?></td>
                             <td>
                 <?php
                 $sts = 0;
@@ -283,13 +251,56 @@ foreach ($response as $resp) {
     if ($resp['regional_university'] == $response[0]['regional_university']) {
         $sts++;
         if ($resp['university_is_accept'] == 1) {
-            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
-                                        } elseif ($resp['university_is_accept'] == 2) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
+
+			$file_path_un = null;
+			foreach (array(date('Y'), date('Y')-1, date('Y')-2) as $ua_year) {
+				$ua_candidate = './'.$ua_year.'/university_approval/'.$resp['region_one_doc'];
+				if (file_exists($ua_candidate)) {
+					$file_path_un = $ua_candidate;
+					break;
+				}
+			}
+
+			if($file_path_un){
+				if(strpos($resp['region_one_doc'],'.pdf')){
+							 $output = '<a href="'.site_url().'headquarter/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank">Download</a>';
+						   }
+                            else {
+						     $imgs = file_get_contents($file_path_un);
+							 $data = base64_encode($imgs);
+							 $f = finfo_open();
+							 $imgdata = base64_decode($data);
+                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+				            $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank">Download</a>';
+
+							}
+							echo $output;
+							}
+
+            else { ?>
+				 <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
+
+			<?php }
+			?>
+                <?php
+                    } elseif ($resp['university_is_accept'] == 2) {
+                        $file_path_un2 = null;
+                        foreach (array(date('Y'), date('Y')-1, date('Y')-2) as $ua_year) {
+                            $ua_candidate = './'.$ua_year.'/university_approval/'.$resp['region_one_doc'];
+                            if (file_exists($ua_candidate)) {
+                                $file_path_un2 = $ua_candidate;
+                                break;
+                            }
+                        }
+                        if ($file_path_un2) {
+                ?>
+                <a href="<?php echo site_url().'headquarter/downloadDocs/'.base64url_encode($file_path_un2); ?>" target="_blank">Download</a>
+                <?php
+                        } else {
+                ?>
+                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
+                <?php
+                        }
                                         }
                                     }
                                 }
@@ -309,6 +320,8 @@ foreach ($response as $resp) {
                                             <a target="_blank" href="<?php echo site_url(); ?>headquarter/confirmationReceivedWithNewFormat/<?php echo $this->uri->segment(3); ?>/<?php echo $resp['regional_university']; ?>" target="_blank">Download</a>
 
                                             <?php
+                                        } elseif ($resp['university_is_accept'] == 2) {
+                                            echo "Not Confirmed";
                                         }
                                     }
                                 }
@@ -318,133 +331,66 @@ foreach ($response as $resp) {
                                 ?>
 
                             </td>
+
 							<td>
                                 <?php
-								//$mappingData= $this->common_model->getMappingData($response[0]['application_id']);
-								$mappingData= $this->common_model->getMappingDataResponse($response[0]['application_id']);
+								$mappingData= $this->common_model->getMappingData($this->uri->segment(3));
                               //echo "<pre>";print_r($mappingData);
-                                   if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] != -1) {
-                                        if ($response[0]['university_is_accept'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
+                                   if(!empty($mappingData) && $mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
+                                        if ($response[0]['university_is_accept'] == 1) {
                                             ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>headquarter/undertakingFromStudent/<?php echo $response[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
+                                            <a target="_blank" href="<?php echo site_url(); ?>headquarter/undertakingFromStudent/<?php echo $response[0]['application_id']; ?>/<?php echo $response[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
 
                                             <?php
+                                        } else {
+                                            echo "NA";
                                         }
-										else{
-											echo "Decline";
+                                    }
+									else
+									{
+										echo "NA";
+									}
+
+                                ?>
+
+                            </td>
+							<td>
+                                <?php
+									$currentyear = date('Y');
+                                   if(!empty($mappingData) && $mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
+                                        if ($response[0]['university_is_accept'] == 1) {
+								  $file_path_un = FCPATH.$currentyear.'/medical_fitness/'.$mappingData[0]['medical_fitness'];
+                                            ?>
+                                            <a target="_blank" href="<?php echo site_url() . 'headquarter/downloadDocs/' . base64url_encode($file_path_un); ?>" target="_blank"><span class = "label label-success">Download / Print</span></a>
+
+                                            <?php
+                                        } else {
+											echo "NA";
 										}
                                     }
 									else
 									{
 										echo "NA";
 									}
-                                
-                               
+
                                 ?>
 
                             </td>
                         </tr>
-
-                        </tr>
-                    </tbody>
-					         <tbody>
-                        <tr>											
-                            <td></td>
-                            <td>													
-                <?php $university_first = $this->common_model->getFinalUniversityById($response[1]['regional_university']);
-                echo $university_first[0]['name']; ?></td>
-                            <td>
-                <?php
-                $sts = 0;
-                foreach ($response as $resp) {
-                    if ($resp['regional_university'] == $response[1]['regional_university']) {
-                        $sts++;
-                        if ($resp['university_is_accept'] == 1) {
-                            echo "Confirmed";
-                        } elseif ($resp['university_is_accept'] == 2) {
-                            echo "Not Confirmed";
-                        }
-                    }
-                }
-                if ($sts == 0) {
-                    echo "NA";
-                }
-                ?>
-                            </td>
-
-                            <td>
-
-<?php
-$sts = 0;
-foreach ($response as $resp) {
-    if ($resp['regional_university'] == $response[1]['regional_university']) {
-        $sts++;
-        if ($resp['university_is_accept'] == 1) {
-            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
-                                        } elseif ($resp['university_is_accept'] == 2) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $resp['region_one_doc']; ?>" target="_blank">Download</a>
-                                            <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
-                                }
-                                ?>
-                            </td>
-                            <td>
-                                <?php
-                                $sts = 0;
-                                foreach ($response as $resp) {
-                                    if ($resp['regional_university'] == $response[1]['regional_university']) {
-                                        $sts++;
-                                        if ($resp['university_is_accept'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>headquarter/confirmationReceivedWithNewFormat/<?php echo $this->uri->segment(3); ?>/<?php echo $resp['regional_university']; ?>" target="_blank">Download</a>
-
-                                            <?php
-                                        }
-                                    }
-                                }
-                                if ($sts == 0) {
-                                    echo "NA";
-                                }
-                                ?>
-
-                            </td>
-							<!-----<td>
-                                <?php
-								$mappingData= $this->common_model->getMappingData($response[0]['application_id']);
-                              //echo "<pre>";print_r($mappingData);
-                                   if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($response[0]['university_is_accept'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                            ?>
-                                            <a target="_blank" href="<?php echo site_url(); ?>mission/undertakingFromStudent/<?php echo $response[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
-
-                                            <?php
-                                        }
-										else{echo "NA";}
-                                    }
-									else
-									{
-										echo "NA";
-									}
-                                
-                               
-                                ?>
-
-                            </td>--->
-                        </tr>
-
-                        </tr>
+					<?php } else { ?>
+						<tr>
+							<td>NA</td>
+							<td>NA</td>
+							<td>NA</td>
+							<td>NA</td>
+							<td>NA</td>
+							<td>NA</td>
+						</tr>
+					<?php } ?>
                     </tbody>
                 </table>
-                
 
-                <!--<h3 class="text-center" id="h5_cnetr">Applicant's Acceptance Forwarded to Hqrs/RO</h3>-->	 
+
                 <hr/>
                 <div class="box-body">
 
@@ -456,7 +402,7 @@ foreach ($response as $resp) {
                         <th >Date of Forwarding</th>
                         </thead>
                                 <?php
-                                if (($applicaitonStepOne[0]['programme'] == 1 && $applicaitonStepOne[0]['course'] == 58) || ($applicaitonStepOne[0]['programme'] == 2 && $applicaitonStepOne[0]['course'] == 59)) {
+                                if (!empty($applicaitonStepOne) && (($applicaitonStepOne[0]['programme'] == 1 && $applicaitonStepOne[0]['course'] == 58) || ($applicaitonStepOne[0]['programme'] == 2 && $applicaitonStepOne[0]['course'] == 59))) {
                                     ?>
                             <tbody>
                                 <tr>
@@ -465,25 +411,25 @@ foreach ($response as $resp) {
     ?>
                                     <td>
                                     <?php
-                                    $univ = $this->common_model->getUniversityById($data[0]['regional_university']);
-                                    echo $univ[0]['ngame'];
+                                    $univ = !empty($data) ? $this->common_model->getUniversityById($data[0]['regional_university']) : [];
+                                    echo !empty($univ) ? $univ[0]['name'] : 'NA';
                                     ?>
                                     </td>
                                     <td>
                                     <?php
-                                    $sch = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-                                    echo $sch[0]['scheme_name'];
+                                    $sch = !empty($mappingData) ? $this->common_model->getSchemeById($mappingData[0]['scholarship_id']) : [];
+                                    echo !empty($sch) ? $sch[0]['scheme_name'] : 'NA';
                                     ?>
                                     </td>
                                     <td>
                                     <?php
-                                    $reg = $this->common_model->getRegionById($data[0]['region_one_status']);
-                                    echo $reg[0]['name'];
+                                    $reg = !empty($data) ? $this->common_model->getRegionById($data[0]['region_one_status']) : [];
+                                    echo !empty($reg) ? $reg[0]['name'] : 'NA';
                                     ?>
                                     </td>
                                     <td>
                                     <?php
-                                    echo date('d M Y h:i:s A', $data[0]['region_one_status_date']);
+                                    echo !empty($data) ? date('d M Y h:i:s A', $data[0]['region_one_status_date']) : 'NA';
                                     ?>
                                     </td>
                                 </tr>
@@ -494,32 +440,71 @@ foreach ($response as $resp) {
                             <tbody>
                                 <tr>
     <?php
-	
-    $data = $this->common_model->getconfirmationData($this->uri->segment(3));
+
+    /* ---------------------------------------------------------------------
+     * This block used to call getconfirmationData() (filter: university_is_accept
+     * = 1, no ORDER BY) and print row [0], while the "Confirmation Status" table
+     * higher up on the same page was built from a different filter over the same
+     * iccr_university_response table. An applicant can nominate several
+     * universities, so the two blocks could land on different rows and the page
+     * showed TWO different university names for one student.
+     * It now resolves the single final allotment the same way everywhere.
+     * ------------------------------------------------------------------ */
+    $appNoForForwarding = $this->uri->segment(3);
+    $allResponses  = $this->common_model->getUniversityResponsesForApplication($appNoForForwarding);
+    $mappingForFwd = !empty($mappingData) ? $mappingData[0] : array();
+    $finalRow      = $this->common_model->pickFinalUniversityResponse(
+        $allResponses,
+        isset($mappingForFwd['regional_university']) ? $mappingForFwd['regional_university'] : null
+    );
+
+    $fwdUniversityName = 'NA';
+    if (!empty($finalRow)) {
+        if (!empty($finalRow['university_name'])) {
+            $fwdUniversityName = $finalRow['university_name'];
+        } else {
+            $univ = $this->common_model->getUniversityByIdOld($finalRow['regional_university']);
+            $fwdUniversityName = !empty($univ) ? $univ[0]['name'] : 'NA';
+        }
+    }
+
+    $fwdSchemeName = 'NA';
+    if (!empty($mappingForFwd['scholarship_id'])) {
+        $sch = $this->common_model->getSchemeById($mappingForFwd['scholarship_id']);
+        $fwdSchemeName = !empty($sch) ? $sch[0]['scheme_name'] : 'NA';
+    }
+
+    /* "ICCR Regional Office" always printed NA: it was read from
+     * $response[0]['region_one_status'], but the query behind $response does not
+     * SELECT region_one_status at all, so the isset() test never passed. */
+    $fwdRegionId = 0;
+    if (!empty($finalRow['region_one_status'])) {
+        $fwdRegionId = (int) $finalRow['region_one_status'];
+    } elseif (!empty($mappingForFwd['region_one_status'])) {
+        $fwdRegionId = (int) $mappingForFwd['region_one_status'];
+    }
+    $fwdRegionName = 'NA';
+    if ($fwdRegionId > 0) {
+        $reg = $this->common_model->getRegionById($fwdRegionId);
+        $fwdRegionName = !empty($reg) ? $reg[0]['name'] : 'NA';
+    }
+
+    /* Guard the timestamp so an empty/zero value cannot render as 01 Jan 1970. */
+    $fwdDate = 'NA';
+    $fwdRawDate = null;
+    if (!empty($finalRow['region_one_status_date'])) {
+        $fwdRawDate = $finalRow['region_one_status_date'];
+    } elseif (!empty($mappingForFwd['region_one_status_date'])) {
+        $fwdRawDate = $mappingForFwd['region_one_status_date'];
+    }
+    if (!empty($fwdRawDate) && is_numeric($fwdRawDate) && (int) $fwdRawDate > 0) {
+        $fwdDate = date('d M Y h:i:s A', (int) $fwdRawDate);
+    }
     ?>
-                                    <td>
-    <?php
-    $univ = $this->common_model->getUniversityById($data[0]['regional_university']);
-    echo $univ[0]['fname'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    $sch = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-    echo $sch[0]['scheme_name'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    $reg = $this->common_model->getRegionById($response[0]['region_one_status']);
-    echo $reg[0]['name'];
-    ?>
-                                    </td>
-                                    <td>
-    <?php
-    echo date('d M Y h:i:s A', $data[0]['region_one_status_date']);
-    ?>
-                                    </td>
+                                    <td><?php echo htmlspecialchars($fwdUniversityName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($fwdSchemeName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo htmlspecialchars($fwdRegionName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td><?php echo $fwdDate; ?></td>
                                 </tr>
                             </tbody>
                             <?php
@@ -527,9 +512,10 @@ foreach ($response as $resp) {
                         ?>
 
                     </table>
-					</hr>
-					</br>
-								<!------Visa Details------>
+
+                    <br/>
+
+				<!------Visa Details------>
 				<?php
 				 $mappingData = $this->common_model->getMappingData($this->uri->segment(3));
 				 //echo "<pre>";print_r($mappingData);die;
@@ -538,97 +524,101 @@ foreach ($response as $resp) {
 					?>
 			    <table id="tbl_relation" class="table" style="width: 100%;">
                     <thead>
-                    <th>7. Visa</th>
+                    <th>9. Visa</th>
 					<th>VISA Type</th>
-                    <th>VISA Number</th>	
-                    <th>VISA Issue Date</th>	
-                    <th>VISA Duration From</th>	
+                    <th>VISA Number</th>
+                    <th>VISA Issue Date</th>
+                    <th>VISA Duration From</th>
 					<th>VISA Duration To</th>
+					<th>VISA Issued Place</th>
+					<th>VISA Approved Status</th>
                     </thead>
                     <tbody>
-					
+
 						<tr>
-               
 					<td></td>
-						<td>
-					 <?php 
-					
+					<td><?php
 						if(!empty($mappingData[0]['visa_no'])){
-							
-							$course = $applicaitonStepOne[0]['programme'];
-					      	if($counter == 3 || $counter == 4)
-					      	{
-								echo 'Research';
-							}
-							else
-							{
-								echo 'Student';
-							}
-						}
-						
-					 ?>
-					 </td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_no']))
-							{
-								echo $mappingData[0]['visa_no'];
-								
-							}
-							
-
-							?>
-						</td>
-						
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_isuue_date']))
-							{
-								echo $mappingData[0]['visa_isuue_date'];
-								
-							}
-							
-
-							?>
-						</td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_from_date']))
-							{
-								echo $mappingData[0]['visa_from_date'];
-								
-							}
-							
-
-							?>
-						</td>
-						<td>
-						<?php
-							if(!empty($mappingData[0]['visa_to_date']))
-							{
-								echo $mappingData[0]['visa_to_date'];
-								
-							}
-							
-				}
-							?>
-						</td>
-						</tr>
+							$course = !empty($applicaitonStepOne) ? $applicaitonStepOne[0]['programme'] : '';
+							if($counter == 3 || $counter == 4){ echo 'Research'; } else { echo 'Student'; }
+						} else { echo 'N/A'; }
+					?></td>
+					<td><?php echo !empty($mappingData[0]['visa_no']) ? $mappingData[0]['visa_no'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_isuue_date']) ? $mappingData[0]['visa_isuue_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_from_date']) ? $mappingData[0]['visa_from_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_to_date']) ? $mappingData[0]['visa_to_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_issueplace']) ? $mappingData[0]['visa_issueplace'] : 'N/A'; ?></td>
+					<td><?php echo !empty($mappingData[0]['visa_approved']) ? $mappingData[0]['visa_approved'] : 'N/A'; ?></td>
+					</tr>
                     </tbody>
                 </table>
-                    <br/>					
+				<?php
+				}
+				else
+				{
+				?>
+				<table id="tbl_visa_na" class="table" style="width: 100%;">
+					<thead>
+					<th>9. Visa</th>
+					<th>VISA Type</th>
+					<th>VISA Number</th>
+					<th>VISA Issue Date</th>
+					<th>VISA Duration From</th>
+					<th>VISA Duration To</th>
+					<th>VISA Issued Place</th>
+					<th>VISA Approved Status</th>
+					</thead>
+					<tbody>
+					<tr>
+					<td></td>
+					<td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td>
+					</tr>
+					</tbody>
+				</table>
+				<?php
+				} // end if(!empty($mappingData))
+				?>
+                    <br/>
+
+				<!------Flight/Travel Details------>
+				<?php
+				$travel = $this->common_model->getTravelData($this->uri->segment(3));
+				?>
+				<table id="tbl_travel" class="table" style="width: 100%;">
+					<thead>
+					<th>10. Flight/Train Details</th>
+					<th>Flight/Train No</th>
+					<th>Date of Departure</th>
+					<th>Time of Departure</th>
+					<th>Departure City</th>
+					<th>Date of Arrival in India</th>
+					<th>Time of Arrival</th>
+					<th>Arrival City</th>
+					<th>Airport Reception</th>
+					</thead>
+					<tbody>
+					<tr>
+					<td></td>
+					<td><?php echo !empty($travel[0]['flight_no']) ? $travel[0]['flight_no'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['departure_date']) ? $travel[0]['departure_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['time_of_departure']) ? $travel[0]['time_of_departure'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['departure_city']) ? $travel[0]['departure_city'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['travel_arrival_date']) ? $travel[0]['travel_arrival_date'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['time_of_arrival']) ? $travel[0]['time_of_arrival'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['final_city_arrival']) ? $travel[0]['final_city_arrival'] : 'N/A'; ?></td>
+					<td><?php echo !empty($travel[0]['airport_reseption']) ? $travel[0]['airport_reseption'] : 'N/A'; ?></td>
+					</tr>
+					</tbody>
+				</table>
+                    <br/>
 
                 </div>
 
                 <!-- /.box-body -->
 
-            </div>	
+            </div>
             <hr>
         </div>
 
     </div>
 </section>
-
-
-
-

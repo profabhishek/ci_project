@@ -71,13 +71,20 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
               	<div class="col-xs-3 prfl pull-right" >
               		<?php              			 
               			
-              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
+              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
+						// file_exists() matches directories as well as files, so when $userImage
+						// is genuinely blank (no photo uploaded) the path collapses to just
+						// $userd->dir - a real directory - and file_exists() passed, then
+						// file_get_contents() failed with "Is a directory". is_file() plus a
+						// non-empty filename check correctly treats a missing photo as "no image".
+						if (!empty($userd->dir) && !empty($userImage) && is_file($userd->dir .'/'.$userImage)) {
+							$imgs = file_get_contents($userd->dir .'/'.$userImage);
 							//echo $imgs;
 							$data = base64_encode($imgs);
 							$f = finfo_open();
 							$imgdata = base64_decode($data);
                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+						}
           				if($userd->dir == "")
 						{
 							?>
@@ -86,7 +93,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 						}						
 						else
 						{
-							if(file_exists($userd->dir.'/'. $userImage))
+							if(!empty($userImage) && is_file($userd->dir.'/'. $userImage))
 							{
 								?>
 							<img style="width:151px;height:171px;" id="profil_image_div"  src="data:<?php if(!empty($mime_type)){echo $mime_type;}?>;base64,<?php if(!empty($data)){echo $data;}?>"/>
@@ -427,8 +434,8 @@ function closeImage() {
 												<tr>
 													<td><?php if (!empty($registerData)) { echo $registerData[0]['gurdian_fname'].' '.$registerData[0]['gurdian_mname'].' '.$registerData[0]['gurdian_lname']; } ?> </td>
 													<td>Guardian</td>
-													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_number']; ?></td>
-													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_email']; ?></td>
+													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_number'] ?? ''; ?></td>
+													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_email'] ?? ''; ?></td>
 												</tr>
 												<?php }  ?>
 											</tbody>
@@ -1082,12 +1089,12 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_two']);
 
-															echo $nomen[0]['title'];
+															echo isset($nomen[0]['title']) ? $nomen[0]['title'] : '';
 															
 															
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_two']);
-															echo $university_second[0]['name']; ?></td>
+															echo isset($university_second[0]['name']) ? $university_second[0]['name'] : ''; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_two']; ?>
@@ -1146,10 +1153,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_three']);
 
-															echo $nomen[0]['title'];
+															echo isset($nomen[0]['title']) ? $nomen[0]['title'] : '';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_three']);
-															echo $university_second[0]['name']; ?></td>
+															echo isset($university_second[0]['name']) ? $university_second[0]['name'] : ''; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_three']; ?>
@@ -1211,10 +1218,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_fourth']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fourth']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_fourth']; ?>
 														</td>
@@ -1278,10 +1285,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_fifth']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fifth']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_fifth']; ?>
@@ -1336,6 +1343,192 @@ function closeImage() {
 										<?php
 										}
 										?>
+											<?php
+											// ---------------------------------------------------
+											// Confirmed university, its approval letter, scheme and
+											// nomenclature.
+											//
+											// The five choices above are what the applicant ASKED
+											// for. This block shows which university actually
+											// confirmed the admission, and lets the Mission open the
+											// letter that university uploaded without having to go
+											// to another screen to find it.
+											//
+											// The letter sits in one of two places depending on
+											// which module uploaded it:
+											// ./<year>/university_approval/ (outside the web root,
+											// so it must be served through mission/downloadDocs) or
+											// assets/site/main/university_approval/ (public). Check
+											// both, and only offer a link when the file is really on
+											// disk - linking to a missing file makes Apache fall
+											// through to the 404 handler, which renders an
+											// "Error 500" page for what is only a missing upload.
+											// ---------------------------------------------------
+											// Rows come from iccr_university_response_by_hqrs, which
+											// holds the allotment made for this application. Every
+											// row here is a real allotment, so they are all shown
+											// rather than filtered on university_is_accept - that
+											// filter previously hid rows whose acceptance flag had
+											// not been set yet, and the screen wrongly reported that
+											// no university had confirmed.
+											$confirmedRows = array();
+											if (!empty($universityResponses) && is_array($universityResponses)) {
+												foreach ($universityResponses as $uniResp) {
+													if (!empty($uniResp['regional_university']) || !empty($uniResp['region_one_doc']) || !empty($uniResp['course'])) {
+														$confirmedRows[] = $uniResp;
+													}
+												}
+											}
+
+											$schemeText = '';
+											$nomenclatureText = '';
+
+											// NOMENCLATURE.
+											// This is held on the application itself, in
+											// iccr_student_application_details.nomenclature - the
+											// same value the "Nomenclture" column of the table above
+											// prints (see the getnomenclatureByid() call further up
+											// this file). It is NOT iccr_status_mapping.nomenclature,
+											// which is only written later, when the Mission
+											// processes the application; reading that column showed
+											// "NA" here even though the nomenclature was printed a
+											// few lines above on the same page.
+											// Fall back to the status-mapping copy so applications
+											// that only have the later value still display it.
+											$nomRaw = '';
+											if (!empty($applicaitonStepOne) && !empty($applicaitonStepOne[0]['nomenclature'])) {
+												$nomRaw = trim((string) $applicaitonStepOne[0]['nomenclature']);
+											} elseif (!empty($schemeNomenclature) && is_array($schemeNomenclature) && count($schemeNomenclature) > 0 && !empty($schemeNomenclature[0]['nomenclature'])) {
+												$nomRaw = trim((string) $schemeNomenclature[0]['nomenclature']);
+											}
+											if ($nomRaw !== '') {
+												// Depending on which screen saved it, this value is
+												// either the nomenclature id or the title itself.
+												// Resolve an id, otherwise show the stored text.
+												if (ctype_digit($nomRaw)) {
+													$nomRow = $this->common_model->getnomenclatureByid($nomRaw);
+													$nomenclatureText = (is_array($nomRow) && count($nomRow) > 0 && isset($nomRow[0]['title'])) ? $nomRow[0]['title'] : '';
+												} else {
+													$nomenclatureText = $nomRaw;
+												}
+											}
+
+											// SCHEME.
+											// iccr_status_mapping.scholarship_id is only populated
+											// when the Mission processes the application - it is
+											// genuinely empty before that, and the status helpers
+											// test for exactly that state. So an unprocessed
+											// application has no scheme to show, and saying
+											// "Not yet assigned" is more accurate than "NA".
+											$schemeAssigned = FALSE;
+											if (!empty($schemeNomenclature) && is_array($schemeNomenclature) && count($schemeNomenclature) > 0) {
+												if (!empty($schemeNomenclature[0]['scholarship_id'])) {
+													$schemeAssigned = TRUE;
+													$schemeRow = $this->common_model->getSchemeById($schemeNomenclature[0]['scholarship_id']);
+													if (is_array($schemeRow) && count($schemeRow) > 0 && isset($schemeRow[0]['scheme_name'])) {
+														$schemeText = $schemeRow[0]['scheme_name'];
+													}
+												}
+											}
+											if (!$schemeAssigned) {
+												$schemeText = 'Not yet assigned';
+											}
+											?>
+											<div style="margin-top:18px; padding:12px; border:1px solid #cecece; background:#f4f4f4;">
+												<label style="display:block; margin-bottom:8px;">Confirmed University &amp; University Letter</label>
+												<table class="table table-bordered" style="width:100%; background:#fff; margin-bottom:0;">
+													<thead>
+														<th style="width:40%;">Confirmed University</th>
+														<th style="width:20%;">University Letter</th>
+														<th style="width:20%;">Scheme</th>
+														<th style="width:20%;">Nomenclature</th>
+													</thead>
+													<tbody>
+													<?php
+													if (count($confirmedRows) > 0) {
+														foreach ($confirmedRows as $confRow) {
+															$confUniName = '';
+															if (!empty($confRow['regional_university'])) {
+																$confUniRow = $this->common_model->getUniversityById($confRow['regional_university']);
+																if (is_array($confUniRow) && count($confUniRow) > 0 && isset($confUniRow[0]['name'])) {
+																	$confUniName = $confUniRow[0]['name'];
+																}
+															}
+															$letterFile = isset($confRow['region_one_doc']) ? trim((string) $confRow['region_one_doc']) : '';
+
+															// Nomenclature for THIS allotment. On
+															// iccr_university_response_by_hqrs the
+															// nomenclature is held in the course column;
+															// confirmed_course is a second source, and
+															// the application's own nomenclature is the
+															// last resort. The value may be an id or the
+															// title itself, so resolve an id and
+															// otherwise print the stored text.
+															$rowNomRaw = '';
+															foreach (array('course', 'confirmed_course', 'nomenclature') as $nomCol) {
+																if (!empty($confRow[$nomCol])) {
+																	$rowNomRaw = trim((string) $confRow[$nomCol]);
+																	break;
+																}
+															}
+															$rowNomText = '';
+															if ($rowNomRaw !== '') {
+																if (ctype_digit($rowNomRaw)) {
+																	$rowNomRow = $this->common_model->getnomenclatureByid($rowNomRaw);
+																	$rowNomText = (is_array($rowNomRow) && count($rowNomRow) > 0 && isset($rowNomRow[0]['title'])) ? $rowNomRow[0]['title'] : '';
+																} else {
+																	$rowNomText = $rowNomRaw;
+																}
+															}
+															if ($rowNomText === '') {
+																$rowNomText = $nomenclatureText;
+															}
+															?>
+															<tr>
+																<td><?php echo $confUniName !== '' ? htmlspecialchars($confUniName, ENT_QUOTES) : 'NA'; ?></td>
+																<td>
+																	<?php
+																	if ($letterFile !== '') {
+																		$letterFound = '';
+																		$thisYear = (int) date('Y');
+																		for ($y = $thisYear; $y >= $thisYear - 3; $y--) {
+																			$tryPath = './' . $y . '/university_approval/' . $letterFile;
+																			if (file_exists($tryPath)) { $letterFound = $tryPath; break; }
+																		}
+																		if ($letterFound !== '') {
+																			?>
+																			<a target="_blank" href="<?php echo site_url() . 'mission/downloadDocs/' . base64url_encode($letterFound); ?>"><span class="label label-success">Download</span></a>
+																			<?php
+																		} elseif (file_exists(FCPATH . 'assets/site/main/university_approval/' . $letterFile)) {
+																			?>
+																			<a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $letterFile; ?>"><span class="label label-success">Download</span></a>
+																			<?php
+																		} else {
+																			?>
+																			<span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($letterFile, ENT_QUOTES); ?>">File not found</span>
+																			<?php
+																		}
+																	} else {
+																		echo 'NA';
+																	}
+																	?>
+																</td>
+																<td><?php echo $schemeText !== '' ? htmlspecialchars($schemeText, ENT_QUOTES) : 'NA'; ?></td>
+																<td><?php echo $rowNomText !== '' ? htmlspecialchars($rowNomText, ENT_QUOTES) : 'NA'; ?></td>
+															</tr>
+															<?php
+														}
+													} else {
+														?>
+														<tr>
+															<td colspan="4">No university allotment has been recorded for this application yet.</td>
+														</tr>
+														<?php
+													}
+													?>
+													</tbody>
+												</table>
+											</div>
 
 
 									</td>
@@ -2242,12 +2435,14 @@ function closeImage() {
 							</tr>
 							
 										<tr>
-											<td style="text-align:right;"><?php 
-								$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-							$data = base64_encode($imgs);
-							 $f = finfo_open();
-							 $imgdata = base64_decode($data);
-                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+											<td style="text-align:right;"><?php
+								if (!empty($userd->dir) && !empty($applicaitonStepThree) && file_exists($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc'])) {
+									$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
+									$data = base64_encode($imgs);
+									$f = finfo_open();
+									$imgdata = base64_decode($data);
+									$mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+								}
 						  if(!empty($applicaitonStepThree) && $applicaitonStepThree[0]['signature_doc'] != "")
 						  {
 						  
@@ -2331,21 +2526,21 @@ function closeImage() {
 								$counter = 1;	
 								$upload = 0;						
 								$doctypes = $this->config->item('doc_types');	
-								$file_path = $docsArray[$doctypes['id']['type']]['path'];
-								$file_path_passport = $docsArray[$doctypes['passport']['type']]['path'];
-								$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'];
-								$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'];
-								$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'];
-								$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'];
-								$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'];
-								$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'];
-								$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'];
-								$file_path_d1 = $docsArray[$doctypes['d1']['type']]['path'];
+								$file_path = $docsArray[$doctypes['id']['type']]['path'] ?? '';
+								$file_path_passport = $docsArray[$doctypes['passport']['type']]['path'] ?? '';
+								$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'] ?? '';
+								$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'] ?? '';
+								$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'] ?? '';
+								$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'] ?? '';
+								$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'] ?? '';
+								$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'] ?? '';
+								$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'] ?? '';
+								$file_path_d1 = isset($doctypes['d1']['type']) ? ($docsArray[$doctypes['d1']['type']]['path'] ?? '') : '';
 								/*$file_path_physical = $docsArray[$doctypes['physical']['type']]['path'];*/
-								$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'];
-								$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'];
-								$file_path_gmat = $docsArray[$doctypes['gmat']['type']]['path'];
-								$file_path_mphil = $docsArray[$doctypes['mhil']['type']]['path'];
+								$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'] ?? '';
+								$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'] ?? '';
+								$file_path_gmat = $docsArray[$doctypes['gmat']['type']]['path'] ?? '';
+								$file_path_mphil = $docsArray[$doctypes['mhil']['type']]['path'] ?? '';
 								
 							?>	
 							<tr>

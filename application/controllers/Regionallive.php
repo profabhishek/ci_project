@@ -7907,8 +7907,6 @@ $html = $content;
 		$vars = $this->input->post();
 		$counter = $_POST['start'];
 		$result = $this->Regional_model->getUniversityResponseSentByRegionToMission($vars,$res,$regionid);
-		echo "<pre>";
-		print_r($result);die;
 		$totalResult = $this->Regional_model->getTotalUniversityResponseSentByRegionToMission($vars,$res,$regionid);
 		//$response1 = array();
 		$counter++;

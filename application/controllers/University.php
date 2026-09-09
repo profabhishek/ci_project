@@ -32,10 +32,14 @@ class University extends CI_Controller {
         $this->load->library('form_validation');
         $this->load->library('session');	
         $this->load->library('encryption');
-        $this->load->library('mpdf60/Mpdf');   
-       // $this->load->library('fpdi/PDF_HTML');  
+        // mpdf60/Mpdf was loaded here unconditionally on every request to any
+        // University controller action (dashboard included), even though it's
+        // only actually used by a handful of PDF-download functions. mPDF is
+        // heavy to bootstrap, so this added real overhead to every page load.
+        // Moved to load only inside the specific functions that call `new Mpdf(...)`.
+       // $this->load->library('fpdi/PDF_HTML');
         $this->load->helper('date');   
-		$this->load->library('zip');
+		// Moved out of the constructor for performance: 'zip' is now loaded only inside the methods that use it.
 		$this->load->helper('status_helper');
         $this->load->model('user_model');        
         $this->load->model('common_model');      
@@ -157,10 +161,10 @@ class University extends CI_Controller {
 				   $applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($r['application_no']);
 				  		 
 
-				   $sch = $this->common_model->getSchemeById($r['scholarship_id']);
-								   $scheme = $sch[0]['scheme_name'];
-				   $confirmData = $this->common_model->getFinalUniversityById($r['regional_university']);	
-   $region = $this->common_model->getRegionById($r['region_one_status']);
+				   $sch = $this->common_model->getSchemeById((isset($r['scholarship_id']) ? $r['scholarship_id'] : null));
+								   $scheme = (isset($sch[0]['scheme_name']) ? $sch[0]['scheme_name'] : '');
+				   $confirmData = $this->common_model->getFinalUniversityById((isset($r['regional_university']) ? $r['regional_university'] : null));	
+   $region = $this->common_model->getRegionById((isset($r['region_one_status']) ? $r['region_one_status'] : null));
 			   $date2 = $r['SubmitDate'];	
 	 
 			   $course34 = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
@@ -179,19 +183,19 @@ class University extends CI_Controller {
 			   $strm5 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fifth']);
 			   //echo "<pre>";print_r($applicationDetails[0]);
 			   if($universityId == $applicationDetails[0]['universty_choice']){
-			   $fullCourse .= $course[0]['title'].'/'.$applicationDetails[0]['course_option_name'];
+			   $fullCourse .= (isset($course[0]['title']) ? $course[0]['title'] : '').'/'.$applicationDetails[0]['course_option_name'];
 			   }
 			   elseif($universityId == $applicationDetails[0]['universty_choice_two']){
-			   $fullCourse .= $course1[0]['title'].'/'.$applicationDetails[0]['course_option_name_two'];
+			   $fullCourse .= (isset($course1[0]['title']) ? $course1[0]['title'] : '').'/'.$applicationDetails[0]['course_option_name_two'];
 			   }
 			   elseif($universityId == $applicationDetails[0]['universty_choice_three']){
-			   $fullCourse .= $course2[0]['title'].'/'.$applicationDetails[0]['course_option_name_three'];
+			   $fullCourse .= (isset($course2[0]['title']) ? $course2[0]['title'] : '').'/'.$applicationDetails[0]['course_option_name_three'];
 			   }
 			   elseif($universityId == $applicationDetails[0]['universty_choice_fourth']){
-			   $fullCourse .= $course3[0]['title'].'/'.$applicationDetails[0]['course_option_name_fourth'];
+			   $fullCourse .= (isset($course3[0]['title']) ? $course3[0]['title'] : '').'/'.$applicationDetails[0]['course_option_name_fourth'];
 			   }
 			   elseif($universityId == $applicationDetails[0]['universty_choice_fifth']){
-			   $fullCourse .= $course4[0]['title'].'/'.$applicationDetails[0]['course_option_name_fifth'];
+			   $fullCourse .= (isset($course4[0]['title']) ? $course4[0]['title'] : '').'/'.$applicationDetails[0]['course_option_name_fifth'];
 			   }
 			   $date2 = $r['SubmitDate'];	
 		
@@ -245,7 +249,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -266,7 +270,7 @@ class University extends CI_Controller {
 				$output[] = ($applicationDetails[0]['gender']== 1) ? 'Male' : 'Female';
 				$output[] = $country[0]['country_name'];	
 				$progrm = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
-				$output[] = $progrm[0]['name'];
+				$output[] = (isset($progrm[0]['name']) ? $progrm[0]['name'] : '');
 				if($applicationDetails[0]['programme'] == 3 || $applicationDetails[0]['programme'] == 8)
 				{
 					$course = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
@@ -287,23 +291,31 @@ class University extends CI_Controller {
 					$strm5 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fifth']);
 					//echo "<pre>";print_r($applicationDetails[0]);
 					if($universityId == $applicationDetails[0]['universty_choice']){
-					$fullCourse .= $nomenclature[0]['title'].'<br/>';
+					$fullCourse .= (isset($nomenclature[0]['title']) ? $nomenclature[0]['title'] : '').'<br/>';
 					}
 					elseif($universityId == $applicationDetails[0]['universty_choice_two']){
-					$fullCourse .= $nomenclature1[0]['title'].'<br/>';
+					$fullCourse .= (isset($nomenclature1[0]['title']) ? $nomenclature1[0]['title'] : '').'<br/>';
 					}
 					elseif($universityId == $applicationDetails[0]['universty_choice_three']){
-					$fullCourse .= $nomenclature2[0]['title'].'<br/>';
+					$fullCourse .= (isset($nomenclature2[0]['title']) ? $nomenclature2[0]['title'] : '').'<br/>';
 					}
 					elseif($universityId == $applicationDetails[0]['universty_choice_fourth']){
-					$fullCourse .= $nomenclature3[0]['title'].'<br/>';
+					$fullCourse .= (isset($nomenclature3[0]['title']) ? $nomenclature3[0]['title'] : '').'<br/>';
 					}
 					elseif($universityId == $applicationDetails[0]['universty_choice_fifth']){
-					$fullCourse .= $nomenclature4[0]['title'].'<br/>';
+					$fullCourse .= (isset($nomenclature4[0]['title']) ? $nomenclature4[0]['title'] : '').'<br/>';
 					}
 					$output[] = $fullCourse;
 				}
 				$universityDetails = "";
+				// $uni1..$uni5 are only assigned inside whichever single elseif branch
+				// matches below, but are read afterwards regardless of which branch ran -
+				// initialize them all upfront so they're always defined before use.
+				$uni1 = array();
+				$uni2 = array();
+				$uni3 = array();
+				$uni4 = array();
+				$uni5 = array();
 				if($universityId == $applicationDetails[0]['universty_choice']){
 					$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
 				}
@@ -320,19 +332,19 @@ class University extends CI_Controller {
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
 				}
 				if($universityId == $applicationDetails[0]['universty_choice']){
-				$universityDetails .= ' '.$uni1[0]['name'].'<br/>';		
+				$universityDetails .= ' '.(!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';		
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_two']){
-					$universityDetails .= ' '.$uni2[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_three']){
-					$universityDetails .= ' '.$uni3[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fourth']){
-					$universityDetails .= ' '.$uni4[0]['name'].'<br/>';	
+					$universityDetails .= ' '.(!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';	
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fifth']){
-					$universityDetails .= ' '.$uni5[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 				}
 				$output[] = $universityDetails;
 				//$date1 = strtotime($r['created']);	
@@ -363,7 +375,7 @@ class University extends CI_Controller {
 					// $output[] ='<a href="'.site_url().'#" style="float:left;width:104px;" onclick =editRemarks("'.$applicationDetails[0]['application_no'].'") class="form-control sbmt1">Click Here</a>';
 				}
 				
-				if(!empty($r['universities_status']) && $r['universities_status'] == 1 && !empty($universityConfirmData) || $universityMappingData[0]['status'] == 3  || $universityMissionConfirmData[0]['confirmed_to_mission'] == 1) {
+				if(!empty($r['universities_status']) && $r['universities_status'] == 1 && !empty($universityConfirmData) || (!empty($universityMappingData) ? $universityMappingData[0]['status'] : 0) == 3  || (!empty($universityMissionConfirmData) ? $universityMissionConfirmData[0]['confirmed_to_mission'] : 0) == 1) {
 					
 					$output[] = '<a style="float:left;margin-right:7px;width:104px;" disabled = disbaled href="javascript:void(0);" class="form-control sbm">Click Here</a>';
 				}
@@ -377,7 +389,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -447,7 +459,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -506,6 +518,14 @@ class University extends CI_Controller {
 					$output[] = $fullCourse;
 				}
 				$universityDetails = "";
+				// $uni1..$uni5 are only assigned inside whichever single elseif branch
+				// matches below, but are read afterwards regardless of which branch ran -
+				// initialize them all upfront so they're always defined before use.
+				$uni1 = array();
+				$uni2 = array();
+				$uni3 = array();
+				$uni4 = array();
+				$uni5 = array();
 				if($universityId == $applicationDetails[0]['universty_choice']){
 					$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
 				}
@@ -522,19 +542,19 @@ class University extends CI_Controller {
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
 				}
 				if($universityId == $applicationDetails[0]['universty_choice']){
-				$universityDetails .= ' '.$uni1[0]['name'].'<br/>';		
+				$universityDetails .= ' '.(!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';		
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_two']){
-					$universityDetails .= ' '.$uni2[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_three']){
-					$universityDetails .= ' '.$uni3[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fourth']){
-					$universityDetails .= ' '.$uni4[0]['name'].'<br/>';	
+					$universityDetails .= ' '.(!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';	
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fifth']){
-					$universityDetails .= ' '.$uni5[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 				}
 				$output[] = $universityDetails;
 				//$date1 = strtotime($r['created']);	
@@ -564,7 +584,7 @@ class University extends CI_Controller {
 					$output[] ='<a href="javascript:void(0);" style="float:left;width:104px;" onclick =editRemarks("'.$applicationDetails[0]['application_no'].'") class="form-control sbmt1">Click Here</a>';
 				}
 				
-				if(!empty($r['universities_status']) && $r['universities_status'] == 1 && !empty($universityConfirmData) || $universityMappingData[0]['status'] == 3  || $universityMissionConfirmData[0]['confirmed_to_mission'] == 1) {
+				if(!empty($r['universities_status']) && $r['universities_status'] == 1 && !empty($universityConfirmData) || (!empty($universityMappingData) ? $universityMappingData[0]['status'] : 0) == 3  || (!empty($universityMissionConfirmData) ? $universityMissionConfirmData[0]['confirmed_to_mission'] : 0) == 1) {
 					
 					$output[] = '<a style="float:left;margin-right:7px;width:104px;" disabled = disbaled href="javascript:void(0);" class="form-control sbm">Click Here</a>';
 				}
@@ -575,7 +595,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -643,7 +663,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -702,6 +722,14 @@ class University extends CI_Controller {
 					$output[] = $fullCourse;
 				}
 				$universityDetails = "";
+				// $uni1..$uni5 are only assigned inside whichever single elseif branch
+				// matches below, but are read afterwards regardless of which branch ran -
+				// initialize them all upfront so they're always defined before use.
+				$uni1 = array();
+				$uni2 = array();
+				$uni3 = array();
+				$uni4 = array();
+				$uni5 = array();
 				if($universityId == $applicationDetails[0]['universty_choice']){
 					$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
 				}
@@ -718,19 +746,19 @@ class University extends CI_Controller {
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
 				}
 				if($universityId == $applicationDetails[0]['universty_choice']){
-				$universityDetails .= ' '.$uni1[0]['name'].'<br/>';		
+				$universityDetails .= ' '.(!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';		
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_two']){
-					$universityDetails .= ' '.$uni2[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_three']){
-					$universityDetails .= ' '.$uni3[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fourth']){
-					$universityDetails .= ' '.$uni4[0]['name'].'<br/>';	
+					$universityDetails .= ' '.(!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';	
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fifth']){
-					$universityDetails .= ' '.$uni5[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 				}
 				$output[] = $universityDetails;
 				//$date1 = strtotime($r['created']);	
@@ -740,6 +768,7 @@ class University extends CI_Controller {
 						
 						$date2 = $r['SubmitDate'];	
 						$output[] = date('d-m-Y',$date2);
+							$confirmationDate = null;
 							if($universityId == $r['regional_university']){
 							$date1 = $r['region_one_status_date'];
 							$confirmationDate =  date('d-m-Y',$date1);
@@ -831,7 +860,7 @@ class University extends CI_Controller {
 						//$date1 = '2019-12-01';
 						$date = date_create($r['created']);
 						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						$date2 = date("Y-m-d", strtotime($array['date'] ?? $r['created']));
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
@@ -890,6 +919,14 @@ class University extends CI_Controller {
 					$output[] = $fullCourse;
 				}
 				$universityDetails = "";
+				// $uni1..$uni5 are only assigned inside whichever single elseif branch
+				// matches below, but are read afterwards regardless of which branch ran -
+				// initialize them all upfront so they're always defined before use.
+				$uni1 = array();
+				$uni2 = array();
+				$uni3 = array();
+				$uni4 = array();
+				$uni5 = array();
 				if($universityId == $applicationDetails[0]['universty_choice']){
 					$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
 				}
@@ -906,19 +943,19 @@ class University extends CI_Controller {
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
 				}
 				if($universityId == $applicationDetails[0]['universty_choice']){
-				$universityDetails .= ' '.$uni1[0]['name'].'<br/>';		
+				$universityDetails .= ' '.(!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';		
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_two']){
-					$universityDetails .= ' '.$uni2[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_three']){
-					$universityDetails .= ' '.$uni3[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fourth']){
-					$universityDetails .= ' '.$uni4[0]['name'].'<br/>';	
+					$universityDetails .= ' '.(!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';	
 				}
 				if($universityId == $applicationDetails[0]['universty_choice_fifth']){
-					$universityDetails .= ' '.$uni5[0]['name'].'<br/>';
+					$universityDetails .= ' '.(!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 				}
 				$output[] = $universityDetails;
 				//$date1 = strtotime($r['created']);	
@@ -1944,6 +1981,7 @@ public function downloadStudent_zip($path)
 		{
 			$this->load->file('fpdi/PdfHTMLTable.php');
 			$appno = $this->uri->segment(3);
+			$this->load->library('mpdf60/Mpdf');
 			$pdf = new PdfHTMLTable();		
 			$pdf->AddPage('P');	
 			$pdf->applicationId = $appno;		
@@ -2163,6 +2201,7 @@ public function downloadStudent_zip($path)
 			$course = $this->common_model->getCoursesById($stepOne[0]['course']);
 			$uni = $this->common_model->getUniversityById($schemeId[0]['regional_university']);
 			$this->load->file('fpdi/PdfHTMLTable.php');
+			$this->load->library('mpdf60/Mpdf');
 			$pdf = new PdfHTMLTable();	
 			$pdf->AddPage('P');
 			$pdf->SetXY(10.0,5.0);
@@ -2621,118 +2660,136 @@ public function downloadStudent_zip($path)
 			$doc = array();
 			$applicationId = $this->uri->segment(3);
 			$uniid = $this->uri->segment(4);
-			$response = $this->common_model->getconfirmationDataforHqrs($applicationId);
-			$region = 0;$coursename = "";$respFile="";
+			// getconfirmationDataforHqrs() was returning no matching row for some
+			// applications (it queries a different confirmation table than the
+			// rest of the "confirmed" flow), which left $region/$coursename at
+			// their defaults and, for some applications, produced a blank
+			// letter. Switched to getconfirmationDataByMission(), the same
+			// reliable data source already used by Headquarter's proven-working
+			// confirmationReceivedWithNewFormat().
+			$response = $this->common_model->getconfirmationDataByMission($applicationId);
+			$region = 0;$coursename = "";$respFile="";$nomenid = 0;
 			if(count($response)>0)
 			{
 				foreach($response as $resp)
 				{
 					if($resp['university_is_accept'] == 1 && $resp['regional_university'] == $uniid)
 					{
-						$respFile = $resp['region_one_doc'];
-						$region = $resp['region_one_status'];
-						$coursename = $resp['course'];
-						array_push($doc,$resp['region_one_doc']);
+						$respFile = !empty($resp['region_one_doc']) ? $resp['region_one_doc'] : '';
+						$region = !empty($resp['region_one_status']) ? $resp['region_one_status'] : 0;
+						$coursename = !empty($resp['final_course']) ? $resp['final_course'] : '';
+						$nomenid = !empty($resp['nomenclature']) ? $resp['nomenclature'] : 0;
+						array_push($doc,$respFile);
 					}
 				}
 			}
-			
-			
+
+			// The letter below prints $nomenclature, but nothing ever assigned
+			// it - so it rendered as: Nomenclature "" at under <university>.
+			// Resolve the title from the same confirmation data the rest of
+			// this function already uses.
+			$nomenclature = '';
+			if (!empty($nomenid))
+			{
+				$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+				$nomenclature = isset($nomclature[0]['title']) ? $nomclature[0]['title'] : '';
+			}
+			// Fall back to the first confirmation row. Headquarter's version of
+			// this same letter reads $response[0] directly, and for records
+			// where the per-university row carries no nomenclature that is
+			// where the value actually lives - which is why the Headquarter
+			// letter showed the course while this one came out blank.
+			if ($nomenclature === '' && !empty($response[0]['nomenclature']))
+			{
+				$nomclature = $this->common_model->getnomenclatureByid($response[0]['nomenclature']);
+				$nomenclature = isset($nomclature[0]['title']) ? $nomclature[0]['title'] : '';
+			}
+
 			$current = date('d-m-Y');
 			$fy = $this->getFinancialYears($current,1);
 			$user_data = $this->session->userdata('user_data');
-			$userId = $user_data['userid'];			
-			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);		
+			$userId = $user_data['userid'];
+			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
 			$studentOther = $this->common_model->getStudentOtherDetails($applicationId);
-			$mission = $this->common_model->getMissionInfo($studentOther[0]['application_through']);
-			$country = $this->common_model->getCountryById($stepOne[0]['country']);
+			$mission = !empty($studentOther) ? $this->common_model->getMissionInfo($studentOther[0]['application_through']) : [];
+			$country = !empty($stepOne) ? $this->common_model->getCountryById($stepOne[0]['country']) : [];
 			$schemeId = $this->common_model->getMappingData($applicationId);
-			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
+			$schemename = !empty($schemeId) ? $this->common_model->getSchemeById($schemeId[0]['scholarship_id']) : [];
 			$regionInfo = $this->common_model->getRegionById($region);
 			$uninmae = $this->common_model->getUniversityStateById($uniid);
-			$this->load->file('fpdi/PdfHTMLTable.php');
-			
-			
-			$pdf = new PdfHTMLTable();
-			$pdf->AddPage('P');
-			$pdf->SetXY(10.0,5.0);
-			$pdf->SetDisplayMode('fullwidth');
-			$pdf->SetLeftMargin(15.0);
-			$pdf->SetFont('Arial','',7);
-			$pdf->MultiCell(180,5,'Ref. No.'.$applicationId,'','R');
-			$pdf->MultiCell(180,5,'Date: '.date('d M Y h:i:s'),'','R');
-			
-			$pdf->SetXY(10.0,45.0);
-			$pdf->SetTitle('Indian Council For Cultural Relations',false);		
-			$pdf->SetFont('Arial','',10);	
-			$pdf->Ln(5);
-			$pdf->SetFont('Arial','',35);
-			$pdf->SetTextColor(221,221,255);
-			$pdf->RotatedText(35,190,'Indian Council For Cultural Relations',45);
-			$pdf->SetFont('Arial','',10);	
-			$pdf->SetTextColor(0,0,0);
-			$pdf->MultiCell(180,5,$mission[0]['mission_type'].': '.$mission[0]['mission_name'],'','L');
-			
-			$pdf->MultiCell(180,5,$mission[0]['country_name'],'','L');
-			
-			$pdf->MultiCell(180,5,'To     :	HoC / Education Wing / Culture Wing','','L');
-			
-			$pdf->MultiCell(180,5,'From :	Scholarship Division, ICCR, '.$regionInfo[0]['name'],'','L');
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'Please refer to the application uploaded on A2A Scholarship Portal by Mr./Ms. '.$stepOne[0]['fullname'].', a national of '.$country[0]['country_name'].' for admission under '.$schemename[0]['scheme_name'].'  ('.$schemename[0]['code'].') for the Academic Year 2022-2023. Mr./Ms. '.$stepOne[0]['fullname'].' is provisionally confirmed for '.$coursename.' course at '.$uninmae[0]['name'].', '.$regionInfo[0]['name'].' subject to production of all original documents at the time of joining','','J');
-		$pdf->Ln(5);		
-			$pdf->MultiCell(180,5,'Mission is requested to immediately take the following action:-','','J');
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'a)	Inform the candidate & convey his/her acceptance or rejection of the offer to ICCR at the earliest.','','J');
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'b)	Obtain a written Undertaking from the student in the attached Proforma & email/fax it to ICCR. isd1section.iccr@nic.in / isd2section.iccr@nic.in / poafghan.iccr@nic.in','','J');
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'c)	Issue appropriate fulltime Student Visa (Research Visa in case of Ph.D.) to the student in accordance with the latest guidelines. The mission must issue the appropriate visa.','','J');
-			$pdf->Ln(5);
-			
-			$pdf->MultiCell(180,5,'d) 	Inform the scholars to report to Scholarship Division, Indian Council for Cultural Relations  (ICCR),'.$regionInfo[0]['name'].' or The Head, Department of '.$coursename.', '.$uninmae[0]['name'].', '.$regionInfo[0]['name'].' alongwith all original certificates and testimonials and academic transcript in English on prescribed date in the attached acceptance letter of the university, failing which admission will be cancelled.','J');
-			$pdf->Ln(5);
-			
-			$pdf->MultiCell(180,5,'e)	Please ensure that the student brings all his/her documents/Credentials/Mark Sheets in English language only.','','J');
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'f)	Also inform him/her of the requirement to register with the local FRO/FRRO within 7/14 days of arrival in India or as per Indian Mission’s instruction on his/her passport.','','J');		
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'g)	Advice the scholar to carry with him/her some money to meet incidental expenses on arrival (a minimum of INR 35,000/- is recommended) also brief the scholar on living conditions in India and the Terms & Conditions of ICCR’s scholarship.  Including the fact that living in hostel accommodation is compulsory.','','J');	
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'h)	You may inform to the candidate he/she is entitled for scholarship dues upto declaration of result only.','','J');
-			
-			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'i)	To carry all original documents with them.','','J');		
-			$pdf->Ln(5);	
-			$pdf->SetFont('Arial','B');	
-			$pdf->MultiCell(170,5,'Note:	Please do not send us acceptances which exceed the number of slots allotted to your country under specific scheme.','','L');	
-			
-			
-			$pdf->SetFont('Arial','',10);
-			$pdf->Ln(5);
-			$pdf->MultiCell(170,5,'Regards,','','L');	
-			
-			$pdf->MultiCell(170,5,'Scholarship Division','','R');
-			
-			$pdf->MultiCell(170,5,'ICCR,'.$regionInfo[0]['name'],'','R');
-			
-			$pdf->MultiCell(170,5,'File No. ('.$applicationId.')/'.$fy[1] ,'','L');
-			
-			$filename = $applicationId."_University_Response_".date('jS-F-Y-h-i-s').'.pdf';
-			
-			$filenamePath = FCPATH."assets/site/main/accept/".$filename;
-			$pdf->Output($filename,"D");
+
+			// Was previously built as a forced-download PDF via FPDI's
+			// PdfHTMLTable + $pdf->Output($filename,"D"). Opened in a new tab
+			// (target="_blank"), that produces a blank tab in most browsers
+			// while the file downloads silently in the background, which looks
+			// indistinguishable from a broken page. Switched to the same
+			// "echo the letter as an HTML page" approach already proven to
+			// work for Headquarter::confirmationReceivedWithNewFormat(), so
+			// this now renders visibly in the tab instead of downloading.
+			$missionType = $mission[0]['mission_type'] ?? '';
+			$missionName = $mission[0]['mission_name'] ?? '';
+			$missionCountry = $mission[0]['country_name'] ?? '';
+			$regionName = $regionInfo[0]['name'] ?? '';
+			$fullname = $stepOne[0]['fullname'] ?? '';
+			$countryName = $country[0]['country_name'] ?? '';
+			$schemeName = $schemename[0]['scheme_name'] ?? '';
+			$schemeCode = $schemename[0]['code'] ?? '';
+			$uniName = $uninmae[0]['name'] ?? '';
+			$fyLabel = $fy[1] ?? '';
+			ob_start();
+			?>
+			<html>
+			<style>
+				body { font-family: Arial; font-size: 13px; }
+				.pdf_div { width:80%; margin:auto; padding:10px 25px 0 25px; }
+				p { text-align: justify; }
+			</style>
+			 <body>
+		<div class="pdf_div" style="font-size: 13px;">
+        <p style="text-align: right;"><small>Ref. No. <?php echo $applicationId; ?> <br/>Date: <?php echo $missionDate; ?> </small></p>
+		<div style="text-align: center;"><?php echo $logo;?></div>
+        <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
+		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 36px;margin: -20px;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
+        <p style="text-align: right;"><?php echo  $mission[0]['mission_type'] . ': ' . $mission[0]['mission_name'].',<br>'.$mission[0]['country_name']; ?></p>
+        <p><b>Subject:-</b> Offer of Provisional admission with award of ICCR Scholarship for A.Y 2026-27</p>
+        <p>Dear: Mr./Ms./Mrs. <?php echo  $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname']; ?></p>
+        <p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . (isset($uninmae[0]['name']) ? $uninmae[0]['name'] : '') . ' ' . (isset($schemename[0]['scheme_name']) ? $schemename[0]['scheme_name'] : '') . ' for the Academic Year 2026-2027. You are requested to report ' . (isset($regionInfo[0]['name']) ? $regionInfo[0]['name'] : '') . ' University physically along with all original certificate and testimonials latest by '   . (isset($response[0]['date_of_joining']) ? $response[0]['date_of_joining'] : '') . ' and also to Regional Office through Email.'; ?></p>
+        <p style="text-align: justify;">2)  Hostel accommodation will be provided to you subject to its availability by University authorities. You are required to report at the nearest “Foreign Regional Registration Office” within fourteen days of arrival in India.</p>
+        <p style="text-align: justify;">3)  You are advised to contact the Education Wing of this Mission immediately along with your passport for grant of visa and finalization of your date of departure. You are also hereby directed to obtain your final departure letter from the Mission before joining the concerned Institution in India failing which this offer letter stands cancelled. Furthermore no request of change of course and University will be entertained.</p>
+        <p style="text-align: justify;">4)  Scholarship expenses will be managed into two parts, which are as follows:-</p>
+        <p style="text-align: justify;">(A)	Hostel dues:- On arrival, all these expenses are to be managed by the scholar.</p>
+
+	    <p>i) Hostel fee, Mess fee, Electricity charges, Caution money and Application fee </br>ii) Health insurance </br>iii) FRRO registration fee/late fee</p>
+
+        <p style="text-align: justify;">(B)	Stipend/OCF/other dues – After completion of procedural formalities (dues can be released by ICCR but it takes minimum two months time to complete the process).</p>
+
+        <p>i) Stipend, HRA, ACA and thesis charges (to be paid directly to scholar) </br>ii) Tuition Fee/OCF (to be paid to university/institute on receipt of demand) </br>iii) Air-Tickets (as per admissibility)</p>
+
+        <p style="text-align: justify;">5)  You are also advised to carry with you joining report form and a Minimum of INR 50,000/- equivalent to $700 to meet incidental expenses on arrival in India. There could also be some miscellaneous expanses, so please carry some extra amount to meet the same.</p>
+        <p style="text-align: justify;">6)  Please complete all pre-departure formalities such as preparation of passport  and getting the student/research visa.</p>
+        <p style="text-align: justify;">7)  Please carry original documents for confirming the provisional admission at the time of reporting at University. Please note that admission is granted provisionally and needs to be confirmed on the basis of submission of original documents at the time of first reporting at the University. In case of discrepancies in documentation, University reserves the right to cancel provisional admission offered to student. ICCR/Mission will not be responsible for cancellation of provisional admission on the above grounds and will not be liable to pay scholarship or expenses  incurred on return air-tickets by the student.</p>
+        <!--<p><b>NOTE:-</b> Due to ongoing Covid-19 Pandemic, students will take up online classes and once the situation is better students will be invited to India as and when University allows to report and join physical classes. For any update, please be in touch with University and Mission.</p>-->
+		<!-- </br> -->
+		<p style="text-align: right;"><?php echo $new;?></p>
+		<p style="text-align: right;">Yours Sincerely <br><?php echo $missionPersonName; ?></p>
+		
+	</div>
+    </body>
+			</html>
+			<?php
+			$html = ob_get_clean();
+			echo $html;
 		}
-		catch(Exception $e)
+		catch(Throwable $e)
 		{
 			$this->session->set_flashdata('message_type', 'error');
 			$this->session->set_flashdata('error', 'Some Internal Error Occured While Uploading Application!');
-			
+
 			redirect(site_url().'university/dashboard');
 		}
-		
+
 	}
-	
+
 	function confirmationNotReceivedWithFormat()
 	{
 		try
@@ -2740,7 +2797,10 @@ public function downloadStudent_zip($path)
 			$doc = array();
 			$applicationId = $this->uri->segment(3);
 			$uniid = $this->uri->segment(4);
-			$response = $this->common_model->getconfirmationDataforHqrs($applicationId);
+			// Same fix as confirmationReceivedWithFormat(): getconfirmationDataforHqrs()
+			// was an unreliable data source for some applications; switched to
+			// getconfirmationDataByMission() to match.
+			$response = $this->common_model->getconfirmationDataByMission($applicationId);
 			$region = 0;$coursename = "";$respFile="";$reason = "";
 			if(count($response)>0)
 			{
@@ -2748,31 +2808,32 @@ public function downloadStudent_zip($path)
 				{
 					if($resp['university_is_accept'] == 2 && $resp['regional_university'] == $uniid)
 					{
-						$reason = $resp['reason'];
-						$respFile = $resp['region_one_doc'];
-						$region = $resp['region_one_status'];
-						$coursename = $resp['course'];
-						array_push($doc,$resp['region_one_doc']);
+						$reason = $resp['reason'] ?? '';
+						$respFile = !empty($resp['region_one_doc']) ? $resp['region_one_doc'] : '';
+						$region = !empty($resp['region_one_status']) ? $resp['region_one_status'] : 0;
+						$coursename = !empty($resp['final_course']) ? $resp['final_course'] : '';
+						array_push($doc,$respFile);
 					}
 				}
 			}
-			
-			
+
+
 			$current = date('d-m-Y');
 			$fy = $this->getFinancialYears($current,1);
 			$user_data = $this->session->userdata('user_data');
-			$userId = $user_data['userid'];			
-			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);		
+			$userId = $user_data['userid'];
+			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
 			$studentOther = $this->common_model->getStudentOtherDetails($applicationId);
-			$mission = $this->common_model->getMissionInfo($studentOther[0]['application_through']);
-			$country = $this->common_model->getCountryById($stepOne[0]['country']);
+			$mission = !empty($studentOther) ? $this->common_model->getMissionInfo($studentOther[0]['application_through']) : [];
+			$country = !empty($stepOne) ? $this->common_model->getCountryById($stepOne[0]['country']) : [];
 			$schemeId = $this->common_model->getMappingData($applicationId);
-			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
+			$schemename = !empty($schemeId) ? $this->common_model->getSchemeById($schemeId[0]['scholarship_id']) : [];
 			$regionInfo = $this->common_model->getRegionById($region);
 			$uninmae = $this->common_model->getUniversityStateById($uniid);
 			$this->load->file('fpdi/PdfHTMLTable.php');
-			
-			
+
+
+			$this->load->library('mpdf60/Mpdf');
 			$pdf = new PdfHTMLTable();
 			$pdf->AddPage('P');
 			$pdf->SetXY(10.0,5.0);
@@ -2781,25 +2842,25 @@ public function downloadStudent_zip($path)
 			$pdf->SetFont('Arial','',7);
 			$pdf->MultiCell(180,5,'Ref. No.'.$applicationId,'','R');
 			$pdf->MultiCell(180,5,'Date: '.date('d M Y h:i:s'),'','R');
-			
+
 			$pdf->SetXY(10.0,45.0);
-			$pdf->SetTitle('Indian Council For Cultural Relations',false);		
-			$pdf->SetFont('Arial','',10);	
+			$pdf->SetTitle('Indian Council For Cultural Relations',false);
+			$pdf->SetFont('Arial','',10);
 			$pdf->Ln(5);
 			$pdf->SetFont('Arial','',35);
 			$pdf->SetTextColor(221,221,255);
 			$pdf->RotatedText(35,190,'Indian Council For Cultural Relations',45);
-			$pdf->SetFont('Arial','',10);	
+			$pdf->SetFont('Arial','',10);
 			$pdf->SetTextColor(0,0,0);
-			$pdf->MultiCell(180,5,$mission[0]['mission_type'].': '.$mission[0]['mission_name'],'','L');
-			
-			$pdf->MultiCell(180,5,$mission[0]['country_name'],'','L');
-			
+			$pdf->MultiCell(180,5,($mission[0]['mission_type'] ?? '').': '.($mission[0]['mission_name'] ?? ''),'','L');
+
+			$pdf->MultiCell(180,5,$mission[0]['country_name'] ?? '','','L');
+
 			$pdf->MultiCell(180,5,'To     :	HoC / Education Wing / Culture Wing','','L');
-			
-			$pdf->MultiCell(180,5,'From :	Scholarship Division, ICCR, '.$regionInfo[0]['name'],'','L');
+
+			$pdf->MultiCell(180,5,'From :	Scholarship Division, ICCR, '.($regionInfo[0]['name'] ?? ''),'','L');
 			$pdf->Ln(5);
-			$pdf->MultiCell(180,5,'Please refer to the application uploaded on A2A Scholarship Portal by Mr./Ms. '.$stepOne[0]['fullname'].', a national of '.$country[0]['country_name'].' for admission under '.$schemename[0]['scheme_name'].'  ('.$schemename[0]['code'].') for the Academic Year '.$fy[1],'','J');
+			$pdf->MultiCell(180,5,'Please refer to the application uploaded on A2A Scholarship Portal by Mr./Ms. '.($stepOne[0]['fullname'] ?? '').', a national of '.($country[0]['country_name'] ?? '').' for admission under '.($schemename[0]['scheme_name'] ?? '').'  ('.($schemename[0]['code'] ?? '').') for the Academic Year '.($fy[1] ?? ''),'','J');
 		$pdf->Ln(5);		
 			$pdf->MultiCell(180,5,'The application of above applicant was forwarded to University. The University has declined the application for admission. It may please be noted that the decision of the University is final and no further correspondence on this will be entertained by ICCR / Mission.  In case the applicant has applied for admission in some other university/ institute, the response if not yet conveyed, will be uploaded as and when it is received by ICCR','','J');
 			$pdf->Ln(5);
@@ -2824,23 +2885,23 @@ public function downloadStudent_zip($path)
 			$pdf->Ln(5);
 			$pdf->MultiCell(170,5,'Scholarship Division','','R');
 			
-			$pdf->MultiCell(170,5,'ICCR,'.$regionInfo[0]['name'],'','R');
-			
-			$pdf->MultiCell(170,5,'File No. ('.$applicationId.')/'.$fy[1] ,'','L');
-			
+			$pdf->MultiCell(170,5,'ICCR,'.($regionInfo[0]['name'] ?? ''),'','R');
+
+			$pdf->MultiCell(170,5,'File No. ('.$applicationId.')/'.($fy[1] ?? ''),'','L');
+
 			$filename = $applicationId."_University_Response_".date('jS-F-Y-h-i-s').'.pdf';
-			
+
 			$filenamePath = FCPATH."assets/site/main/accept/".$filename;
 			$pdf->Output($filename,"D");
 		}
-		catch(Exception $e)
+		catch(Throwable $e)
 		{
 			$this->session->set_flashdata('message_type', 'error');
 			$this->session->set_flashdata('error', 'Some Internal Error Occured While Uploading Application!');
-			
-			redirect(site_url().'mission/dashboard');
+
+			redirect(site_url().'university/dashboard');
 		}
-		
+
 	}
 		function undertakingFromStudent()
 	{
@@ -2861,44 +2922,51 @@ public function downloadStudent_zip($path)
 			
 			$response = $this->common_model->getconfirmationDataByMission($applicationId);
 			//echo "<pre>";print_r($response);die;
+			// response[X]['final_course'] doesn't exist in what
+			// getconfirmationDataByMission() selects (it returns 'course' and
+			// 'confirmed_course', not 'final_course') - $course computed here was
+			// always undefined and, further down, was never actually echoed
+			// anywhere in the generated document, so this just guards the read
+			// instead of inventing a new value for something that isn't displayed.
 			if(count($response) >1){
 				$uni1 = $this->common_model->getUniversityById($response[1]['regional_university']);
-				$course = $response[1]['final_course'];
+				$course = !empty($response[1]['final_course']) ? $response[1]['final_course'] : '';
 			}
 			else
 			{
 				$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
-				$course = $response[0]['final_course'];
-				
+				$course = !empty($response[0]['final_course']) ? $response[0]['final_course'] : '';
+
 			}
 			//echo "<pre>";print_r($schemeId);die;
 			$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
-			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']); 
+			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']);
 			$applicantAcceptanceDate = $schemeId[0]['undertaking_doc'];
-			$date1 = $applicaitonSubmitData[0]['created'];						
 			$acDate =  date('d-m-Y',$applicantAcceptanceDate);
 			$getDir = $this->common_model->getDirUserInfo($userd->id);
-			/* if($getDir->dir == ''){
+			// Removed a dead block that used to sit here: it read the signature
+			// file into memory, base64 round-tripped it, and wrote it to a temp
+			// file via tempnam()/file_put_contents() - but that temp file's path
+			// was immediately discarded and overwritten by the $imgPath logic
+			// below, which is the one actually used in the generated document.
+			// The unused read was also the source of the
+			// "file_get_contents(...): No such file or directory" log warning
+			// whenever $userd->dir was blank (the URL it built had no folder
+			// prefix at all). Removing it changes no visible output.
+			if(empty($userd->dir)){
 				$imgPath = site_url().'assets/site/main/profile_signature/'.$applicaitonStepThree[0]['signature_doc'];
 			}else{
 				$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
-			} */
-			$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-			$data = base64_encode($imgs);
-			$f = finfo_open();
-			$imgdata = base64_decode($data);
-            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-			$img_base64_encoded = 'data:'.$mime_type.';base64,'.$data.'';
-			$imageContent = file_get_contents($img_base64_encoded);
-			$imgPath = tempnam(sys_get_temp_dir(), 'prefix');
-			file_put_contents ($imgPath, $imageContent);
-			$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
+			}
 			$new='<img src="'.$imgPath.'" style="width:100px;">';
 
 			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
 			$logo = '<img src="' . $image . '" style="width:auto;">';
-			$course = $response[0]['final_course'];
+			$course = !empty($response[0]['final_course']) ? $response[0]['final_course'] : '';
 			//echo $course;die;
+			$nomenid = $response[0]['nomenclature'];
+			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+			$nomenclature = $nomclature[0]['title'];
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			ob_start();
         ?>
@@ -2929,17 +2997,26 @@ public function downloadStudent_zip($path)
         <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
 		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 40px;margin: 0;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
 
-        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP</b></p>
+        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP/Undertaking</b></p>
 		<br>
-		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue course  ' . $course;?> 
-    	<p style="text-align: justify;">1)  I Mr./Ms./Mrs. <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' do hereby affirm that I have read the Terms and Conditions including Financial Terms of ICCR’s scholarship with due diligence and agree to abide by them.'; ?></p>
-        <p style="text-align: justify;">2)  I also confirm that the course <?php echo $course . ' offered to me in ' . $uni1[0]['name'] . ' is accepted to me and that I will not ask for a change in course or university.'; ?></p>
-        <p style="text-align: justify;">3)  I will complete the entire course of study in which I have been admitted.</p>
-        <p style="text-align: justify;">4)  I will purchase medical insurance of minimum sum assured of INR (Rs.) 5 lakhs / equivalent to approximate US$ 6700 per year. I understand that it is compulsory for continuation of ICCR Scholarship.</p>
-        <p style="text-align: justify;">5)  I certify that I do not suffer from terminal illness or ailments affecting vital organs. I also certify that I am not in family way. In case of illness require long absence of my course of study, I undertake to return to my country.</p>
-        <p style="text-align: justify;">6)  I agree to deliberately study in India.  In case I fail to get promoted to next level of course / fail, I understand that ICCR will stop scholarship. If such situation arises, I undertake that I will clear the level of study in which I have failed with my own financial resources and once I clear the level, I will request for revival of scholarship.</p>
-        <p style="text-align: justify;">7)  I agree to abide by and respect the law of India.  In case if I get involved in illegal activities and /or events concerning law and order issues, I understand that I will be prosecuted as per the law of India and I also agree on being deported to my country.</p>
-		<p style="text-align: justify;">8)  I understand that ICCR has right to change its Scholarship Policy (ies) including financial terms of scholarship from time to time.  I agree to abide by them.  If I disagree to follow the revised terms and conditions, ICCR will have right to discontinue my scholarship.</p>	
+		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue nomenclature  ' . $nomenclature;?>
+    	<p style="text-align: justify;">1.  That I have accepted the award of scholarship for the Course and University as mentioned above and will not ask for the change of course or University at any later stage.</p>
+        <p style="text-align: justify;">2.  That I have read and understood fully the Guidelines/Rules of the scholarship as provided on the A2A Portal and undertake to abide by the same.</p>
+        <p style="text-align: justify;">3.  That I have also understood that the said Guidelines/Rules are subject to change at the discretion of ICCR and I undertake to abide by the Guidelines/Rules as amended from time to time. I have also noted and understand the provisions regarding deductions from scholarship dues, including the quarterly submission of attendance records, the half-yearly submission of academic progress reports, compliance with medical insurance and so on.</p>
+        <p style="text-align: justify;">4.  That I have understood the following norms regarding ex-India period and any violation of these norms will attract deduction of my scholarship dues- Student must note that the paid ex-India period for students of any levels of courses will not exceed 60 days in an academic year with the conditions that (a) Ex-India period can be availed maximum twice in an academic year; (b) Ex-India period upto 30 days at a time will not attract any deduction in scholarship allowances; (c) Any number of days of continuous ex-India period beyond 30 days and upto 60 days will attract 50% deduction on the amount of stipend; (d) Any number of days beyond 60 days limit will attract deduction of entire scholarship allowances excluding HRA; (e) Any number of days beyond the second time even if it is within the total 60 days limit will attract deduction of entire scholarship allowances excluding HRA.</p>
+        <p style="text-align: justify;">5.  That I will complete the entire course of study and abide by all the rules, regulations, guidelines or any instructions of the University/Institution as prevalent at the time of admission or amended from time to time.</p>
+        <p style="text-align: justify;">6.  That I certify that documents related to my eligibility for study in India with regard age and educational qualification are correct and in case of any discrepancy the award of admission and scholarship will be terminated without any notice and that I will go back to my country on my own expenses within the permissible duration as per the law of India.</p>
+        <p style="text-align: justify;">7.  That I will respect and abide by the laws of India and not indulge in any illegal, unlawful, anti-social, criminal, political, religious, demonstrations, protest activities and any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">8.  That I will abide by all the rules, regulations, guidelines, laws of the Government of India or any other Indian authorities in its entirety. I will be sensible in using social media handles and will not post/comment any content against India, its people, culture, institutions or any entity and/or the content/post that can disturb relations between India and other countries. Any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">9.  That I undertake to follow visa / immigration rules and keep my registration as temporary foreign resident in India valid during my entire stay in India. I also undertake to pay any charges, penalties, fines etc. involved in keeping my Visa/residential permit status valid all the time. In case of any violation of Visa/immigration norms, I will be prosecuted under the laws of India and its authorities which may lead to heavy penalties/charges/fines, deportation, detention/confinement/imprisonment etc. as per prevailing laws.</p>
+		<p style="text-align: justify;">10.  That I certify that I am physically and mentally fit, not suffering from any chronic contagious/non-communicable diseases, terminal illness or ailments affecting vital organs, not pregnant (applicable for a female candidate) and having undergone mandatory and obligatory vaccinations.</p>
+		<p style="text-align: justify;">11.  That I will be responsible for my health and purchase Medical Health Insurance Policy with a minimum cover of Rs.5,00,000/- (Rupees Five Lacs) to cover my medical expenses. I also undertake that the expenses not covered under the Medical Insurance Policy will be borne by me and I will not raise any claim for the same to ICCR or University or any other authorities of India and understand that in absence of sufficient medical cover or funds, I myself would be responsible for any repercussions on account of my health conditions. I will return to my country on my own expenses in case of any illness requiring long absence from course of study and in that case the scholarship will be terminated. I also undertake to keep my insurance cover valid during my entire stay in India and submit the copy of valid insurance to the concerned Zonal Office annually for their records.</p>
+		<p style="text-align: justify;">12.  That I undertake to be regular in attendance and academics, failing which ICCR, University and other authorities have the right to terminate my scholarship and under any such circumstances, I shall bear all my expenses on my return to my native country. I will also submit the self-declaration, signed by the Dean FSR every month, in this regard in December and June by email for the release of my stipend.</p>
+		<p style="text-align: justify;">13.  That in case I fail in an academic year, my scholarship will be suspended and will be re-instated only after I will pass my examination and during such intervening period, I will study an self-finance basis.</p>
+		<p style="text-align: justify;">14.  That I understood that the Indian Mission and ICCR have the right to terminate my scholarship at any stage without assigning any reason whatsoever.</p>
+		<p style="text-align: justify;">15.  That I undertake to refund voluntarily in case any excess or over disbursement is made to me on account of scholarship allowances to ICCR in India or through the Indian Mission in my country if such wrong disbursement is noticed after completion of my course in India.</p>
+		<p style="text-align: justify;">16.  That I undertake to pay, in a timely manner and/or as per the schedule of the demanding authority, any dues payable by me on account of any charges of the University, which are not covered by ICCR under the tuition fees and other compulsory fees, such as Library fee, security deposit, caution money, lab charges, hostel/utility charges, private accommodation/utility charges, any other charges etc. Any violation will attract suspension of my scholarship dues till the pending dues are settled by me.</p>
+		<p style="text-align: justify;">17.  That I understand that the admission granted to me is provisional and confirmed only after my arrival in India on the basis of original documents with transcripts and if I am not found eligible, I will go back to my country on my own expenses.</p>
 	</br>
 
 		<p style="text-align: left;"><?php echo $new;?></p>
@@ -3147,7 +3224,8 @@ public function downloadStudent_zip($path)
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',12);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3190,7 +3268,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',8);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3233,6 +3312,7 @@ $html = $content;
             $appno = $this->uri->segment(3);
 
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 9);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -3307,6 +3387,7 @@ $html = $content;
 	{
 		try{
 			header("Content-type: application/pdf");
+			$this->load->library('mpdf60/Mpdf');
 	    	$mpdf = new Mpdf('c','A4','','',10,10,05,10,10,10);
 	    	
 	    	$html1 = "<div style='text-align:center;'><img width='300px' src='".site_url()."assets/site/main/images/mea-logo.png'></div>";       	 				
@@ -3449,9 +3530,10 @@ $html = $content;
 			$data['schemeId'] = $this->common_model->getApplicationSchemeId($applicationId);
 			$data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
+			$data['mappingData'] = $this->common_model->getMappingData($applicationId);
 			//print_r($data['applicaitonStepOne']);die;
 			$this->load->view('university/header_mission');
-			$this->load->view('university/universityResponse',$data);
+			$this->load->view('university/acceptanceHistory',$data);
 			$this->load->view('university/footer');
 		}
 		catch(Exception $e)
@@ -3531,7 +3613,7 @@ $html = $content;
 				{				
 				  $nameUn = str_replace(" ","_",$filesUn['name']);
 				  $imgnameUn = time().'_university_approval_'.$appno.'_'.$nameUn;
-				  $target_file = './'.$currentyear.'/university_approval/'.$imgnameUn; 
+				  $target_file = './'.$currentyear.'/university_approval/'.$imgnameUn;
 				  move_uploaded_file($_FILES["inputfile_regional"]["tmp_name"], $target_file);
 			    }	
 			}

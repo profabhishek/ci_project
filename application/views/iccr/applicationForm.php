@@ -69,31 +69,59 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 						
               <div class="box-body">
               	<div class="col-xs-3 prfl pull-right" >
-              		              		<?php              			 
-              			
-              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-						
-          				if($userd->dir == "")
-						{
-							?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php		
-						}						
-						else
-						{
-							if(file_exists($userd->dir.'/'. $userImage))
-							{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?><?php echo $userd->dir.'/'. $userImage; ?>"/>
-							<?php		
-							}
-							else{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php
-							}
-							
-						}
+              		              		<?php
+              			// APPLICANT PHOTO.
+              			//
+              			// This used to build src="<site_url()><userd->dir>/<file>",
+              			// but iccr_users.dir points OUTSIDE the web root, so that
+              			// URL never resolved and the photo showed as a broken
+              			// image. The file has to be read from disk and inlined as
+              			// a data URI instead - the same fix already applied to
+              			// contactForm.php, which the user confirmed working.
+              			//
+              			// Order: user directory first, then the older public
+              			// profile_pics folder, then a default avatar so the layout
+              			// never collapses.
+              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
+
+              			$applicantPhoto = '';
+              			if(!empty($userImage))
+              			{
+              				$userDir = ($userd && !empty($userd->dir)) ? rtrim($userd->dir, '/\\') : '';
+
+              				if($userDir !== '' && file_exists($userDir.'/'.$userImage))
+              				{
+              					$imgBytes = @file_get_contents($userDir.'/'.$userImage);
+              					if($imgBytes !== false && $imgBytes !== '')
+              					{
+              						$fi = @finfo_open(FILEINFO_MIME_TYPE);
+              						$mime = $fi ? @finfo_buffer($fi, $imgBytes, FILEINFO_MIME_TYPE) : '';
+              						if($fi) { @finfo_close($fi); }
+              						if(!empty($mime))
+              						{
+              							$applicantPhoto = 'data:'.$mime.';base64,'.base64_encode($imgBytes);
+              						}
+              					}
+              				}
+
+              				if($applicantPhoto === '' && file_exists(FCPATH.'assets/site/main/profile_pics/'.$userImage))
+              				{
+              					$applicantPhoto = site_url().'assets/site/main/profile_pics/'.$userImage;
+              				}
+              			}
+
+              			if($applicantPhoto === '')
+              			{
+              				?>
+              				<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/images/default_avatar.png"/>
+              				<?php
+              			}
+              			else
+              			{
+              				?>
+              				<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo $applicantPhoto; ?>"/>
+              				<?php
+              			}
               		?>
               	</div>
               
@@ -574,6 +602,88 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 											</tr>
 										</tbody>
 									</table>
+									<?php
+									// ---------------------------------------------------
+									// CONFIRMED ALLOTMENT.
+									//
+									// The table above lists the five universities the
+									// applicant ASKED for. This block shows what was
+									// actually granted: the confirmed university and the
+									// confirmed nomenclature.
+									//
+									// Source is iccr_university_response_by_hqrs - the
+									// university is regional_university and the
+									// nomenclature is held in the course column
+									// (confirmed_course is a second source, and the
+									// application's own nomenclature the last resort).
+									// Either may store an id or the title itself, so an
+									// id is resolved and anything else printed as it is.
+									// ---------------------------------------------------
+									$allotmentRows = array();
+									if (!empty($universityResponses) && is_array($universityResponses)) {
+										foreach ($universityResponses as $oneAllotment) {
+											if (!empty($oneAllotment['regional_university']) || !empty($oneAllotment['course']) || !empty($oneAllotment['confirmed_course'])) {
+												$allotmentRows[] = $oneAllotment;
+											}
+										}
+									}
+									?>
+									<div style="margin-top:14px; padding:10px; border:1px solid #cecece; background:#f4f4f4;">
+										<label style="display:block; margin-bottom:6px;">Confirmed University &amp; Nomenclature</label>
+										<table class="table table-bordered" style="width:100%; background:#fff; margin-bottom:0;">
+											<thead>
+												<th style="width:60%;">Confirmed University</th>
+												<th style="width:40%;">Nomenclature</th>
+											</thead>
+											<tbody>
+											<?php
+											if (count($allotmentRows) > 0) {
+												foreach ($allotmentRows as $oneAllotment) {
+													$allotUniName = '';
+													if (!empty($oneAllotment['regional_university'])) {
+														$allotUniRow = $this->common_model->getUniversityById($oneAllotment['regional_university']);
+														if (is_array($allotUniRow) && count($allotUniRow) > 0 && isset($allotUniRow[0]['name'])) {
+															$allotUniName = $allotUniRow[0]['name'];
+														}
+													}
+
+													$allotNomRaw = '';
+													foreach (array('course', 'confirmed_course', 'nomenclature') as $allotNomCol) {
+														if (!empty($oneAllotment[$allotNomCol])) {
+															$allotNomRaw = trim((string) $oneAllotment[$allotNomCol]);
+															break;
+														}
+													}
+													if ($allotNomRaw === '' && !empty($applicaitonStepOne[0]['nomenclature'])) {
+														$allotNomRaw = trim((string) $applicaitonStepOne[0]['nomenclature']);
+													}
+													$allotNomText = '';
+													if ($allotNomRaw !== '') {
+														if (ctype_digit($allotNomRaw)) {
+															$allotNomRow = $this->common_model->getnomenclatureByid($allotNomRaw);
+															$allotNomText = (is_array($allotNomRow) && count($allotNomRow) > 0 && isset($allotNomRow[0]['title'])) ? $allotNomRow[0]['title'] : '';
+														} else {
+															$allotNomText = $allotNomRaw;
+														}
+													}
+													?>
+													<tr>
+														<td><?php echo $allotUniName !== '' ? htmlspecialchars($allotUniName, ENT_QUOTES) : 'NA'; ?></td>
+														<td><?php echo $allotNomText !== '' ? htmlspecialchars($allotNomText, ENT_QUOTES) : 'NA'; ?></td>
+													</tr>
+													<?php
+												}
+											} else {
+												?>
+												<tr>
+													<td colspan="2">No university allotment has been recorded for this application yet.</td>
+												</tr>
+												<?php
+											}
+											?>
+											</tbody>
+										</table>
+									</div>
 								</td>
 								
 							</tr>
@@ -1257,15 +1367,49 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 							</tr>
 							
 							<tr>
-								<td style="text-align:right;"><?php 
-						  if(!empty($applicaitonStepThree) && $applicaitonStepThree[0]['signature_doc'] != "")
+								<td style="text-align:right;"><?php
+						  // APPLICANT SIGNATURE.
+						  //
+						  // This only ever looked in the public
+						  // assets/site/main/profile_signature/ folder. Newer
+						  // applications store the signature in the applicant's
+						  // own directory (iccr_users.dir), which sits outside
+						  // the web root - so for those records the image was
+						  // simply broken. Read from the user directory and
+						  // inline it, exactly as the applicant photo above,
+						  // and fall back to the public folder for older
+						  // records. If neither exists, print nothing rather
+						  // than a broken image icon.
+						  $signatureFile = (!empty($applicaitonStepThree) && !empty($applicaitonStepThree[0]['signature_doc'])) ? $applicaitonStepThree[0]['signature_doc'] : '';
+						  $signatureSrc  = '';
+						  if($signatureFile !== '')
+						  {
+						  	$sigDir = (isset($userd) && $userd && !empty($userd->dir)) ? rtrim($userd->dir, '/\\') : '';
+						  	if($sigDir !== '' && file_exists($sigDir.'/'.$signatureFile))
+						  	{
+						  		$sigBytes = @file_get_contents($sigDir.'/'.$signatureFile);
+						  		if($sigBytes !== false && $sigBytes !== '')
+						  		{
+						  			$sfi  = @finfo_open(FILEINFO_MIME_TYPE);
+						  			$smime = $sfi ? @finfo_buffer($sfi, $sigBytes, FILEINFO_MIME_TYPE) : '';
+						  			if($sfi) { @finfo_close($sfi); }
+						  			if(!empty($smime))
+						  			{
+						  				$signatureSrc = 'data:'.$smime.';base64,'.base64_encode($sigBytes);
+						  			}
+						  		}
+						  	}
+						  	if($signatureSrc === '' && file_exists(FCPATH.'assets/site/main/profile_signature/'.$signatureFile))
+						  	{
+						  		$signatureSrc = site_url().'assets/site/main/profile_signature/'.$signatureFile;
+						  	}
+						  }
+						  if($signatureSrc !== '')
 						  {
 						  ?>
-						 
-						  <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/profile_signature/<?php echo $applicaitonStepThree[0]['signature_doc']; ?>" target="_blank" title="Click to View Signature"><img  style="padding:2px;width:150px;max-height:50px;" src="<?php echo site_url(); ?>assets/site/main/profile_signature/<?php echo $applicaitonStepThree[0]['signature_doc']; ?>"/></a><br/>
-						
-						  <?php	
-						  }						 
+						  <img style="padding:2px;width:150px;max-height:50px;" title="Applicant signature" src="<?php echo $signatureSrc; ?>"/><br/>
+						  <?php
+						  }
 						  ?>	</td>
 							</tr>
 							<tr>
@@ -1302,9 +1446,21 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 										<td height="10px"></td>										
 									</tr>
 									<tr>
-										<td style="width:100%;">Please find application of Mr./Ms. <b><?php if(!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname'];?></b> under the scheme <b><?php if(!empty($mappingData[0]['scholarship_id'])) {
+										<td style="width:100%;">Please find application of Mr./Ms. <b><?php if(!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname'];?></b> under the scheme <b><?php
+										// $schemename was only assigned inside the if, but was
+										// echoed unconditionally - so with no scheme on the record
+										// this raised "Undefined variable" warnings, and if the
+										// variable happened to survive from earlier in the page it
+										// would print the WRONG scheme name on an official form.
+										$formSchemeName = '';
+										if(!empty($mappingData) && !empty($mappingData[0]['scholarship_id'])) {
 											$schemename = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-										}echo $schemename[0]['scheme_name'];?></b> for admission process.</td>
+											if(is_array($schemename) && count($schemename) > 0 && isset($schemename[0]['scheme_name'])) {
+												$formSchemeName = $schemename[0]['scheme_name'];
+											}
+										}
+										echo htmlspecialchars($formSchemeName, ENT_QUOTES);
+										?></b> for admission process.</td>
 										
 									</tr>
 									<tr>
@@ -1339,7 +1495,21 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 										<td align="right">
 											<b>Signature</b>
 											<br/>
-											<img style="width: 147px;height: 37px;" src="<?php echo site_url();?>assets/site/main/mission_signature/<?php if(!empty($mappingData[0]['mission_person_signature'])) echo $mappingData[0]['mission_person_signature'];?>"/>
+											<?php
+											// MISSION OFFICIAL'S SIGNATURE.
+											// The <img> was rendered unconditionally, so when no
+											// signature had been uploaded the src ended in the
+											// bare folder path and the browser drew a broken
+											// image icon on an official form. Only draw it when
+											// the file is actually on disk.
+											$missionSigFile = (!empty($mappingData) && !empty($mappingData[0]['mission_person_signature'])) ? $mappingData[0]['mission_person_signature'] : '';
+											if($missionSigFile !== '' && file_exists(FCPATH.'assets/site/main/mission_signature/'.$missionSigFile))
+											{
+												?>
+												<img style="width: 147px;height: 37px;" src="<?php echo site_url(); ?>assets/site/main/mission_signature/<?php echo rawurlencode($missionSigFile); ?>"/>
+												<?php
+											}
+											?>
 										</td>
 										
 									</tr>

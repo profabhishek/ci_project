@@ -88,10 +88,10 @@ marquee{
 						<tr>
 						<td><?php echo $counter;?></td>
 			
-						<td><?php echo $app['fullname'].' '.$app['middlename'].' '.$app['familyname'];?></td>
+						<td><?php echo $app['fullname'].' '.($app['middlename'] ?? '').' '.($app['familyname'] ?? '');?></td>
 						<td><?php echo $app['email'];?></td>
-						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo $course[0]['title'];?></td>
-						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo $uni[0]['scheme_name'];?></td>
+						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo !empty($course) ? $course[0]['title'] : 'NA';?></td>
+						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo !empty($uni) ? $uni[0]['scheme_name'] : 'NA';?></td>
 					<td><?php
 						//if(($app['programme'] == 1 && $app['course'] == 58) || ($app['programme'] == 2 && $app['course'] == 59))
 						//{
@@ -106,7 +106,8 @@ marquee{
 
 						$data = $this->common_model->getconfirmationDataByMission($app['application_no']);
 						//echo '<pre>'; print_r($data);die;
-						$uni = $this->common_model->getUniversityById($data[0]['regional_university']);echo $uni[0]['name'];?></td>	
+						$uni = !empty($data) ? $this->common_model->getUniversityById($data[0]['regional_university']) : [];
+						echo !empty($uni) ? $uni[0]['name'] : 'NA';?></td>
 				
 						<td><?php echo $app['country_name'];?></td>
 						
@@ -121,7 +122,7 @@ marquee{
 							}
 							else
 							{
-								if($travelpl[0]['status'] == -14)
+								if(!empty($travelpl) && $travelpl[0]['status'] == -14)
 								{
 								?>
 							<a class="form-control sbmt" style="height:32px;width:122px;" href="<?php echo site_url();?>mission/createTravelPlan/<?php echo $app['application_no'];?>">Process Again</a>
@@ -197,10 +198,10 @@ marquee{
 						
 						
 						<td><?php echo $app['application_no'];?></td>
-						<td><?php echo $app['fullname'].' '.$app['middlename'].' '.$app['familyname'];?></td>
+						<td><?php echo $app['fullname'].' '.($app['middlename'] ?? '').' '.($app['familyname'] ?? '');?></td>
 						<td><?php echo $app['email'];?></td>
-						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo $course[0]['title'];?></td>
-						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo $uni[0]['scheme_name'];?></td>
+						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo !empty($course) ? $course[0]['title'] : 'NA';?></td>
+						<td><?php $uni = $this->common_model->getSchemeById($app['scholarship_id']);echo !empty($uni) ? $uni[0]['scheme_name'] : 'NA';?></td>
 					<td><?php
 						//if(($app['programme'] == 1 && $app['course'] == 58) || ($app['programme'] == 2 && $app['course'] == 59))
 						//{
@@ -211,7 +212,8 @@ marquee{
 							$data = $this->common_model->getConfirmationofApplicationIds($app['application_no']);
 						//}
 						//print_r($data);
-						 $uni = $this->common_model->getUniversityById($data[0]->regional_university);echo $uni[0]['name'];?></td>	
+						 $uni = !empty($data) ? $this->common_model->getUniversityById($data[0]->regional_university) : [];
+						 echo !empty($uni) ? $uni[0]['name'] : 'NA';?></td>
 				
 						<td><?php echo $app['country_name'];?></td>
 						
@@ -226,7 +228,7 @@ marquee{
 							}
 							else
 							{
-								if($travelpl[0]['status'] == -14)
+								if(!empty($travelpl) && $travelpl[0]['status'] == -14)
 								{
 								?>
 							<a class="form-control sbmt" style="height:32px;width:122px;" href="<?php echo site_url();?>mission/createTravelPlan/<?php echo $app['application_no'];?>">Process Again</a>

@@ -8,17 +8,23 @@
     font-size: 20px;
     width:100%;}
 .loginname{color: #337ab7;margin-left:20px;border-left:2px solid #cecece;padding-left:13px;}
-.card img:first-child{
-	height: 86px !important;
-    margin: 0 auto;
-    width: 87% !important;
-    position: absolute !important;
-}
+/* Previously a fixed 86px height + 87% width, floated at top-left of the
+   circle with no object-fit - since the source logos aren't all square,
+   this stretched/cropped them off-center and let them spill past the
+   round frame, so the "circle" read as a squashed oval/moon shape.
+   Filling the whole circle (100%/100%) with object-fit:cover keeps each
+   logo's own aspect ratio intact while cropping it to a perfect circle,
+   and .goals below now clips anything that overflows the round edge. */
+.card img:first-child,
 .card img:last-child{
-	height: 86px !important;
-    margin: 0 auto;
-    width: 87% !important;
+	height: 100% !important;
+    width: 100% !important;
+    object-fit: cover;
+    border-radius: 50%;
     position: absolute !important;
+    top: 0;
+    left: 0;
+    margin: 0;
 }
 marquee{
 	
@@ -103,9 +109,9 @@ if(!empty($notifications))
 	<div id="sidebar-wrapper">       
 	        <ul class="sidebar-nav" id="sidebar">
 	         
-	          <!--<li><a href="<?php echo site_url(); ?>mission/reports">Reports<span class="pull-right fltright"><?php echo $visaendrosment; ?></span></a></li>-->
+	          <!--Reports link removed: was dead HTML-comment code still executed by PHP, referencing an undefined $visaendrosment-->
 	          <!---<li><a href="<?php echo site_url(); ?>mission/alumni">Alumni Application<span class="pull-right fltright"><?php echo $alumanidata; ?></span></a></li>----->
-            <li><a href="<?php echo site_url(); ?>mission/new_applications/2026">Applications Received(2026-2027)<img src="<?php echo site_url(); ?>assets/site/main/images/newnotification.gif.png" alt="new gif Image"><span class="pull-right fltright"><?php echo $newTwentryTwoCountApplication2627?></span></a>
+            <li><a href="<?php echo site_url(); ?>mission/new_applications/2026">Applications Received(2026-2027)<img src="<?php echo site_url(); ?>assets/site/main/images/newnotification.gif.png" alt="new gif Image"><span class="pull-right fltright"><?php echo $newTwentryTwoCountApplication2627?></span></a></li>
 		   <li><a href="<?php echo site_url(); ?>mission/new_applications/2025">Applications Received(2025-2026)<span class="pull-right fltright"><?php echo $newTwentryTwoCountApplication2526?></span></a></li>
             <li><a href="<?php echo site_url(); ?>mission/new_applications/2024">Applications Received(2024-2025)<span class="pull-right fltright"><?php echo $newTwentryTwoCountApplication2425?></span></a></li>
             <li><a href="<?php echo site_url(); ?>mission/new_applications/2023">Applications Received(2023-2024)<span class="pull-right fltright"><?php echo $newTwentryTwoCountApplication2324?></span></a></li>
@@ -114,9 +120,9 @@ if(!empty($notifications))
 	          <!----<li><a href="<?php echo site_url(); ?>mission/pending_application">Pending Application With Mission/Post<span class="pull-right fltright"><?php echo $countpending_application; ?></span></a></li>--->
 	          <!----<li><a href="<?php echo site_url(); ?>mission/resubmitapplication">Cases of Re-Submission by Applicant<span class="pull-right fltright"><?php echo $countresubmitapplication; ?></span></a></li>
 	          <li><a href="<?php echo site_url(); ?>mission/hold_applications">Applications on Hold<span class="pull-right fltright"><?php echo $countholdapplications; ?></span></a></li>--->
-	          <li><a href="<?php echo site_url(); ?>mission/approved_applications_2026">Processed Applications (2026-2027)<img src="<?php echo site_url(); ?>assets/site/main/images/newnotification.gif.png" alt="new gif Image"><span class="pull-right fltright"><span class="pull-right fltright"><?php echo $countapprovedApplication25; ?></span></a></li>
+	          <li><a href="<?php echo site_url(); ?>mission/approved_applications_2026">Processed Applications (2026-2027)<img src="<?php echo site_url(); ?>assets/site/main/images/newnotification.gif.png" alt="new gif Image"><span class="pull-right fltright"><?php echo $countapprovedApplication25; ?></span></a></li>
 	          
-			  <li><a href="<?php echo site_url(); ?>mission/approved_applications_2025">Processed Applications (2025-2026)<span class="pull-right fltright"><span class="pull-right fltright"><?php echo $countapprovedApplication26; ?></span></a></li>
+			  <li><a href="<?php echo site_url(); ?>mission/approved_applications_2025">Processed Applications (2025-2026)<span class="pull-right fltright"><?php echo $countapprovedApplication26; ?></span></a></li>
 	          
 			  <li><a href="<?php echo site_url(); ?>mission/approved_applications">Processed Applications<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
             <li><a href="<?php echo site_url(); ?>mission/approved_applications_2023">Processed Applications (2023-2024)<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
@@ -126,7 +132,7 @@ if(!empty($notifications))
 			      <!--<li><a href="<?php echo site_url(); ?>mission/listofacceptance/2022">Acceptance/Decline by Applicant(2022-2023)<span class="pull-right fltright"><?php echo $countlistofacceptance; ?></span></a></li>-->
 	           <li><a href="<?php echo site_url(); ?>mission/listofacceptance/2026">Acceptance/Decline by Applicant(2026-2027)<span class="pull-right fltright"><?php echo $countlistofacceptance26; ?></span></a></li>
 	          
-			  <!--<a href="<?php echo site_url(); ?>mission/listofacceptance/2025">Acceptance/Decline by Applicant(2025-2026)<span class="pull-right fltright"><?php echo $countlistofacceptance25; ?></span></a></li>-->
+			  <!--2025-2026 acceptance link removed: dead HTML-comment code still executed by PHP, referencing an undefined $countlistofacceptance25-->
 	          <li><a href="<?php echo site_url(); ?>mission/listofacceptance">Acceptance/Decline by Applicant<span class="pull-right fltright"><?php echo $countlistofacceptance; ?></span></a></li>
 	          <li><a href="<?php echo site_url(); ?>mission/visaendrosment">Student/Research VISA Endorsement<span class="pull-right fltright"><?php echo $countvisaendrosment; ?></span></a></li>
 	          <li><a href="<?php echo site_url(); ?>mission/travel_applications">Travel Plan of Applicant<span class="pull-right fltright"><?php echo $counttravel; ?></span></a></li>
@@ -167,13 +173,15 @@ if(!empty($notifications))
 		
 		</span>	
 	
-<!--<script src='https://maps.googleapis.com/maps/api/js?v=3.exp'></script>--><!--<div style='overflow:hidden;height:200px;width:100%;border:2px solid #f18f2e;padding: 5px;'><div id='gmap_canvas' style='height:200px;width:100%;'></div><div><small><a href=""></a></small></div><style>#gmap_canvas img{max-width:none!important;background:none!important}</style></div>--><script type='text/javascript'>function init_map(){var myOptions = {zoom:7,center:new google.maps.LatLng('<?php echo $latitude;?>','<?php echo $longitude;?>'),mapTypeId: google.maps.MapTypeId.ROADMAP};map = new google.maps.Map(document.getElementById('gmap_canvas'), myOptions);marker = new google.maps.Marker({map: map,position: new google.maps.LatLng('<?php echo $latitude;?>','<?php echo $longitude;?>')});infowindow = new google.maps.InfoWindow({content:'<?php echo $misionData[0]['mission_type'];?> : <?php echo $misionData[0]["mission_name"];?><br>'});google.maps.event.addListener(marker, 'click', function(){infowindow.open(map,marker);});infowindow.open(map,marker);}//google.maps.event.addDomListener(window, 'load', init_map);
-</script>
-		
-		<iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d56035.78163841422!2d77.2310811!3d28.6226776!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0xcf6a7c9b6a4be178!2sI.+C.+C.+R.+Azad+Bhavan!5e0!3m2!1sen!2sin!4v1494568307997" style="height:212px;width:100%;border:1px solid orange;padding:5px;" frameborder="0" allowfullscreen></iframe>
+<!-- init_map script removed: the DOM listener that would ever call it was
+already commented out, so it was 100% dead JS. It also referenced undefined
+$latitude/$longitude PHP variables (never computed — the getLatLong() call
+above is commented out too), throwing warnings on every load for nothing. -->
+
+		<iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d56035.78163841422!2d77.2310811!3d28.6226776!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0xcf6a7c9b6a4be178!2sI.+C.+C.+R.+Azad+Bhavan!5e0!3m2!1sen!2sin!4v1494568307997" style="height:212px;width:100%;padding:5px;" frameborder="0" allowfullscreen></iframe>
       </div>
 	
-	<div  style="float:right;margin:3% auto 0;width:65%;">
+	<div  style="float:right;margin:3% auto 0;width:65%;display:flex;flex-wrap:wrap;align-items:center;gap:16px;">
 					<div class="col-xs-12 col-sm-6 col-md-6 pdleft goals card">
 						<a target="_blank" href="http://www.iccr.gov.in/"><img style="height:70px;" src="<?php echo base_url();?>assets/site/main/images/logos/iccr-logo.png" class="img-circle front"/></a>
 						<a target="_blank" href="http://www.iccr.gov.in/"><img style="height:70px;" src="<?php echo base_url();?>assets/site/main/images/logos/iccr-logo.png" class="img-circle back"/></a>
@@ -213,154 +221,6 @@ if(!empty($notifications))
 	
 	
 	
-	<!--
-		<div class="row">
-        <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $newApplication;?></h3>
-              <p>Applications Received</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/new_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-            <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $pending_application;?></h3>
-              <p>Pending Applications</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/pending_application" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-           <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $resubmitapplication;?></h3>
-              <p>Cases of Re-Submission</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/resubmitapplication" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-          <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $holdapplications;?></h3>
-              <p>Applications on Hold</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/hold_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-        
-        <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $approvedApplication;?></h3>
-              <p>Recommended Candidates</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/approved_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div> 
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $rejectedApplication;?></h3>
-              <p>Rejected Candidates</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/rejected_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div> 
-             <!-- <div class="col-xs-3 col-xs-6">
-         
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $results;?></h3>
-              <p>Results of English Proficiency Test</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/results" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>--
-        
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $confirmationForwardtoMissionbyHqrs;?></h3>
-              <p>Receives Confirmation from Hqrs</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/confirmaitonreceivesformhqrs" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $listofacceptance;?></h3>
-              <p>Acceptance/Decline</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/listofacceptance" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-           <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $visaendrosment;?></h3>
-              <p>Student/Research VISA Endorsement</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/visaendrosment" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-          <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $travel;?></h3>
-              <p>Travel Plan</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>mission/travel_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>      
-      </div>-->
 	   	<!-- Modal -->
             <div class="modal fade" id="missionAlertModal" role="dialog">
                 <div class="modal-dialog">

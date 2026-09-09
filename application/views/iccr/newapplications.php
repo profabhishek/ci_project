@@ -276,9 +276,36 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
                     <button type="button" id="btn-filter" class="btn btn-primary col-sm-3 sbmt" style="margin-right:10px;">Filter</button>
                     &nbsp;&nbsp;&nbsp;
                     <button type="button" id="btn-reset" class="btn btn-default col-sm-3 sbmt">Reset</button>
-                 </div>	
+                 </div>
+			<div class="col-sm-4">
+					<button type="button" id="btn-download-all-zip" class="btn btn-success sbmt">
+						<i class="fa fa-download"></i> Download All (ZIP)
+					</button>
+					<span id="download-all-zip-hint" style="display:block;font-size:11px;color:#777;margin-top:4px;">Downloads everything currently matching the filters above (application info + documents), one folder per application number.</span>
+				 </div>
 			</div>
 			</form>
+
+			<!-- "Download All (ZIP)" progress modal -->
+			<div class="modal fade" id="exportZipModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+				<div class="modal-dialog" role="document">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h4 class="modal-title">Preparing ZIP Download</h4>
+						</div>
+						<div class="modal-body">
+							<p id="exportZipStatusText">Starting export…</p>
+							<div class="progress">
+								<div id="exportZipProgressBar" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 0%;">0%</div>
+							</div>
+							<p id="exportZipErrorText" style="color:#a94442;display:none;"></p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" id="exportZipCloseBtn" class="btn btn-default" data-dismiss="modal" style="display:none;">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
 		<div>
 	<div class="col-md-4 pull-right">
     <div class="input-group input-daterange">
@@ -519,6 +546,257 @@ function printDiv(divName) {
 	document.body.innerHTML = originalContents;
 }
 
+</script>
+
+<script>
+/**
+ * "Download All (ZIP)" - drives the exportZipStart / exportZipBatch /
+ * exportZipPack / exportZipDownload endpoints in Headquarter.php.
+ *
+ * Everything heavy runs in small batches rather than one big request,
+ * because this host has no SSH/CLI access and a single request covering
+ * hundreds of students gets killed by the web server's gateway timeout no
+ * matter what PHP's own time limit is set to. There are two batched
+ * phases, both with progress: building each student's files, then zipping
+ * them. The filter fields read here are exactly the ones the DataTables
+ * ajax() call above sends, so the export always matches whatever is
+ * currently filtered/shown in the table (e.g. Status = Ayush).
+ */
+(function () {
+	var year = "<?php echo $year; ?>";
+	var startUrl = "<?php echo site_url('headquarter/exportZipStart/'); ?>" + year;
+	var batchUrl = "<?php echo site_url('headquarter/exportZipBatch'); ?>";
+	var packUrl = "<?php echo site_url('headquarter/exportZipPack'); ?>";
+	var downloadUrlBase = "<?php echo site_url('headquarter/exportZipDownload/'); ?>";
+	var cleanupUrl = "<?php echo site_url('headquarter/exportZipCleanup'); ?>";
+	// Small on purpose - each student renders the full application page
+	// through mPDF, so a few per request keeps every call well inside the
+	// server's timeout.
+	var BATCH_SIZE = 3;
+	var PACK_SIZE = 15;
+
+	// CSRF protection is ON with csrf_regenerate ON, and cookie_httponly is
+	// TRUE so JS can't read the rotated token out of the cookie. Each
+	// endpoint therefore returns a fresh token in its JSON response, and we
+	// carry it forward to the next request. Without this only the first POST
+	// would succeed - the rest get a 403, which jQuery reports as nothing
+	// more descriptive than "Network error".
+	var csrfName = "<?php echo $this->security->get_csrf_token_name(); ?>";
+	var csrfHash = "<?php echo $this->security->get_csrf_hash(); ?>";
+
+	function withCsrf(data) {
+		data = data || {};
+		data[csrfName] = csrfHash;
+		return data;
+	}
+
+	function absorbCsrf(resp) {
+		if (resp && resp.csrf_hash) {
+			csrfHash = resp.csrf_hash;
+			if (resp.csrf_name) { csrfName = resp.csrf_name; }
+		}
+	}
+
+	function collectExportFilters() {
+		return {
+			MinDate: $('#min-date').val(),
+			MaxDate: $('#max-date').val(),
+			ApplicantName: $('#applicant_name').val(),
+			Mail: $('#mail').val(),
+			Programme: $('#programmes').val(),
+			Counrse: $('#courses').val(),
+			Universtiy: $('#university').val(),
+			Scheme: $('#schemes').val(),
+			Country: $('#country').val(),
+			Region: $('#region').val(),
+			Confirmed: $('#confirmed').val(),
+			Application: $('#application').val()
+		};
+	}
+
+	function setProgress(pct, text) {
+		var $bar = $('#exportZipProgressBar');
+		$bar.css('width', pct + '%').text(pct + '%');
+		if (text) { $('#exportZipStatusText').text(text); }
+	}
+
+	function showExportError(message) {
+		$('#exportZipErrorText').text(message).show();
+		$('#exportZipStatusText').text('Export failed.');
+		$('#exportZipProgressBar').removeClass('active');
+		$('#exportZipCloseBtn').show();
+	}
+
+	/**
+	 * Server-side aborts here don't always produce JSON - mPDF, for one,
+	 * ends the request with a bare die() and a plain-text message. Reporting
+	 * those as a generic "network error" hides the only useful information
+	 * there is, so surface whatever the server actually said.
+	 */
+	function describeFailure(xhr, fallback) {
+		var body = (xhr && (xhr.responseText || '')).replace(/<[^>]*>/g, ' ')
+			.replace(/\s+/g, ' ').trim();
+		if (body) {
+			return 'Server error (HTTP ' + (xhr.status || '?') + '): ' + body.slice(0, 300);
+		}
+		return fallback + ' (HTTP ' + ((xhr && xhr.status) || '?') + ')';
+	}
+
+	// Requests are sent as 'text' rather than 'json' so a non-JSON body
+	// reaches us intact instead of being swallowed by jQuery's parser.
+	function postJson(url, data, onOk, onFail) {
+		$.ajax({
+			url: url, type: 'POST', dataType: 'text', data: data,
+			success: function (raw, status, xhr) {
+				var resp;
+				try {
+					resp = JSON.parse(raw);
+				} catch (e) {
+					onFail(describeFailure({ status: xhr.status, responseText: raw },
+						'Server returned an unreadable response.'));
+					return;
+				}
+				absorbCsrf(resp);
+				if (!resp || resp.status !== true) {
+					onFail((resp && resp.message) ? resp.message : 'Request failed.');
+					return;
+				}
+				onOk(resp);
+			},
+			error: function (xhr) {
+				onFail(describeFailure(xhr, 'Network error.'));
+			}
+		});
+	}
+
+	// Progress is split across the two phases: building files is the first
+	// half of the bar, zipping is the second half.
+	function setPhaseProgress(phase, done, total, label) {
+		var frac = total > 0 ? (done / total) : 1;
+		var pct = phase === 'build'
+			? Math.floor(frac * 50)
+			: 50 + Math.floor(frac * 50);
+		setProgress(pct, label);
+	}
+
+	function presentDownloads(exportId, parts) {
+		$('#exportZipProgressBar').removeClass('active');
+		setProgress(100, '');
+
+		var $status = $('#exportZipStatusText').empty();
+		var remaining = parts.length;
+
+		if (parts.length === 1) {
+			$status.append(document.createTextNode('Your ZIP is ready ('
+				+ parts[0].size_human + '). The download should start automatically.'));
+		} else {
+			$status.append(document.createTextNode('Your export is ready in '
+				+ parts.length + ' parts. Please download each one:'));
+		}
+
+		var $list = $('<div>').css({ 'margin-top': '10px' }).appendTo($status);
+
+		parts.forEach(function (p, i) {
+			var url = downloadUrlBase + exportId + '/' + p.index;
+			$('<a>')
+				.attr('href', url)
+				.addClass('btn btn-primary btn-sm')
+				.css({ 'margin': '0 6px 6px 0' })
+				.text(parts.length === 1
+					? 'Download ZIP (' + p.size_human + ')'
+					: 'Download part ' + (i + 1) + ' (' + p.size_human + ')')
+				.on('click', function () {
+					remaining--;
+					if (remaining <= 0) {
+						// Every part has been fetched at least once - the
+						// server-side temp files can go. Deliberately not done
+						// inside the download response itself, since with
+						// multiple parts that would delete the files the user
+						// still has left to fetch.
+						setTimeout(function () {
+							$.ajax({
+								url: cleanupUrl,
+								type: 'POST',
+								dataType: 'json',
+								data: withCsrf({ export_id: exportId }),
+								success: absorbCsrf
+							});
+						}, 5000);
+					}
+				})
+				.appendTo($list);
+		});
+
+		$('#exportZipCloseBtn').show();
+
+		// Auto-start when there's only one file to fetch; with several,
+		// firing them all at once would just fight for bandwidth.
+		if (parts.length === 1) {
+			window.location = downloadUrlBase + exportId + '/' + parts[0].index;
+		}
+	}
+
+	function runPackPhase(exportId) {
+		function next() {
+			postJson(packUrl, withCsrf({ export_id: exportId, batch: PACK_SIZE }),
+				function (resp) {
+					setPhaseProgress('pack', resp.done, resp.total,
+						'Zipping ' + resp.done + ' of ' + resp.total + ' students…');
+					if (resp.complete) {
+						if (!resp.parts || !resp.parts.length) {
+							showExportError('Packing finished but no zip file was produced.');
+							return;
+						}
+						presentDownloads(exportId, resp.parts);
+					} else {
+						next();
+					}
+				},
+				showExportError);
+		}
+		next();
+	}
+
+	function runExportBatches(exportId, total) {
+		var offset = 0;
+
+		function next() {
+			if (offset >= total) {
+				setPhaseProgress('pack', 0, total, 'Files ready. Creating the ZIP…');
+				runPackPhase(exportId);
+				return;
+			}
+			postJson(batchUrl, withCsrf({ export_id: exportId, offset: offset, batch: BATCH_SIZE }),
+				function (resp) {
+					offset = resp.done;
+					setPhaseProgress('build', offset, total,
+						'Preparing ' + offset + ' of ' + total + ' students…');
+					next();
+				},
+				showExportError);
+		}
+		next();
+	}
+
+	$(document).on('click', '#btn-download-all-zip', function () {
+		$('#exportZipErrorText').hide();
+		$('#exportZipCloseBtn').hide();
+		$('#exportZipProgressBar').addClass('active');
+		setProgress(0, 'Starting export…');
+		$('#exportZipModal').modal('show');
+
+		postJson(startUrl, withCsrf(collectExportFilters()),
+			function (resp) {
+				if (resp.total === 0) {
+					showExportError('No applications match the current filters.');
+					return;
+				}
+				setProgress(0, 'Found ' + resp.total + ' students. Preparing files…');
+				runExportBatches(resp.export_id, resp.total);
+			},
+			showExportError);
+	});
+})();
 </script>
 <link rel="stylesheet" href="<?php echo base_url();?>assets/site/main/css/buttons.dataTables.min.css">
 <script src="<?php echo base_url();?>assets/site/main/js/dataTables.buttons.min.js"></script>

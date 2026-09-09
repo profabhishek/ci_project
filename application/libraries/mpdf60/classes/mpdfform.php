@@ -49,7 +49,11 @@ var $form_button_icon;
 // FORMS
 var $textarea_lineheight;
 
-function mpdfform(&$mpdf) {
+// Renamed from the old PHP4-style same-as-class-name constructor to
+// __construct() - PHP 8 no longer calls the former automatically, which
+// left $this->mpdf null and caused "Attempt to read property on null"
+// warnings anywhere PDF form fields were used.
+function __construct(&$mpdf) {
 	$this->mpdf = $mpdf;
 
 	// ACTIVE FORMS

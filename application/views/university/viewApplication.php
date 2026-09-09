@@ -77,7 +77,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 		if (!empty($applicaitonSubmitData)) {
 		?>
 
-			<form method="post" action="<?php echo base_url(); ?>applicant/downloadApplication/<?php echo $applicaitonSubmitData[0]['application_no']; ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
+			<form method="post" action="<?php echo base_url(); ?>applicant/downloadApplication/<?php echo (isset($applicaitonSubmitData[0]['application_no']) ? $applicaitonSubmitData[0]['application_no'] : ''); ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
 ">
 				<input id="approvedappId" name="approvedappId" value="<?php echo $this->uri->segment(3); ?>" type="hidden" />
 
@@ -105,33 +105,11 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
               	<?php              			 
               			
               			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
-							//echo $imgs;
-							$data = base64_encode($imgs);
-							$f = finfo_open();
-							$imgdata = base64_decode($data);
-                            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-          				if($userd->dir == "")
-						{
-							?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php		
-						}						
-						else
-						{
-							if(file_exists($userd->dir.'/'. $userImage))
-							{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="data:<?php if(!empty($mime_type)){echo $mime_type;}?>;base64,<?php if(!empty($data)){echo $data;}?>"/>
-							<?php		
-							}
-							else{
-								?>
-							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?>assets/site/main/profile_pics/<?php echo $userImage; ?>"/>
-							<?php
-							}
-							
-						}
+						if (!function_exists('iccr_profile_img_src') && file_exists(APPPATH.'helpers/image_helper.php')) { $this->load->helper('image'); }
+						$profSrc = function_exists('iccr_profile_img_src') ? iccr_profile_img_src($userd->dir, $userImage) : site_url().'assets/site/main/profile_pics/'.$userImage;
+						?>
+						<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo $profSrc; ?>"/>
+						<?php
               		?>
               	</div>
 					<div class="name-sec col-xs-12 col-sm-9 col-md-9 pdleft pdright">
@@ -861,7 +839,7 @@ function closeImage() {
 										<label>21. Course Main Stream</label>
 									</td>
 									<?php $Course_main_stream= $this->db->get_where('iccr_course_type',array('id'=>$applicaitonStepOne[0]['course_type']))->row(); ?>
-									<td>:&nbsp;&nbsp;<?php if (!empty($applicaitonStepOne)) echo $Course_main_stream->course_type;
+									<td>:&nbsp;&nbsp;<?php if (!empty($applicaitonStepOne)) echo (!empty($Course_main_stream) ? $Course_main_stream->course_type : '');
 														?>
 									</td>
 								</tr>
@@ -2326,11 +2304,9 @@ function closeImage() {
 						  if(!empty($applicaitonStepThree) && $applicaitonStepThree[0]['signature_doc'] != "")
 						  {
 						  	$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
-							$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-							$data = base64_encode($imgs);
-							 $f = finfo_open();
-							 $imgdata = base64_decode($data);
-                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+							if (!function_exists('iccr_profile_img_src') && file_exists(APPPATH.'helpers/image_helper.php')) { $this->load->helper('image'); }
+							$sigDoc = $applicaitonStepThree[0]['signature_doc'];
+							$sigSrc = function_exists('iccr_profile_img_src') ? iccr_profile_img_src($userd->dir, $sigDoc, 'assets/site/main/profile_signature/', site_url().'assets/site/main/profile_signature/'.rawurlencode($sigDoc)) : site_url().'assets/site/main/profile_signature/'.rawurlencode($sigDoc);
 	          				if($userd->dir == "")
 							{
 								?>
@@ -2346,7 +2322,7 @@ function closeImage() {
 									
 									?>
 									
-									<a target="_blank" href="<?php echo site_url(); ?><?php echo $userd->dir.'/'.$applicaitonStepThree[0]['signature_doc']; ?>" target="_blank" title="Click to View Signature"><img  style="padding:2px;width:150px;max-height:50px;" src="data:<?php echo $mime_type;?>;base64,<?php echo $data;?>"/></a><br/>
+									<a target="_blank" href="<?php echo site_url(); ?><?php echo $userd->dir.'/'.$applicaitonStepThree[0]['signature_doc']; ?>" target="_blank" title="Click to View Signature"><img  style="padding:2px;width:150px;max-height:50px;" src="<?php echo $sigSrc; ?>"/></a><br/>
 									
 									<?php
 								}
@@ -2391,7 +2367,7 @@ function closeImage() {
 			?>
 			<br />
 			<br />
-			<div class="tab-content docsdiv" <?php if (isset($include) && $include == 'applicant_personal_info_preview' || $include == 'applicant_education_info_preview' || $include == 'applicant_other_info_preview') {
+			<div class="tab-content docsdiv" <?php if (isset($include) && ($include == 'applicant_personal_info_preview' || $include == 'applicant_education_info_preview' || $include == 'applicant_other_info_preview')) {
 													echo 'style="display:none;"';
 												} ?>>
 				<div id="step3" class="tab-pane fade in active">
@@ -2417,15 +2393,15 @@ function closeImage() {
 									$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'];
 									$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'];
 									$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'];
-									$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'];
-									$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'];
-									$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'];
-									$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'];
-									$file_path_d1 = $docsArray[$doctypes['d1']['type']]['path'];
+									$file_path_pg = (isset($docsArray[$doctypes['pg']['type']]['path']) ? $docsArray[$doctypes['pg']['type']]['path'] : '');
+									$file_path_phd = (isset($docsArray[$doctypes['phd']['type']]['path']) ? $docsArray[$doctypes['phd']['type']]['path'] : '');
+									$file_path_phdReseachPaper = (isset($docsArray[$doctypes['phdReseachPaper']['type']]['path']) ? $docsArray[$doctypes['phdReseachPaper']['type']]['path'] : '');
+									$file_path_indian_address = (isset($docsArray[$doctypes['indian_address']['type']]['path']) ? $docsArray[$doctypes['indian_address']['type']]['path'] : '');
+									$file_path_d1 = (isset($docsArray[$doctypes['d1']['type']]['path']) ? $docsArray[$doctypes['d1']['type']]['path'] : '');
 									/*$file_path_physical = $docsArray[$doctypes['physical']['type']]['path'];*/
-									$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'];
-									$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'];
-									$file_path_mphil = $docsArray[$doctypes['mhil']['type']]['path'];
+									$file_path_tl = (isset($docsArray[$doctypes['tl']['type']]['path']) ? $docsArray[$doctypes['tl']['type']]['path'] : '');
+									$file_path_otherDoc = (isset($docsArray[$doctypes['otherDoc']['type']]['path']) ? $docsArray[$doctypes['otherDoc']['type']]['path'] : '');
+									$file_path_mphil = (isset($docsArray[$doctypes['mhil']['type']]['path']) ? $docsArray[$doctypes['mhil']['type']]['path'] : '');
 
 									?>
 									<tr>

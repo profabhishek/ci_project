@@ -85,8 +85,12 @@ input,select,label{font-size:14px !important;}
 						
 				//echo "<pre>";print_r($userd);die;
 				$currentyear = date('Y');
-				$ar = explode('/',$userd->dir);
-				$oldYear = $ar[2]; 
+				if (!empty($userd->dir)) {
+					$ar = explode('/',$userd->dir);
+					$oldYear = isset($ar[2]) ? $ar[2] : 'main';
+				} else {
+					$oldYear = 'main';
+				}
 				//echo $oldYear;
 				if($oldYear == 'main')
 				{
@@ -130,12 +134,14 @@ input,select,label{font-size:14px !important;}
 						$dirdata = $userd->dir;
 						//$oldYear = explode('/',$dirdata);
 						//echo "<pre>";print_r($oldYear);die;
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
+						if (file_exists($userd->dir .'/'.$userImage) && is_file($userd->dir .'/'.$userImage)) {
+							$imgs = file_get_contents($userd->dir .'/'.$userImage);
 							//echo $imgs;
 							$data = base64_encode($imgs);
 							$f = finfo_open();
 							$imgdata = base64_decode($data);
                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+						}
 						//echo "<pre>";print_r($userd->dir);die;
           				if($userd->dir == "")
 						{
@@ -228,9 +234,11 @@ if ($userImage == "") {
                                             if ($title == 1) {
                                                 echo 'Mr.';
                                             } elseif ($title == 2) {
-                                                echo 'Mrs';
+                                                echo 'Ms.';
+                                            } elseif ($title == 3) {
+                                                echo 'Mrs.';
                                             }
-                                            ?>	
+                                            ?>
                                         <?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname']; ?>	</td>
                                 </tr>
                                 <tr >
@@ -458,13 +466,20 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 
                             <td><?php $university = $this->common_model->getconfirmationDataByMission($applicaitonStepOne[0]['application_no']);
 						    //echo "<pre>";print_r($university);die;
-							 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
-							 echo $universityData[0]['name'];
+							 if (!empty($university)) {
+								 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
+								 echo !empty($universityData) ? $universityData[0]['name'] : 'NA';
+							 } else {
+								 echo 'NA';
+							 }
                                 ?></td>
 							<td>
               					<?php
+              					if (!empty($university)) {
               					echo $this->common_model->getCourseName($applicaitonStepOne[0]['application_no'],$university[0]['regional_university']);
-              					
+              					} else {
+              					echo 'NA';
+              					}
               					?>
               				</td>
 							<td>
@@ -484,13 +499,17 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
               				</td>
                            
 							<td>
-              				<?php if($university[0]['university_is_accept'] == 1)
+              				<?php if(!empty($university) && $university[0]['university_is_accept'] == 1)
               					  {
 									echo "Confirmed";
 								  }
-								  elseif($data[0]['university_is_accept'] == 2)
+								  elseif(!empty($university) && $university[0]['university_is_accept'] == 2)
               					  {
 									echo "Not-Confirmed";
+								  }
+								  else
+								  {
+									echo "NA";
 								  }
               				?>
               				</td>
@@ -499,16 +518,20 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 							 
 							 
                                 <?php
-							$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
+							$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                                 //echo "<pre>";print_r($userd);die;
                                 $currentyear = date('Y');
-                                $ar = explode('/',$userd->dir);
-                                $oldYear = $ar[1];
+                                if (!empty($userd->dir)) {
+                                    $ar = explode('/',$userd->dir);
+                                    $oldYear = isset($ar[1]) ? $ar[1] : 'main';
+                                } else {
+                                    $oldYear = 'main';
+                                }
 								
 									     //echo "<pre>";print_r($mappingData);
 										 
 							  $response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = './'.$currentyear.'/university_approval/'.$response[0]['region_one_doc'];
+							  $file_path_un = './'.$currentyear.'/university_approval/'.(!empty($response) ? $response[0]['region_one_doc'] : '');
 							  // echo "<pre>";print_r($ar);
 							  if($oldYear == 'main')
 								{
@@ -516,7 +539,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 							   //echo "<pre>";print_r($response);
                                    if($mappingData[0]['mission_status'] == 1) {
 									   ?>
-                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[1]['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
+                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo !empty($response[1]) ? $response[1]['region_one_doc'] : ''; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
 										<?php
                                     }
 									
@@ -529,15 +552,24 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 							 if(strpos($file_path_un,'.pdf')){ ?>
 					<a target="_blank" href="<?php echo site_url().'applicant/downloadDocs/'.base64url_encode($file_path_un);?>" target="_blank"><span class = "label label-success">Download</span></a>
 						   <?php }
-                            else {
-								
+                            else if (!empty($response[0]['region_one_doc']) && is_file($file_path_un)) {
+								// $response[0]['region_one_doc'] can be blank when the university
+								// hasn't uploaded an approval document yet, which made
+								// $file_path_un resolve to just the folder path (e.g.
+								// "./2026/university_approval/") instead of a real file -
+								// file_get_contents() on a directory logged a "failed to
+								// open stream" notice every time. Only attempt to read it
+								// once we know a real file is actually there.
 						     $imgs = file_get_contents($file_path_un);
 							 $data = base64_encode($imgs);
 							 $f = finfo_open();
 							 $imgdata = base64_decode($data);
                              $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-				  echo $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank"><span class = "label label-success">Download</span></a>'; 
-										
+				  echo $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank"><span class = "label label-success">Download</span></a>';
+
+							}
+							else {
+								echo '<span class="label label-default">Not Available</span>';
 							}
 								
 									?>
@@ -700,8 +732,8 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                     <th>15. Flight/Train Details</th>
 					<th>Flight/Train No</th>
 					<th>Date of Depature</th>
-					<th>Time of Departure</th>	
-                    <th>Departure City</th>	
+					<th>Time of Departure</th>
+                    <th>Departure City</th>
 					<th>Date of Arival in India</th>
 					<th>Time of Arrival</th>
                     <th>Arrival City</th>
@@ -709,79 +741,104 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 					<!--<th>Cost of Ticket (INR)</th>-->
                     </thead>
                     <tbody>
-					
+
 						<tr>
-               
+
 					<td></td>
 					<td>
 						<?php
 							if(!empty($travel)){
-							
+
 							echo $travel[0]['flight_no'];
 						}
-							
+
 
 							?>
 						</td>
 						<td>
-					 <?php 
+					 <?php
 						if(!empty($travel)){
-							
+
 							echo $travel[0]['departure_date'];
 						}
-						
+
 					 ?>
 					 </td>
 						<td>
 						<?php
 							if(!empty($travel)){
-							
+
+							echo $travel[0]['time_of_departure'];
+						}
+
+
+							?>
+						</td>
+
+						<td>
+						<?php
+							if(!empty($travel)){
+
+							echo $travel[0]['departure_city'];
+						}
+
+
+							?>
+						</td>
+						<td>
+						<?php
+							if(!empty($travel)){
+
 							echo $travel[0]['travel_arrival_date'];
 						}
-							
 
-							?>
-						</td>
-						
-						<td>
-						<?php
-							if(!empty($travel)){
-							
-							echo $travel[0]['flight_no'];
-						}
-							
 
 							?>
 						</td>
 						<td>
 						<?php
 							if(!empty($travel)){
-							
-							echo $travel[0]['regional_office_contacted'];
+
+							echo $travel[0]['time_of_arrival'];
 						}
-							
 
 							?>
 						</td>
 						<td>
 						<?php
 							if(!empty($travel)){
-							
-							echo $travel[0]['cost_of_ticket'];
+
+							$cities = $this->config->item('grade_cities');
+							$cityId = $travel[0]['final_city_arrival'];
+							if($cityId == 7){
+								echo !empty($travel[0]['city_other']) ? $travel[0]['city_other'] : (isset($cities[$cityId]) ? $cities[$cityId] : '');
+							} else {
+								echo isset($cities[$cityId]) ? $cities[$cityId] : $cityId;
+							}
 						}
-							
-				}
+
+
+							?>
+						</td>
+						<td>
+						<?php
+							if(!empty($travel)){
+
+							echo $travel[0]['airport_reseption'];
+						}
+
+
 							?>
 						</td>
 						</tr>
                     </tbody>
                 </table>
-					
-				
-					
-				
-				
-	
+					<?php } ?>
+
+
+
+
+
             <hr>
 			
 			
@@ -876,10 +933,10 @@ if(empty($travel) && $mappingData[0]['status'] >= 11 && $mappingData[0]['scholar
 		    <div class="col-sm-6">
 		    	<?php
 					$data = $this->common_model->getConfirmationofApplicationIds($appno);
-					$reg = $this->common_model->getRegionById($data[0]->region_one_status);					
+					$reg = !empty($data) ? $this->common_model->getRegionById($data[0]->region_one_status) : [];
 				?>
-		     	<input type="text" class="form-control" value="<?php echo $reg[0]['name'];?>" readonly="true"/>
-		     	<input type="hidden" name="regional_office_contacted" id="regional_office_contacted" class="form-control" value="<?php echo $reg[0]['id'];?>"/>
+		     	<input type="text" class="form-control" value="<?php echo !empty($reg) ? $reg[0]['name'] : '';?>" readonly="true"/>
+		     	<input type="hidden" name="regional_office_contacted" id="regional_office_contacted" class="form-control" value="<?php echo !empty($reg) ? $reg[0]['id'] : '';?>"/>
 		    </div>	
 		  </div>-->
 		 <!-- <div class="form-group col-xs-10">

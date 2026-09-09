@@ -260,7 +260,8 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
                     <button type="button" id="btn-filter" class="btn btn-primary col-sm-3 sbmt" style="margin-right:10px;">Filter</button>
                     &nbsp;&nbsp;&nbsp;
                     <button type="button" id="btn-reset" class="btn btn-default col-sm-3 sbmt">Reset</button>
-                 </div>	
+                    <span id="filter-status" style="margin-left:15px;font-weight:bold;color:#28a745;display:none;"><span class="glyphicon glyphicon-ok"></span> Filters applied</span>
+                 </div>
 			</div>
 			</form>
 		<div class="col-md-4 pull-right">
@@ -350,7 +351,8 @@ function ChangeUrl(title, url) {
 			<th>Acceptance</th>
 			<th>Acceptance/Decline Date</th>
 			<th>Status</th>
-			
+			<th>View</th>
+
             </thead>
             <tbody>
             </tbody>
@@ -456,13 +458,33 @@ $('.date-range-filter').change(function() {
 
 $('#my-table_filter').hide();
 
+function showFilterStatus(message){
+    var $status = $('#filter-status');
+    $status.stop(true, true).html('<span class="glyphicon glyphicon-ok"></span> ' + message).show();
+    $status.delay(2000).fadeOut(600);
+}
+
  $('#btn-filter').click(function(){ //button filter event click
-    reprottable.ajax.reload(null,false);  //just reload table
+    var $btn = $(this);
+    $('#filter-status').stop(true, true).hide();
+    $btn.prop('disabled', true).text('Applying...');
+    reprottable.one('draw.dt', function(){
+        $btn.prop('disabled', false).text('Filter');
+        showFilterStatus('Filters applied');
+    });
+    reprottable.ajax.reload(null, true);  // reload table and jump back to page 1 since the result set changed
 });
 $('#btn-reset').click(function(){ //button reset event click
+    var $btn = $(this);
+    $('#filter-status').stop(true, true).hide();
     $('#form-filter')[0].reset();
-    reprottable.ajax.reload(null,false);  //just reload table
-}); 
+    $btn.prop('disabled', true).text('Resetting...');
+    reprottable.one('draw.dt', function(){
+        $btn.prop('disabled', false).text('Reset');
+        showFilterStatus('Filters cleared');
+    });
+    reprottable.ajax.reload(null, true);  // reload table and jump back to page 1
+});
 
 }); 
 function openHqrsStatus(appid){

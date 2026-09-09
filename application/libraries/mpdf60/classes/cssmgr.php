@@ -10,7 +10,13 @@ var $CSS;
 var $tbCSSlvl;
 
 
-function cssmgr(&$mpdf) {
+// Renamed from the old PHP4-style same-as-class-name constructor to
+// __construct() - PHP 8 no longer calls the former automatically, which
+// left $this->mpdf null on every single PDF render that had any CSS at
+// all (this class is always instantiated), causing the repeated
+// "Attempt to read property on null" warnings and the fatal
+// in_array(): Argument #2 ($haystack) must be of type array, null given.
+function __construct(&$mpdf) {
 	$this->mpdf = $mpdf;
 	$this->tablecascadeCSS = array();
 	$this->CSS=array();

@@ -1,0 +1,13 @@
+2026-07-02 18:46:42 | +0ms | login() start
+2026-07-02 18:46:42 | +4.9ms | before xss_clean
+2026-07-02 18:46:42 | +5.5ms | after xss_clean
+2026-07-02 18:46:42 | +5.9ms | before checkType()
+2026-07-02 18:46:42 | +15.7ms | after checkType()
+2026-07-02 18:46:42 | +16.8ms | before checkLogin()
+2026-07-02 18:46:42 | +17.9ms | after checkLogin()
+2026-07-02 18:46:42 | +18.9ms | before session_regenerate_id()
+2026-07-02 18:46:42 | +20.7ms | after session_regenerate_id()
+2026-07-02 18:46:42 | +21ms | before updateLogin()
+2026-07-02 18:46:42 | +23.6ms | after updateLogin()
+2026-07-02 18:46:42 | +24.1ms | after set_userdata()
+2026-07-02 18:46:42 | +24.9ms | redirecting to headquarter/dashboard

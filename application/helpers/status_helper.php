@@ -195,7 +195,7 @@
 								{
 									echo 'Your Application is not processed due to these <a href="javascript:void(0);" data-toggle="modal" data-target="#reasons">Reasons</a>';
 								}
-								elseif($applicaitonsStatus[0]['status'] == 10 && $applicaitonsStatus[0]['universities_status'] == 1 &&$applicaitonsStatus[0]['university_is_accept'] == 2)
+								elseif($applicaitonsStatus[0]['status'] == 10 && $applicaitonsStatus[0]['universities_status'] == 1 && (isset($applicaitonsStatus[0]['university_is_accept']) ? $applicaitonsStatus[0]['university_is_accept'] : 0) == 2)
 								{
 									?>
 									<span class="label label-primary">Rejected</span>
@@ -288,7 +288,7 @@
 									              		<ul class="list-group">
 									              	<?php
 									              		$reasons = $CI->common_model->getResons($applicaitonsStatus[0]['application_no']);
-									              		$resonsArray = explode(',',$reasons[0]['checklist_ids']);
+									              		$resonsArray = !empty($reasons) ? explode(',',$reasons[0]['checklist_ids']) : array();
 									              	
 									              		$counter = 1;
 									              		if(sizeof($resonsArray) > 0)
@@ -296,7 +296,7 @@
 															foreach($resonsArray as $res)
 															{
 																$item = $CI->common_model->getChecklistItemById($res);
-																echo '<li class="list-group-item">'.$item[0]['item'] .'</li>';
+																echo '<li class="list-group-item">'.(!empty($item) ? $item[0]['item'] : '') .'</li>';
 															}
 														}
 									              	?>  
@@ -368,7 +368,7 @@
 									 ?>
 									<tr>
 									<td><?php echo $counter; ?></td>
-									<td><?php echo $universityName[0]['name']?></td>
+									<td><?php echo !empty($universityName) ? $universityName[0]['name'] : 'NA'; ?></td>
 									<td>
 									
 										<?php  
@@ -447,7 +447,7 @@
 								{
 									echo 'Your Application is not processed due to these <a href="javascript:void(0);" data-toggle="modal" data-target="#reasons">Reasons</a>';
 								}
-								elseif($applicaitonsStatus[0]['status'] == 10 && $applicaitonsStatus[0]['universities_status'] == 1 &&$applicaitonsStatus[0]['university_is_accept'] == 2)
+								elseif($applicaitonsStatus[0]['status'] == 10 && $applicaitonsStatus[0]['universities_status'] == 1 && (isset($applicaitonsStatus[0]['university_is_accept']) ? $applicaitonsStatus[0]['university_is_accept'] : 0) == 2)
 								{
 									?>
 									<span class="label label-primary">Rejected by University</span>
@@ -549,7 +549,7 @@
 								<?php 
 								$travel = $CI->common_model->getTravelData($applicaitonsStatus[0]['application_no']);
 								//echo "<pre>";print_r($travel);
-									if($travel[0]['travel_plan_doc'] == '')
+									if((!empty($travel) ? $travel[0]['travel_plan_doc'] : '') == '')
 								{
 									?>
 									<!------<span class="label label-warning">Pending at applicant</span>
@@ -559,7 +559,7 @@
 									else
 								{
 									?>
-									<a href="<?php echo site_url();?>assets/site/main/travelplan/<?php echo $travel[0]['travel_plan_doc'];?>" target = "_blank"><span class = "label label-success">Download</span></a>
+									<a href="<?php echo site_url();?>assets/site/main/travelplan/<?php echo !empty($travel) ? $travel[0]['travel_plan_doc'] : '';?>" target = "_blank"><span class = "label label-success">Download</span></a>
 									
 									<?php
 								}
@@ -578,7 +578,7 @@
 									              		<ul class="list-group">
 									              	<?php
 									              		$reasons = $CI->common_model->getResons($applicaitonsStatus[0]['application_no']);
-									              		$resonsArray = explode(',',$reasons[0]['checklist_ids']);
+									              		$resonsArray = !empty($reasons) ? explode(',',$reasons[0]['checklist_ids']) : array();
 									              	
 									              		$counter = 1;
 									              		if(sizeof($resonsArray) > 0)
@@ -586,7 +586,7 @@
 															foreach($resonsArray as $res)
 															{
 																$item = $CI->common_model->getChecklistItemById($res);
-																echo '<li class="list-group-item">'.$item[0]['item'] .'</li>';
+																echo '<li class="list-group-item">'.(!empty($item) ? $item[0]['item'] : '') .'</li>';
 															}
 														}
 									              	?>  
@@ -1014,6 +1014,35 @@
 	
 	
 	function fileForceDownload($file_name){
+
+		/*
+		 * SECURITY: every controller's downloadDocs() passes a caller-supplied,
+		 * base64url-encoded path straight into this function. Without a check the
+		 * path can point anywhere on the server (application/config/database.php,
+		 * for example), which is an arbitrary file read. Confine the download to
+		 * files that actually live inside the web root and are not executable
+		 * source files. Legitimate document paths (year folders, assets/, and the
+		 * applicant upload directories) are all inside FCPATH, so nothing that
+		 * used to work stops working.
+		 */
+		$resolved = @realpath($file_name);
+		if ($resolved === false) {
+			return;
+		}
+		$root = @realpath(defined('FCPATH') ? FCPATH : '.');
+		if ($root === false) {
+			return;
+		}
+		$root = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+		if (strncasecmp($resolved, $root, strlen($root)) !== 0) {
+			return; // outside the web root - refuse
+		}
+		$blockedExtensions = array('php', 'php3', 'php4', 'php5', 'php7', 'phtml', 'phps', 'inc', 'htaccess', 'ini', 'env', 'sql');
+		$extension = strtolower(pathinfo($resolved, PATHINFO_EXTENSION));
+		if (in_array($extension, $blockedExtensions, true)) {
+			return; // never hand out source/config files
+		}
+		$file_name = $resolved;
 
 		if(is_file($file_name)) {
 			/*

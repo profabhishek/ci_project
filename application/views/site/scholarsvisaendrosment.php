@@ -349,13 +349,20 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 
                             <td><?php $university = $this->common_model->getconfirmationDataByMission($applicaitonStepOne[0]['application_no']);
 						    //echo "<pre>";print_r($university);die;
-							 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
-							 echo $universityData[0]['name'];
+							 if (!empty($university)) {
+								 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
+								 echo !empty($universityData) ? $universityData[0]['name'] : 'NA';
+							 } else {
+								 echo 'NA';
+							 }
                                 ?></td>
 							<td>
               					<?php
+              					if (!empty($university)) {
               					echo $this->common_model->getCourseName($applicaitonStepOne[0]['application_no'],$university[0]['regional_university']);
-              					
+              					} else {
+              					echo 'NA';
+              					}
               					?>
               				</td>
 							<td>
@@ -375,22 +382,27 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
               				</td>
                            
 							<td>
-              				<?php if($university[0]['university_is_accept'] == 1)
+              				<?php if(!empty($university) && $university[0]['university_is_accept'] == 1)
               					  {
 									echo "Confirmed";
 								  }
-								  elseif($data[0]['university_is_accept'] == 2)
+								  elseif(!empty($university) && $university[0]['university_is_accept'] == 2)
               					  {
 									echo "Not-Confirmed";
+								  }
+								  else
+								  {
+									echo "NA";
 								  }
               				?>
               				</td>
                             <td>
     <?php
+    $currentyear = date('Y');
     $response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
 
     if (!empty($response) && !empty($response[0]['region_one_doc'])) {
-        
+
         $file_path_un = './'.$currentyear.'/university_approval/'.$response[0]['region_one_doc'];
         // For your case: ./2026/university_approval/nalanda.pdf
 
@@ -466,7 +478,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 						if(!empty($mappingData[0]['visa_no'])){
 							
 							$course = $applicaitonStepOne[0]['programme'];
-					      	if($counter == 3 || $counter == 4)
+					      	if($course == 3 || $course == 4)
 					      	{
 								echo 'Research';
 							}

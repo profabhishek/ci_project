@@ -133,7 +133,7 @@ input,select,label{font-size:14px !important;}
 		<img src="<?php echo site_url();?>assets/site/main/images/indian-embelam.png" alt="Indian Embelam">
 		<h3 class="text-center caps">Reset Your Password</h3>	
 	</div>
-	<div class="headsec container">Welcome <?php echo $universityData[0]['name']; ?> to ICCR Scholarship Portal</div>	
+	<div class="headsec container">Welcome <?php echo !empty($universityData) ? ($universityData[0]['name'] ?? '') : ''; ?> to ICCR Scholarship Portal</div>
 	<div  class="container" style="min-height:241px;padding:0px;">		
 	<div class="tab-content footr">		
 	  <div id="home" class="tab-pane fade in active">	   

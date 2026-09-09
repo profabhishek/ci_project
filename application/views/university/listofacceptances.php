@@ -30,7 +30,7 @@ marquee{
 </style>
 <section class="meacontent">
 	<div  class="container" style="min-height:410px;padding-top:16px;border: 1px solid #cecece;">
-	<marquee>Welcome <?php echo $universityData[0]['name'];?> to ICCR Scholarship Portal</marquee>
+	<marquee>Welcome <?php echo !empty($universityData) ? ($universityData[0]['name'] ?? '') : ''; ?> to ICCR Scholarship Portal</marquee>
 		<div class="blue-heading col-md-12 ">
 			 <h3>Applications Received</h3>
 			 <form method="post" action="<?php echo base_url();?>university/downloadList/<?php echo $this->uri->segment(3); ?>" enctype="multipart/form-data" id="frm_details_ngo" name="frm_details_ngo" style="width: 100%;position: relative;top: -43px;
@@ -44,26 +44,13 @@ marquee{
         </a>
 		</div>
 		<div class="row">
-		<!----<div class="col-12 col-sm-12 col-md-3 left-menu-sec">
-			<div id="sidebar-wrapper">       
-	        <ul class="sidebar-nav" id="sidebar">
-	          <li><a href="<?php echo site_url(); ?>university/new_applications">Applications Received<span class="pull-right fltright"><?php echo $newCountApplication;?></span></a></li>
-			<li><a href="<?php echo site_url(); ?>university/missingDocs">Cases of Missing Documents<span class="pull-right fltright"><?php echo $countresubmitapplication; ?></span></a></li>
-	          <li><a href="<?php echo site_url(); ?>university/pending_application">Pending Application<span class="pull-right fltright"><?php echo $countpending_application; ?></span></a></li>
-	          <li><a href="<?php echo site_url(); ?>university/resubmitapplication">Cases of Re-Subuniversity by Applicant<span class="pull-right fltright"><?php echo $countresubmitapplication; ?></span></a></li>
-	          <li><a href="<?php echo site_url(); ?>university/hold_applications">Applications on Hold<span class="pull-right fltright"><?php echo $countholdapplications; ?></span></a></li>
-	          <li><a href="<?php echo site_url(); ?>university/approved_applications">Processed Applications<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
-	          <!-----<li><a href="<?php echo site_url(); ?>university/confirmaitonreceivesformhqrs">Confirmation from University/Institute<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
-	           <li><a href="<?php echo site_url(); ?>university/listofacceptance">Acceptance/Decline by Applicant<span class="pull-right fltright"><?php echo $countlistofacceptance; ?></span></a></li>
-			    <li><a href="<?php echo site_url(); ?>university/visaendrosment">Student/Research VISA Endorsement<span class="pull-right fltright"><?php echo $countvisaendrosment; ?></span></a></li>
-	             <li><a href="<?php echo site_url(); ?>university/travel_applications">Travel Plan of Applicant<span class="pull-right fltright"><?php echo $counttravel; ?></span></a></li>
-				 <li><a href="<?php echo site_url();?>university/addStream"><i class="fa fa-book"></i>Create Stream</a></li>
-				  <li><a href="<?php echo site_url();?>university/addStreamMapping"><i class="fa fa-book"></i>Create Stream mapping</a></li>
-				 <li><a href="<?php echo site_url();?>university/addPages"><i class="fa fa-book"></i> Create Page</a></li>
-	        </ul>
-      </div>
-		</div>--->
-		
+		<!-- Sidebar block removed: was wrapped in an HTML comment (never rendered)
+		     but the PHP inside still executed, referencing $newCountApplication,
+		     $countresubmitapplication, $countpending_application, $countholdapplications,
+		     $countapprovedApplication, $countlistofacceptance, $countvisaendrosment,
+		     $counttravel — none of which this controller action (listofacceptances())
+		     populates, throwing undefined-variable warnings on every load. -->
+
 		<div class="col-12 col-sm-12 col-md-12">
 		<form id="form-filter" class="form-horizontal">
 			<div class="filters col-md-12 form-group">
@@ -108,57 +95,12 @@ marquee{
 						</select>
 					</div>
 				</div>
-					<!-----<div class="col-md-4">
-					<label for="inputEmail3" class="col-sm-5 pdleft">University/Institute</label>
-					<div class="col-md-6 pdright pdleft">
-						<select id="university" name="university" class="selectpicker form-control" required="true">							
-						 <option value="">Select</option>
-						 	<?php
-						 	echo '<optgroup label="State Universities">';
-							 				foreach($stateuniversities as $univercity)
-											{											
-												if(array_key_exists($univercity['state_id'],$statewiseUniversites))
-												{													
-													array_push($statewiseUniversites[$univercity['state_id']],$univercity);
-												}
-											}	 
-											foreach($statewiseUniversites as $key=>$univercity1)
-											{
-												if(count($univercity1)>0)
-												{
-													$statenames = $this->common_model->getStateById($key);
-													echo '<optgroup label="&nbsp;&nbsp;&nbsp;'.$statenames[0]['name'].'" class="stt">';
-													foreach($univercity1 as $uni_choice)
-													{
-														echo '<option value="'.$uni_choice['id'].'">'.$uni_choice['uni'].'</option>';															
-													}
-													echo '</optgroup>';			
-												}	
-											}
-										    
-										    echo '</optgroup>';	
-										    echo '<optgroup label="Central Universities">';
-											foreach($centraluniversities as $univercity_cnet)
-											{								
-												echo '<option value="'.$univercity_cnet['id'].'">'.$univercity_cnet['uni'].'</option>';												
-										    }
-											echo '</optgroup>';
-										    echo '<optgroup label="National Institute of Technology (NIT)">';
-										    foreach($nits as $univercity_nit)
-											{								
-												echo '<option value="'.$univercity_nit['id'].'">'.$univercity_nit['uni'].'</option>';	
-										    }
-											 echo '</optgroup>';
-											 echo '<optgroup label="Gurus">';
-						 			foreach($yogas as $univercity_yogs)
-									{								
-										echo '<option value="'.$univercity_yogs['id'].'">'.$univercity_yogs['uni'].'</option>';										
-								    }
-									echo '</optgroup>';
-						    ?>	
-						</select>
-					</div>
-				</div>----->
+					<!-- University/Institute dropdown removed: was wrapped in an HTML
+					     comment (never rendered) but the PHP inside still executed,
+					     referencing $stateuniversities, $statewiseUniversites,
+					     $centraluniversities, $nits, $yogas — none of which this
+					     controller action populates, throwing undefined-variable and
+					     "foreach() on null" warnings on every load. -->
 			<div class="col-md-4">
 					<label for="inputEmail3" class="col-sm-5">Country</label>
 					<div class="col-md-6 pdright pdleft">

@@ -53,11 +53,15 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 </script>
 
 <?php	
-$userd = $this->common_model->getUserInfo( $applicaitonStepOne[ 0 ][ 'uid' ] ); 
+$userd = $this->common_model->getUserInfo( $applicaitonStepOne[ 0 ][ 'uid' ] );
 //echo "<pre>";print_r($userd);die;
 $currentyear = date('Y');
-$ar = explode('/',$userd->dir);
-$oldYear = $ar[2];
+if (!empty($userd->dir)) {
+	$ar = explode('/',$userd->dir);
+	$oldYear = isset($ar[2]) ? $ar[2] : 'main';
+} else {
+	$oldYear = 'main';
+}
 //echo $oldYear;
 $universityarray = array();	
 $univarray = array();
@@ -187,13 +191,15 @@ foreach($univercitie_fourth as $univercity1)
               	<div class="col-xs-3 prfl pull-right" >
               		<?php              			 
               			
-              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
+              			$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
+						if (!empty($userd->dir) && file_exists($userd->dir .'/'.$userImage)) {
+							$imgs = file_get_contents($userd->dir .'/'.$userImage);
 							//echo $imgs;
 							$data = base64_encode($imgs);
 							$f = finfo_open();
 							$imgdata = base64_decode($data);
                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+						}
           				if($userd->dir == "")
 						{
 							?>
@@ -543,8 +549,8 @@ function closeImage() {
 												<tr>
 													<td><?php if (!empty($registerData)) { echo $registerData[0]['gurdian_fname'].' '.$registerData[0]['gurdian_mname'].' '.$registerData[0]['gurdian_lname']; } ?> </td>
 													<td>Guardian</td>
-													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_number']; ?></td>
-													<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gurdian_email']; ?></td>
+													<td><?php if (!empty($applicaitonStepOne)) echo isset($applicaitonStepOne[0]['gurdian_number']) ? $applicaitonStepOne[0]['gurdian_number'] : ''; ?></td>
+													<td><?php if (!empty($applicaitonStepOne)) echo isset($applicaitonStepOne[0]['gurdian_email']) ? $applicaitonStepOne[0]['gurdian_email'] : ''; ?></td>
 												</tr>
 												<?php }  ?>
 											</tbody>
@@ -989,7 +995,7 @@ function closeImage() {
 													<td>
 
 														<?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice']);
-														echo $university_second[0]['name']; ?>
+														echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?>
 													</td>
 													<td>
 														<?php
@@ -1127,16 +1133,16 @@ function closeImage() {
 															
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature']);
 
-															echo $nomen[0]['title'];
-															
-															
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
+
+
 															?>
 
 
 
 														</td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice']);
-															echo $university_second[0]['name']; ?>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?>
 														</td>
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name']; ?>
@@ -1197,12 +1203,12 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_two']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															
 															
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_two']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_two']; ?>
@@ -1261,10 +1267,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_three']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_three']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_three']; ?>
@@ -1326,10 +1332,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_fourth']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fourth']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_fourth']; ?>
 														</td>
@@ -1393,10 +1399,10 @@ function closeImage() {
 															} */
 															$nomen = $this->common_model->getnomenclatureByid($applicaitonStepOne[0]['nomenclature_fifth']);
 
-															echo $nomen[0]['title'];
+															echo !empty($nomen) ? $nomen[0]['title'] : 'NA';
 															?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fifth']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 
 														<td>
 															<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['course_option_name_fifth']; ?>
@@ -1436,15 +1442,15 @@ function closeImage() {
 												<tbody>
 													<tr>
 														<td><?php $university_first = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice']);
-															echo $university_first[0]['name']; ?></td>
+															echo !empty($university_first) ? $university_first[0]['name'] : 'NA'; ?></td>
 														<td><?php $university_second =  $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_two']);
-															echo $university_second[0]['name']; ?></td>
+															echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 														<td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_three']);
-															echo $university_three[0]['name']; ?></td>
+															echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 														<td><?php $university_fourth = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fourth']);
-															echo $university_fourth[0]['name']; ?></td>
+															echo !empty($university_fourth) ? $university_fourth[0]['name'] : 'NA'; ?></td>
 														<td><?php $university_fifth = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fifth']);
-															echo $university_fifth[0]['name']; ?></td>
+															echo !empty($university_fifth) ? $university_fifth[0]['name'] : 'NA'; ?></td>
 													</tr>
 												</tbody>
 											</table>
@@ -2351,7 +2357,7 @@ $response = $this->common_model->getconfirmationDataforHqrs($this->uri->segment(
                             <td>1.</td>
                             <td>													
                 <?php $university_first = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice']);
-                echo $university_first[0]['name']; ?></td>
+                echo !empty($university_first) ? $university_first[0]['name'] : 'NA'; ?></td>
 							<td>  
 							<?php
                 $sts = 0;
@@ -2563,7 +2569,7 @@ else{echo "NA";}
                         <tr>
                             <td>2.</td>
                             <td ><?php $university_second = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_two']);
-                                echo $university_second[0]['name']; ?></td>
+                                echo !empty($university_second) ? $university_second[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                $sts = 0;
@@ -2764,7 +2770,7 @@ else{
                         <tr>
                             <td>3.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_three']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                 $sts = 0;
@@ -2990,7 +2996,7 @@ else{echo "NA";}
 						    <tr>
                             <td>4.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fourth']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                $sts = 0;
@@ -3205,7 +3211,7 @@ else{echo "NA";}
 						    <tr>
                             <td>5.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fifth']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                $sts = 0;
@@ -3457,11 +3463,13 @@ else{echo "NA";}
 									<td style="text-align:right;"><?php
 									//$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']);
 
-									$imgs = file_get_contents($userd->dir . '/' . $applicaitonStepThree[0]['signature_doc']);
+									if (!empty($userd->dir) && !empty($applicaitonStepThree) && file_exists($userd->dir . '/' . $applicaitonStepThree[0]['signature_doc'])) {
+										$imgs = file_get_contents($userd->dir . '/' . $applicaitonStepThree[0]['signature_doc']);
 										$data = base64_encode($imgs);
 										$f = finfo_open();
 										$imgdata = base64_decode($data);
 										$mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+									}
 									if (!empty($applicaitonStepThree) && $applicaitonStepThree[0]['signature_doc'] != "") {
 										
 						  
@@ -3547,21 +3555,24 @@ else{echo "NA";}
 								$counter = 1;	
 								$upload = 0;						
 								$doctypes = $this->config->item('doc_types');	
-								$file_path = $docsArray[$doctypes['id']['type']]['path'];
-								$file_path_passport = $docsArray[$doctypes['passport']['type']]['path'];
-								$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'];
-								$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'];
-								$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'];
-								$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'];
-								$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'];
-								$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'];
-								$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'];
-								$file_path_d1 = $docsArray[$doctypes['d1']['type']]['path'];
-								/*$file_path_physical = $docsArray[$doctypes['physical']['type']]['path'];*/
-								$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'];
-								$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'];
-								$file_path_gmat = $docsArray[$doctypes['gmat']['type']]['path'];
-								$file_path_mphil = $docsArray[$doctypes['mhil']['type']]['path'];
+								$file_path = $docsArray[$doctypes['id']['type']]['path'] ?? '';
+								$file_path_passport = $docsArray[$doctypes['passport']['type']]['path'] ?? '';
+								$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'] ?? '';
+								$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'] ?? '';
+								$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'] ?? '';
+								$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'] ?? '';
+								$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'] ?? '';
+								$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'] ?? '';
+								$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'] ?? '';
+								// 'd1' has no matching entry in the doc_types config list (only a
+								// legacy leftover reference here), so $doctypes['d1'] itself was
+								// undefined and threw a warning before the ?? fallback ever ran.
+								$file_path_d1 = isset($doctypes['d1']['type']) ? ($docsArray[$doctypes['d1']['type']]['path'] ?? '') : '';
+								/*$file_path_physical = $docsArray[$doctypes['physical']['type']]['path'] ?? '';*/
+								$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'] ?? '';
+								$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'] ?? '';
+								$file_path_gmat = $docsArray[$doctypes['gmat']['type']]['path'] ?? '';
+								$file_path_mphil = $docsArray[$doctypes['mhil']['type']]['path'] ?? '';
 								
 							?>	
 							<tr>
@@ -4223,4 +4234,3 @@ function printDiv(divName) {
 
 </script>
 
-	

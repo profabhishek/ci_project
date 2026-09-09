@@ -36,8 +36,8 @@ class Admin extends CI_Controller {
         $this->load->model('user_model');    
 		$this->load->model('admin_model'); 
         $this->load->model('hqrs_model');		
-        $this->load->library('excel');  
-        $this->load->library('mpdf60/Mpdf'); 
+        // Moved out of the constructor for performance: 'excel' is now loaded only inside the methods that use it.
+        // Moved out of the constructor for performance: 'mpdf60/Mpdf' is now loaded only inside the methods that use it.
 		
        $userdata =$this->session->userdata('user_data');
         if(!$this->session->userdata('user_data'))
@@ -960,6 +960,7 @@ class Admin extends CI_Controller {
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
+			$this->load->library('mpdf60/Mpdf');
 			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
 			$mpdf->SetFont('Arial','B',12);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -1090,6 +1091,7 @@ $html = $content;
 				//$pdff = $this->load->view('admin/reportTotalPdf',$data,TRUE);
                 //echo $pdff;die;
 				
+			    $this->load->library('mpdf60/Mpdf');
 			    $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
 				$mpdf->SetFont('Arial', 'B', 12);
 				$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -1167,6 +1169,7 @@ $html = $content;
                 $lists = $this->common_model->get_datatables($this->ids,$vars);	
 				//echo "<pre>";print_r($lists);die;
 				
+			    $this->load->library('mpdf60/Mpdf');
 			    $mpdf = new Mpdf('s', 'A4', '', '', 10, 10, 15, 15, 15, 15);
 				$mpdf->SetFont('Arial', 'B', 12);
 				$mpdf->shrink_tables_to_fit = 1;
@@ -1457,6 +1460,7 @@ echo $e->getMessage();
 	}
 	function downloadUniversityList()
 	{
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Universities');
@@ -1513,6 +1517,7 @@ echo $e->getMessage();
 	}
 	function downloadMisionList()
 	{
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Missions');
@@ -1581,6 +1586,7 @@ echo $e->getMessage();
 			
            
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 12);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relation');
@@ -1866,6 +1872,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Missions');
@@ -1940,6 +1947,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Missions');
@@ -2014,6 +2022,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('RO');
@@ -2086,6 +2095,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Missions');
@@ -2156,6 +2166,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Students');
@@ -2474,6 +2485,7 @@ echo $e->getMessage();
         try {
             $appno = $this->uri->segment(3);
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 12);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -2520,6 +2532,7 @@ echo $e->getMessage();
             foreach ($bankDetails as $bankDetail) {
                 if ($bankDetail['bank_doc'] != "") {
                     $filename = $bankDetail['bank_doc'];
+                    $this->load->library('zip');
                     $this->zip->read_file($path . $filename);
                 }
             }
@@ -2840,6 +2853,7 @@ echo $e->getMessage();
         ini_set('max_execution_time', 900);
         try {
 			$nowtime = time();
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 12);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -2917,6 +2931,7 @@ echo $e->getMessage();
 			
 				$nowtime = time();
 				$confirmation = $this->admin_model->getTotalAfricaApplicationForwordMission($nowtime);
+				$this->load->library('mpdf60/Mpdf');
 				$mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
 				$mpdf->SetFont('Arial', 'B', 12);
 				$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -3315,6 +3330,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('University');
@@ -3398,6 +3414,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('University');
@@ -3480,6 +3497,7 @@ echo $e->getMessage();
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('University');
@@ -3566,6 +3584,7 @@ echo $e->getMessage();
 		//echo "<pre>";print_r($data);die;
 		//echo "---------------------";die;
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
 		$this->excel->getActiveSheet()->setTitle('S.No');
@@ -3736,6 +3755,7 @@ die(json_encode($response));
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
         $this->excel->getActiveSheet()->setTitle('Missions');

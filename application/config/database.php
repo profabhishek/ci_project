@@ -6,10 +6,10 @@ $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',
-    'hostname' => 'localhost',
-    'username' => 'root',
-    'password' => '',
-    'database' => 'iccr_db',
+    'hostname' => getenv('CI_DB_HOST') ? getenv('CI_DB_HOST') : 'localhost',
+    'username' => getenv('CI_DB_USER') ? getenv('CI_DB_USER') : 'root',
+    'password' => getenv('CI_DB_PASS') ? getenv('CI_DB_PASS') : '',
+    'database' => getenv('CI_DB_NAME') ? getenv('CI_DB_NAME') : 'iccr_db_new',
     'dbdriver' => 'mysqli',
 	'dbprefix' => 'iccr_',
 	'pconnect' => FALSE,

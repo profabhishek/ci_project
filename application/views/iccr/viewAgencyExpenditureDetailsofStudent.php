@@ -7,12 +7,12 @@ function getMode($id)
 //echo "<pre>";print_r($applicaitonOldStepOne);
 if(!empty($_POST)){
 	
-	$fy = $_POST['fin_year'];
-	$rg = $_POST['region'];
+	$fy = html_escape($_POST['fin_year']);
+	$rg = html_escape($_POST['region']);
 	$appId = $applicaitonOldStepOne[0]['application_id'];
 	$regionName = $this->common_model->getRegionById($rg);
 	$rgname = $regionName[0]["name"];
-	$sc = $_POST['schemes'];
+	$sc = html_escape($_POST['schemes']);
 	$schemeName = $this->common_model->getSchemebyId($sc);
 	$scname = $schemeName[0]["scheme_name"];
 	

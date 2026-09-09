@@ -1,0 +1,24 @@
+# Copy this file INTO each year folder on the live server (2024/, 2025/, 2026/, ...)
+# and rename it to:  .htaccess
+#
+# It applies recursively to all subfolders (applications_doc/<country>/<email>/...).
+# It only disables SCRIPT EXECUTION - photos, PDFs and docs are still served
+# and downloadable exactly as before.
+#
+# Do NOT put this file in the website root - it belongs inside the upload folders only.
+
+# Uploaded files must never execute as scripts
+<IfModule mod_php5.c>
+php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+php_flag engine off
+</IfModule>
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .cgi .pl
+RemoveType .php .phtml
+<FilesMatch "\.(php|php\d|phtml|phar|cgi|pl|py|sh)$">
+Require all denied
+</FilesMatch>
+
+# Optional but recommended: hide folder listings of applicant documents
+Options -Indexes

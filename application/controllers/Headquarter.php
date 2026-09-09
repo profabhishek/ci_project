@@ -39,8 +39,8 @@ class Headquarter extends CI_Controller {
 		$this->load->model('regional_model');
         $this->load->model('hqrs_model');
         $this->load->model('reports');
-		$this->load->library('excel');   
-        $this->load->library('mpdf60/Mpdf');
+		// Moved out of the constructor for performance: 'excel' is now loaded only inside the methods that use it.
+        // Moved out of the constructor for performance: 'mpdf60/Mpdf' is now loaded only inside the methods that use it.
         $userdata = $this->session->userdata('user_data');
 
         if (!$this->session->userdata('user_data')) {
@@ -416,6 +416,28 @@ class Headquarter extends CI_Controller {
                 $data['ayush_applications'] = $this->common_model->getHQRSAYUSHReceivedApplication2025();
                 $this->load->view('iccr/header_mission');
                 $this->load->view('iccr/ayush_received_applications_2025', $data);
+                $this->load->view('iccr/footer');
+            } else {
+                $this->load->view('iccr/header_mission');
+                $this->load->view('errors/html/error_403');
+                $this->load->view('iccr/footer');
+            }
+        } catch (Exception $e) {
+            $this->session->set_flashdata('message_type', 'error');
+            $this->session->set_flashdata('error', 'Internal Server Error. Please Try After Some Time!');
+            redirect(site_url() . 'headquarter/dashboard');
+        }
+    }
+
+    public function ayush_received_applications_2026() {
+        try {
+            $user_data = $this->session->userdata('user_data');
+            $division = $user_data['state'];
+
+            if ($division == -20) {
+                $data['ayush_applications'] = $this->common_model->getHQRSAYUSHReceivedApplication2026();
+                $this->load->view('iccr/header_mission');
+                $this->load->view('iccr/ayush_received_applications_2026', $data);
                 $this->load->view('iccr/footer');
             } else {
                 $this->load->view('iccr/header_mission');
@@ -923,10 +945,24 @@ public function universityAyushLetter()
 	{
 		$applicationId = $this->uri->segment(3);
 		$user_data = $this->session->userdata('user_data');
-		$userId = $user_data['userid'];			
+		$userId = $user_data['userid'];
 		$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
+
+		// Same guard as universityLetter(): no application, no letter.
+		if(!is_array($stepOne) || count($stepOne) == 0)
+		{
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', 'No application found for '.$applicationId.'.');
+			redirect(site_url().'headquarter/dashboard');
+			return;
+		}
+
 		$this->load->file('fpdi/PdfHTMLTable.php');
-		$pdf = new PdfHTMLTable();	
+		// Unused mpdf60 load removed - see the explanation in universityLetter().
+		// This method also builds its PDF entirely with PdfHTMLTable (FPDF), so
+		// instantiating mPDF only pulled the server's broken font installation
+		// into the request and killed it with a blank 500.
+		$pdf = new PdfHTMLTable();
 		$pdf->AddPage('P');
 		$pdf->SetXY(10.0,5.0);
 		$pdf->SetDisplayMode('fullwidth');
@@ -934,17 +970,59 @@ public function universityAyushLetter()
 		$pdf->SetFont('Arial','',7);
 		$pdf->MultiCell(180,5,'Ref. No.'.$applicationId,'','R');
 		$pdf->MultiCell(180,5,'Date: '.date('d M Y h:i:s'),'','R');
-		
+
+		// Academic year, reference number and addressee are handled exactly as
+		// in universityLetter() - see the comments there for why each was wrong.
+		$acadYear = isset($stepOne[0]['acedemic_year']) ? trim((string) $stepOne[0]['acedemic_year']) : '';
+		if($acadYear === '')
+		{
+			$thisYear = (int) date('Y');
+			$acadYear = $thisYear.'-'.substr((string) ($thisYear + 1), -2);
+		}
+		$acadYearWords = $acadYear;
+		if(preg_match('/^(\d{4})\s*-\s*(\d{2,4})$/', $acadYear, $m))
+		{
+			$acadEnd = (strlen($m[2]) == 2) ? substr($m[1], 0, 2).$m[2] : $m[2];
+			$acadYearWords = $m[1].' to '.$acadEnd;
+		}
+
 		$pdf->SetXY(10.0,45.0);
-		$pdf->SetTitle('Indian Council For Cultural Relations',false);		
-		$pdf->SetFont('Arial','',10);	
+		$pdf->SetTitle('Indian Council For Cultural Relations',false);
+		$pdf->SetFont('Arial','',10);
 		$pdf->Ln(2);
-		$pdf->MultiCell(180,5,'Ref No                 /2020-21','','L');
+		$pdf->MultiCell(180,5,'Ref No  '.$applicationId.'/'.$acadYear,'','L');
 		$pdf->Ln(3);
 		$pdf->MultiCell(180,5,'To,','','L');
-		$pdf->Ln(20);
-		$pdf->SetFont('Arial','',13);	
-		$pdf->MultiCell(180,5,'Subject : Request for the admission of International Students for the Academic Year 2020 to 2021','','L');
+		$addresseeId = 0;
+		foreach(array('universty_choice','universty_choice_two','universty_choice_three','universty_choice_fourth','universty_choice_fifth') as $choiceCol)
+		{
+			if(!empty($stepOne[0][$choiceCol]))
+			{
+				$addresseeId = $stepOne[0][$choiceCol];
+				break;
+			}
+		}
+		$addresseeName = '';
+		if($addresseeId)
+		{
+			$addresseeRow = $this->common_model->getUniversityById($addresseeId);
+			if(is_array($addresseeRow) && count($addresseeRow) > 0 && isset($addresseeRow[0]['name']))
+			{
+				$addresseeName = trim((string) $addresseeRow[0]['name']);
+			}
+		}
+		if($addresseeName !== '')
+		{
+			$pdf->MultiCell(180,5,'The Registrar,','','L');
+			$pdf->MultiCell(180,5,$addresseeName,'','L');
+			$pdf->Ln(10);
+		}
+		else
+		{
+			$pdf->Ln(20);
+		}
+		$pdf->SetFont('Arial','',13);
+		$pdf->MultiCell(180,5,'Subject : Request for the admission of International Students for the Academic Year '.$acadYearWords,'','L');
 		$pdf->Ln(5);
 		$pdf->SetFont('Arial','',10);
 		$pdf->MultiCell(180,5,'Dear Sir/Madam,','','L');		
@@ -972,18 +1050,36 @@ public function universityAyushLetter()
 			array_push($uniid,$stepOne[0]['universty_choice_fourth']);
 			//$uniid = $stepOne[0]['universty_choice_three'];
 		}
-		$country = $this->common_model->getCountryById($stepOne[0]['country']);
+		// Same country/scheme handling as universityLetter() - see the comment
+		// there. 'country' is empty on these records; the rest of the system
+		// resolves the applicant's country from 'postal_address_country'.
+		$countryId = '';
+		if(!empty($stepOne[0]['postal_address_country']))
+		{
+			$countryId = $stepOne[0]['postal_address_country'];
+		}
+		elseif(!empty($stepOne[0]['country']))
+		{
+			$countryId = $stepOne[0]['country'];
+		}
+		$country = $countryId !== '' ? $this->common_model->getCountryById($countryId) : array();
+		$countryName = (is_array($country) && count($country) > 0 && isset($country[0]['country_name'])) ? $country[0]['country_name'] : '';
+
 		$schemeId = $this->common_model->getMappingData($applicationId);
-		$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
-		if($country[0]["country_name"] == "Afghanistan")
+		$schemename = (is_array($schemeId) && count($schemeId) > 0 && isset($schemeId[0]['scholarship_id']))
+			? $this->common_model->getSchemeById($schemeId[0]['scholarship_id'])
+			: array();
+		$schemeNameText = (is_array($schemename) && count($schemename) > 0 && isset($schemename[0]['scheme_name'])) ? $schemename[0]['scheme_name'] : '';
+
+		if($countryName == "Afghanistan")
 		{
 			$pdf->MultiCell(175,5,'Name                     : '.$stepOne[0]['fullname'],'','L');
 			$pdf->Ln(2);	
 			$pdf->MultiCell(175,5,'Fathers Name        : '.$stepOne[0]['guardian_name'],'','L');
 			$pdf->Ln(2);
-			$pdf->MultiCell(175,5,'Country                  : '.$country[0]['country_name'],'','L');
+			$pdf->MultiCell(175,5,'Country                  : '.$countryName,'','L');
 			$pdf->Ln(2);
-			$pdf->MultiCell(175,5,'Scheme                 : '.$schemename[0]['scheme_name'],'','L');
+			$pdf->MultiCell(175,5,'Scheme                 : '.$schemeNameText,'','L');
 			$pdf->Ln(2);
 			$courseDetails = 'Course    : ';
 			if(count($uniid)>1)
@@ -991,13 +1087,39 @@ public function universityAyushLetter()
 				foreach($uniid as $unid)
 				{
 					$course1=$this->common_model->getCourseDetails($applicationId,$unid);
-					$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].'), ';
+					// Guarded for the same reason as the single-choice branch
+					// below: a university id with no matching course row made
+					// this a fatal error on PHP 8 rather than a blank entry.
+					if(is_array($course1))
+					{
+						$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+						$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+						if($courseName !== '')
+						{
+							$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '').', ';
+						}
+					}
 				}
 			}
 			else
 			{
-				$course1=$this->common_model->getCourseDetails($applicationId,$uniid[0]);
-				$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].')';
+				// $uniid is only filled for university choices whose state
+				// matches the logged-in user's state, so it is frequently
+				// EMPTY - count($uniid) <= 1 reaches this branch at zero as
+				// well as one. Reading $uniid[0] then produced an undefined
+				// index, getCourseDetails() returned no usable row, and
+				// $course1['course_name'] raised a fatal error on PHP 8,
+				// blanking the letter. Fall back to the first university
+				// choice on the application so the letter still names a
+				// course, and only add the text once it is known good.
+				$courseUniId = isset($uniid[0]) ? $uniid[0] : (isset($stepOne[0]['universty_choice']) ? $stepOne[0]['universty_choice'] : 0);
+				$course1 = $this->common_model->getCourseDetails($applicationId,$courseUniId);
+				if(is_array($course1))
+				{
+					$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+					$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+					$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '');
+				}
 			}
 				
 			$pdf->MultiCell(175,5,'Embassy Ref No.  : ','','L');
@@ -1007,8 +1129,8 @@ public function universityAyushLetter()
 		else
 		{
 			$pdf->MultiCell(175,5,'Name     : '.$stepOne[0]['fullname'],'','L');				
-			$pdf->MultiCell(175,5,'Country  : '.$country[0]['country_name'],'','L');
-			$pdf->MultiCell(175,5,'Scheme  : '.$schemename[0]['scheme_name'],'','L');
+			$pdf->MultiCell(175,5,'Country  : '.$countryName,'','L');
+			$pdf->MultiCell(175,5,'Scheme  : '.$schemeNameText,'','L');
 			$course=$this->common_model->getCoursesById($stepOne[0]['course']);			
 			$courseDetails = 'Course    : ';		
 			if(count($uniid)>1)
@@ -1016,15 +1138,40 @@ public function universityAyushLetter()
 				foreach($uniid as $unid)
 				{
 					$course1=$this->common_model->getCourseDetails($applicationId,$unid);
-					
-					$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].'), ';
+					// Guarded for the same reason as the single-choice branch
+					// below: a university id with no matching course row made
+					// this a fatal error on PHP 8 rather than a blank entry.
+					if(is_array($course1))
+					{
+						$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+						$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+						if($courseName !== '')
+						{
+							$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '').', ';
+						}
+					}
 					
 				}
 			}
 			else
 			{
-				$course1=$this->common_model->getCourseDetails($applicationId,$uniid[0]);
-				$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].')';
+				// $uniid is only filled for university choices whose state
+				// matches the logged-in user's state, so it is frequently
+				// EMPTY - count($uniid) <= 1 reaches this branch at zero as
+				// well as one. Reading $uniid[0] then produced an undefined
+				// index, getCourseDetails() returned no usable row, and
+				// $course1['course_name'] raised a fatal error on PHP 8,
+				// blanking the letter. Fall back to the first university
+				// choice on the application so the letter still names a
+				// course, and only add the text once it is known good.
+				$courseUniId = isset($uniid[0]) ? $uniid[0] : (isset($stepOne[0]['universty_choice']) ? $stepOne[0]['universty_choice'] : 0);
+				$course1 = $this->common_model->getCourseDetails($applicationId,$courseUniId);
+				if(is_array($course1))
+				{
+					$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+					$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+					$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '');
+				}
 			}
 			
 			$pdf->MultiCell(175,5,$courseDetails ,'','L');
@@ -1051,16 +1198,87 @@ public function universityAyushLetter()
 		$pdf->MultiCell(170,5,'Date: '.date('d M Y'),'','L');
 		
 		$filename = $applicationId."_University_Letter_".date('jS-F-Y-h-i-s').'.pdf';
-		$pdf->Output($filename,"D");
+		// "I" sends Content-Disposition: inline, so the letter opens in the
+		// browser's built-in PDF viewer at this URL instead of downloading as a
+		// file. "D" (attachment) forced a download and closed the tab straight
+		// away, which meant staff had to open the file from disk just to check
+		// it. The filename is still sent, so "Save as" from the viewer keeps the
+		// same name. The arguments are also now in FPDF's declared order,
+		// Output($dest, $name); the previous call passed them reversed and
+		// relied on FPDF silently swapping them.
+		$pdf->Output("I", $filename);
 	}
-public function universityLetter()
+// The blank HTTP 500 on this URL was a compile error in
+	// application/libraries/fpdi/htmlparser.inc (curly-brace string offset,
+	// removed in PHP 8) - see the comment at line 225 of that file. The
+	// diagnostic wrapper that found it has been removed.
+	//
+	// The try/catch is kept deliberately: PDF generation reaches into old
+	// FPDF code, and a failure here should show staff a message on the
+	// listing page rather than a white screen.
+	public function universityLetter()
+	{
+		try
+		{
+			$this->_universityLetterBuild();
+		}
+		catch (Throwable $e)
+		{
+			log_message('error', 'universityLetter failed: '.get_class($e).': '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', 'The university letter could not be generated for this application.');
+			redirect(site_url().'headquarter/ayush_processed');
+			return;
+		}
+	}
+
+	// getCourseDetails() does not return a consistent shape. For most
+	// programme types it sets $response['course_name'] to a plain string, but
+	// for programme 1/2/4/8/12/13 with course_type 1 or 2 it sets it to an
+	// ARRAY of five course titles (Common_model.php lines 518 and 570). The
+	// letter concatenated that value straight into the text, so those
+	// applicants got the literal word "Array" printed where their course
+	// should be. This flattens either shape into readable text and drops the
+	// empty slots, since most applicants name fewer than five choices.
+	private function _courseNameToText($courseName)
+	{
+		if(is_array($courseName))
+		{
+			$parts = array();
+			foreach($courseName as $one)
+			{
+				if(is_array($one)) { continue; }
+				$one = trim((string) $one);
+				if($one !== '') { $parts[] = $one; }
+			}
+			return implode(', ', $parts);
+		}
+		return trim((string) $courseName);
+	}
+
+	private function _universityLetterBuild()
 	{
 		$applicationId = $this->uri->segment(3);
 		$user_data = $this->session->userdata('user_data');
-		$userId = $user_data['userid'];			
+		$userId = $user_data['userid'];
 		$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
+
+		// If the application number does not exist there is nothing to build a
+		// letter from. Without this check the code below indexed $stepOne[0] on
+		// an empty result and died with a fatal error and a blank page.
+		if(!is_array($stepOne) || count($stepOne) == 0)
+		{
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', 'No application found for '.$applicationId.'.');
+			redirect(site_url().'headquarter/dashboard');
+			return;
+		}
+
 		$this->load->file('fpdi/PdfHTMLTable.php');
-		$pdf = new PdfHTMLTable();	
+		// The mpdf60 library was loaded here but never used - this letter is
+		// built entirely with PdfHTMLTable (FPDF) and finishes with
+		// $pdf->Output() on that object - so the unused load has been removed.
+		$pdf = new PdfHTMLTable();
 		$pdf->AddPage('P');
 		$pdf->SetXY(10.0,5.0);
 		$pdf->SetDisplayMode('fullwidth');
@@ -1068,17 +1286,73 @@ public function universityLetter()
 		$pdf->SetFont('Arial','',7);
 		$pdf->MultiCell(180,5,'Ref. No.'.$applicationId,'','R');
 		$pdf->MultiCell(180,5,'Date: '.date('d M Y h:i:s'),'','R');
-		
+
+		// The academic year was hard-coded as "2020 to 2021" and "/2020-21" in
+		// the three places below, so every letter printed since 2021 has stated
+		// the wrong year. The application record carries the real value in
+		// acedemic_year (the column name is misspelled in the schema), which
+		// for this scheme reads like "2026-27". Fall back to the current cycle
+		// only if the record has no value, so the letter is never blank.
+		$acadYear = isset($stepOne[0]['acedemic_year']) ? trim((string) $stepOne[0]['acedemic_year']) : '';
+		if($acadYear === '')
+		{
+			$thisYear = (int) date('Y');
+			$acadYear = $thisYear.'-'.substr((string) ($thisYear + 1), -2);
+		}
+		// "2026-27" also has to read as "2026 to 2027" in the subject line.
+		$acadYearWords = $acadYear;
+		if(preg_match('/^(\d{4})\s*-\s*(\d{2,4})$/', $acadYear, $m))
+		{
+			$acadEnd = (strlen($m[2]) == 2) ? substr($m[1], 0, 2).$m[2] : $m[2];
+			$acadYearWords = $m[1].' to '.$acadEnd;
+		}
+
 		$pdf->SetXY(10.0,45.0);
-		$pdf->SetTitle('Indian Council For Cultural Relations',false);		
-		$pdf->SetFont('Arial','',10);	
+		$pdf->SetTitle('Indian Council For Cultural Relations',false);
+		$pdf->SetFont('Arial','',10);
 		$pdf->Ln(2);
-		$pdf->MultiCell(180,5,'Ref No                 /2020-21','','L');
+		// The reference number was printed as an empty space before the year.
+		// Use the application number, which already appears top-right, so the
+		// letter is traceable back to the record.
+		$pdf->MultiCell(180,5,'Ref No  '.$applicationId.'/'.$acadYear,'','L');
 		$pdf->Ln(3);
+		// The letter printed "To," followed by 20mm of blank space: it is a
+		// letter addressed TO a university, but it never named one. Print the
+		// university this letter concerns - the applicant's first recorded
+		// choice - so the recipient is on the document.
 		$pdf->MultiCell(180,5,'To,','','L');
-		$pdf->Ln(20);
-		$pdf->SetFont('Arial','',13);	
-		$pdf->MultiCell(180,5,'Subject : Request for the admission of International Students for the Academic Year 2020 to 2021','','L');
+		$addresseeId = 0;
+		foreach(array('universty_choice','universty_choice_two','universty_choice_three','universty_choice_fourth','universty_choice_fifth') as $choiceCol)
+		{
+			if(!empty($stepOne[0][$choiceCol]))
+			{
+				$addresseeId = $stepOne[0][$choiceCol];
+				break;
+			}
+		}
+		$addresseeName = '';
+		if($addresseeId)
+		{
+			$addresseeRow = $this->common_model->getUniversityById($addresseeId);
+			if(is_array($addresseeRow) && count($addresseeRow) > 0 && isset($addresseeRow[0]['name']))
+			{
+				$addresseeName = trim((string) $addresseeRow[0]['name']);
+			}
+		}
+		if($addresseeName !== '')
+		{
+			$pdf->MultiCell(180,5,'The Registrar,','','L');
+			$pdf->MultiCell(180,5,$addresseeName,'','L');
+			$pdf->Ln(10);
+		}
+		else
+		{
+			// No university on the record - keep the original blank space so
+			// the address can still be written in by hand.
+			$pdf->Ln(20);
+		}
+		$pdf->SetFont('Arial','',13);
+		$pdf->MultiCell(180,5,'Subject : Request for the admission of International Students for the Academic Year '.$acadYearWords,'','L');
 		$pdf->Ln(5);
 		$pdf->SetFont('Arial','',10);
 		$pdf->MultiCell(180,5,'Dear Sir/Madam,','','L');		
@@ -1106,19 +1380,39 @@ public function universityLetter()
 			array_push($uniid,$stepOne[0]['universty_choice_fourth']);
 			//$uniid = $stepOne[0]['universty_choice_three'];
 		}
-		//print_r($uniid);
-		$country = $this->common_model->getCountryById($stepOne[0]['country']);
+		// The Country line printed blank on the letter. This read the 'country'
+		// column, but the application screens resolve the applicant's country
+		// from 'postal_address_country' (see viewFullApplication.php line 374),
+		// and 'country' is empty on these records. Try the column the rest of
+		// the system uses, and fall back to the old one so nothing that did
+		// work before stops working.
+		$countryId = '';
+		if(!empty($stepOne[0]['postal_address_country']))
+		{
+			$countryId = $stepOne[0]['postal_address_country'];
+		}
+		elseif(!empty($stepOne[0]['country']))
+		{
+			$countryId = $stepOne[0]['country'];
+		}
+		$country = $countryId !== '' ? $this->common_model->getCountryById($countryId) : array();
+		$countryName = (is_array($country) && count($country) > 0 && isset($country[0]['country_name'])) ? $country[0]['country_name'] : '';
+
 		$schemeId = $this->common_model->getMappingData($applicationId);
-		$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
-		if($country[0]["country_name"] == "Afghanistan")
+		$schemename = (is_array($schemeId) && count($schemeId) > 0 && isset($schemeId[0]['scholarship_id']))
+			? $this->common_model->getSchemeById($schemeId[0]['scholarship_id'])
+			: array();
+		$schemeNameText = (is_array($schemename) && count($schemename) > 0 && isset($schemename[0]['scheme_name'])) ? $schemename[0]['scheme_name'] : '';
+
+		if($countryName == "Afghanistan")
 		{
 			$pdf->MultiCell(175,5,'Name                     : '.$stepOne[0]['fullname'],'','L');
 			$pdf->Ln(2);	
 			$pdf->MultiCell(175,5,'Fathers Name        : '.$stepOne[0]['guardian_name'],'','L');
 			$pdf->Ln(2);
-			$pdf->MultiCell(175,5,'Country                  : '.$country[0]['country_name'],'','L');
+			$pdf->MultiCell(175,5,'Country                  : '.$countryName,'','L');
 			$pdf->Ln(2);
-			$pdf->MultiCell(175,5,'Scheme                 : '.$schemename[0]['scheme_name'],'','L');
+			$pdf->MultiCell(175,5,'Scheme                 : '.$schemeNameText,'','L');
 			$pdf->Ln(2);
 			$courseDetails = 'Course    : ';
 			if(count($uniid)>1)
@@ -1126,13 +1420,39 @@ public function universityLetter()
 				foreach($uniid as $unid)
 				{
 					$course1=$this->common_model->getCourseDetails($applicationId,$unid);
-					$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].'), ';
+					// Guarded for the same reason as the single-choice branch
+					// below: a university id with no matching course row made
+					// this a fatal error on PHP 8 rather than a blank entry.
+					if(is_array($course1))
+					{
+						$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+						$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+						if($courseName !== '')
+						{
+							$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '').', ';
+						}
+					}
 				}
 			}
 			else
 			{
-				$course1=$this->common_model->getCourseDetails($applicationId,$uniid[0]);
-				$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].')';
+				// $uniid is only filled for university choices whose state
+				// matches the logged-in user's state, so it is frequently
+				// EMPTY - count($uniid) <= 1 reaches this branch at zero as
+				// well as one. Reading $uniid[0] then produced an undefined
+				// index, getCourseDetails() returned no usable row, and
+				// $course1['course_name'] raised a fatal error on PHP 8,
+				// blanking the letter. Fall back to the first university
+				// choice on the application so the letter still names a
+				// course, and only add the text once it is known good.
+				$courseUniId = isset($uniid[0]) ? $uniid[0] : (isset($stepOne[0]['universty_choice']) ? $stepOne[0]['universty_choice'] : 0);
+				$course1 = $this->common_model->getCourseDetails($applicationId,$courseUniId);
+				if(is_array($course1))
+				{
+					$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+					$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+					$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '');
+				}
 			}
 				
 			$pdf->MultiCell(175,5,'Embassy Ref No.  : ','','L');
@@ -1142,8 +1462,8 @@ public function universityLetter()
 		else
 		{
 			$pdf->MultiCell(175,5,'Name     : '.$stepOne[0]['fullname'],'','L');				
-			$pdf->MultiCell(175,5,'Country  : '.$country[0]['country_name'],'','L');
-			$pdf->MultiCell(175,5,'Scheme  : '.$schemename[0]['scheme_name'],'','L');
+			$pdf->MultiCell(175,5,'Country  : '.$countryName,'','L');
+			$pdf->MultiCell(175,5,'Scheme  : '.$schemeNameText,'','L');
 			$course=$this->common_model->getCoursesById($stepOne[0]['course']);			
 			$courseDetails = 'Course    : ';		
 			if(count($uniid)>1)
@@ -1151,15 +1471,40 @@ public function universityLetter()
 				foreach($uniid as $unid)
 				{
 					$course1=$this->common_model->getCourseDetails($applicationId,$unid);
-					
-					$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].'), ';
+					// Guarded for the same reason as the single-choice branch
+					// below: a university id with no matching course row made
+					// this a fatal error on PHP 8 rather than a blank entry.
+					if(is_array($course1))
+					{
+						$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+						$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+						if($courseName !== '')
+						{
+							$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '').', ';
+						}
+					}
 					
 				}
 			}
 			else
 			{
-				$course1=$this->common_model->getCourseDetails($applicationId,$uniid[0]);
-				$courseDetails = $courseDetails. $course1['course_name'].' ('.$course1['subject'].')';
+				// $uniid is only filled for university choices whose state
+				// matches the logged-in user's state, so it is frequently
+				// EMPTY - count($uniid) <= 1 reaches this branch at zero as
+				// well as one. Reading $uniid[0] then produced an undefined
+				// index, getCourseDetails() returned no usable row, and
+				// $course1['course_name'] raised a fatal error on PHP 8,
+				// blanking the letter. Fall back to the first university
+				// choice on the application so the letter still names a
+				// course, and only add the text once it is known good.
+				$courseUniId = isset($uniid[0]) ? $uniid[0] : (isset($stepOne[0]['universty_choice']) ? $stepOne[0]['universty_choice'] : 0);
+				$course1 = $this->common_model->getCourseDetails($applicationId,$courseUniId);
+				if(is_array($course1))
+				{
+					$courseName = $this->_courseNameToText(isset($course1['course_name']) ? $course1['course_name'] : '');
+					$courseSubj = $this->_courseNameToText(isset($course1['subject']) ? $course1['subject'] : '');
+					$courseDetails = $courseDetails.$courseName.($courseSubj !== '' ? ' ('.$courseSubj.')' : '');
+				}
 			}
 			
 			$pdf->MultiCell(175,5,$courseDetails ,'','L');
@@ -1186,7 +1531,15 @@ public function universityLetter()
 		$pdf->MultiCell(170,5,'Date: '.date('d M Y'),'','L');
 		
 		$filename = $applicationId."_University_Letter_".date('jS-F-Y-h-i-s').'.pdf';
-		$pdf->Output($filename,"D");
+		// "I" sends Content-Disposition: inline, so the letter opens in the
+		// browser's built-in PDF viewer at this URL instead of downloading as a
+		// file. "D" (attachment) forced a download and closed the tab straight
+		// away, which meant staff had to open the file from disk just to check
+		// it. The filename is still sent, so "Save as" from the viewer keeps the
+		// same name. The arguments are also now in FPDF's declared order,
+		// Output($dest, $name); the previous call passed them reversed and
+		// relied on FPDF silently swapping them.
+		$pdf->Output("I", $filename);
 	}
     public function universityResponse() {
         try {
@@ -1581,6 +1934,7 @@ public function universityLetter()
         try {
             $appno = $this->uri->segment(3);
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 12);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -1966,6 +2320,38 @@ public function universityLetter()
             redirect(site_url() . 'headquarter/dashboard');
         }
     }
+	 public function viewProcessedApplication() {
+        try {
+            $applicationId = $this->uri->segment(3);
+            $data['applicaitonStepOne'] = $this->common_model->getHeadquarterApplicationStepOneByAppno($applicationId);
+            if (count($data['applicaitonStepOne']) > 0) {
+                $data['get_application_number'] = $data['applicaitonStepOne'][0]['application_no'];
+            } else {
+                $data['get_application_number'] = $this->random_num(15);
+            }
+            $imgArray = !empty($data['applicaitonStepOne']) ? $this->common_model->getUserImage($data['applicaitonStepOne'][0]['uid']) : [];
+            if (count($imgArray) > 0) {
+                $image = $imgArray[0]['name'];
+            } else {
+                $image = '';
+            }
+            $data['registerData'] = !empty($data['applicaitonStepOne']) ? $this->common_model->getUserData($data['applicaitonStepOne'][0]["uid"]) : [];
+            $data['userImage'] = $image;
+            $data['missions'] = $this->common_model->getAllMissions();
+            $data['univercities'] = $this->common_model->getUnivercities();
+            $data['applicaitonStepTwo'] = $this->common_model->getApplicationStepTwoByAppno($applicationId);
+            $data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
+            $data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
+            $data['mappingData'] = $this->common_model->getMappingData($applicationId);
+            $this->load->view('iccr/header_mission');
+            $this->load->view('iccr/acceptanceHistory', $data);
+            $this->load->view('iccr/footer');
+        } catch (Exception $e) {
+            $this->session->set_flashdata('message_type', 'error');
+            $this->session->set_flashdata('error', 'Internal Server Error. Please Try After Some Time!');
+            redirect(site_url() . 'headquarter/dashboard');
+        }
+    }
 	 public function viewFullApplication() {
         try {
 			
@@ -2017,7 +2403,7 @@ public function universityLetter()
 			$userd = $this->common_model->getUserInfo( $stepOne[ 0 ][ 'uid' ] ); 
 			$currentyear = date('Y');
 			$ar = explode('/',$userd->dir);
-			$oldYear = $ar[2];
+			$oldYear = isset($ar[2]) ? $ar[2] : '';
 			$uniid = $this->uri->segment(4);
 			// if($stepOne[0]['course_type']== 2)
 			// {
@@ -2040,7 +2426,7 @@ public function universityLetter()
 			// }
             
             $response = $this->common_model->getconfirmationDataByMission($applicationId);		
-            $course = $response[0]['final_course'];
+            $course = isset($response[0]['final_course']) ? $response[0]['final_course'] : '';
 			
 			$current = date('d-m-Y');
 			$fy = $this->getFinancialYears($current,1);
@@ -2068,6 +2454,7 @@ public function universityLetter()
 			$country = $this->common_model->getCountryById($stepOne[0]['country']);
 			$schemeId = $this->common_model->getMappingData($applicationId);
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
+			$region = isset($region) ? $region : null;
 			$regionInfo = $this->common_model->getRegionById($region);
 			$uninmae = $this->common_model->getUniversityStateById($uniid);
 			ob_start();
@@ -2107,7 +2494,7 @@ public function universityLetter()
         <p style="text-align: right;"><?php echo  $mission[0]['mission_type'] . ': ' . $mission[0]['mission_name'].',<br>'.$mission[0]['country_name']; ?></p>
         <p><b>Subject:-</b> Offer of Provisional admission with award of ICCR Scholarship for A.Y 2026-27</p>
         <p>Dear: Mr./Ms./Mrs. <?php echo  $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname']; ?></p>
-        <p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . $uninmae[0]['name'] . ' ' . $schemename[0]['scheme_name'] . ' for the Academic Year 2026-2027. You are requested to report ' . $regionInfo[0]['name'] . ' University physically along with all original certificate and testimonials latest by '   . $response[0]['date_of_joining'] . ' and also to Regional Office through Email.'; ?></p>
+        <p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . (isset($uninmae[0]['name']) ? $uninmae[0]['name'] : '') . ' ' . (isset($schemename[0]['scheme_name']) ? $schemename[0]['scheme_name'] : '') . ' for the Academic Year 2026-2027. You are requested to report ' . (isset($regionInfo[0]['name']) ? $regionInfo[0]['name'] : '') . ' University physically along with all original certificate and testimonials latest by '   . (isset($response[0]['date_of_joining']) ? $response[0]['date_of_joining'] : '') . ' and also to Regional Office through Email.'; ?></p>
         <p style="text-align: justify;">2)  Hostel accommodation will be provided to you subject to its availability by University authorities. You are required to report at the nearest “Foreign Regional Registration Office” within fourteen days of arrival in India.</p>
         <p style="text-align: justify;">3)  You are advised to contact the Education Wing of this Mission immediately along with your passport for grant of visa and finalization of your date of departure. You are also hereby directed to obtain your final departure letter from the Mission before joining the concerned Institution in India failing which this offer letter stands cancelled. Furthermore no request of change of course and University will be entertained.</p>
         <p style="text-align: justify;">4)  Scholarship expenses will be managed into two parts, which are as follows:-</p>
@@ -2234,6 +2621,7 @@ die;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
+			$this->load->library('mpdf60/Mpdf');
 			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
 			$mpdf->SetFont('Arial','B',8);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -2371,6 +2759,7 @@ $html = $content;
         try {
             $appno = $this->uri->segment(3);
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 12);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -2429,6 +2818,7 @@ $html = $content;
             $appno = $this->uri->segment(3);
             $title = $this->input->post('pdftitle');
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 18);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -2825,7 +3215,7 @@ function openHqrsStatus(){
 				if($stDetails['document_name'] != "")
 				{
 					$filename =  $stDetails['document_name'];
-                    	echo "<pre>";print_r($filename);die();
+					$this->load->library('zip');
 					$this->zip->read_file($path.$filename);
 				}
 			}
@@ -2834,10 +3224,33 @@ function openHqrsStatus(){
 		
 	}
 	function getNewAllApplicaitons()
-    {        
+    {
+		// This is a DataTables server-side-processing endpoint: the browser only
+		// ever expects JSON back. Previously, any uncaught error anywhere below
+		// (a failed query, a missing related record, etc.) killed the script
+		// with zero output, which the DataTables JS reports as a cryptic
+		// "Invalid JSON response" with no indication of what actually broke.
+		// Wrapping the whole thing means a real failure now logs the actual
+		// error and still returns a validly-shaped (empty) table instead of a
+		// dead response.
+		try {
+			$this->_getNewAllApplicaitonsResponse();
+		} catch (\Throwable $e) {
+			log_message('error', 'Headquarter::getNewAllApplicaitons() failed: ' . $e->getMessage());
+			echo json_encode(array(
+				'draw' => isset($_POST['draw']) ? $_POST['draw'] : 0,
+				'recordsTotal' => 0,
+				'recordsFiltered' => 0,
+				'data' => array(),
+			));
+		}
+	}
+
+	private function _getNewAllApplicaitonsResponse()
+    {
 		$year = $this->uri->segment(3);
     	$user_data = $this->session->userdata('user_data');
-		$missionId = $user_data['user_country'];		 	
+		$missionId = $user_data['user_country'];
 		$vars = $this->input->post();
 		$result = $this->hqrs_model->getHqrsAllNewApplication($this->ids,$vars,$year);
 		$totalResult = $this->hqrs_model->getHqrsAllTotalNewApplication($this->ids,$vars,$year);
@@ -2922,27 +3335,49 @@ function openHqrsStatus(){
 				$uni4 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fourth']);
 				$uni5 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
 				if($r['apply_course_type'] == 11){
-				        $universityDetails .= '1) '.$uni1[0]['name'].'<br/>';
+				        $universityDetails .= '1) '.(isset($uni1[0]['name']) ? $uni1[0]['name'] : '').'<br/>';
                    
 				}else{
-                        $universityDetails .= '1) '.$uni1[0]['name'].'<br/>';
-                        $universityDetails .= '2) '.$uni2[0]['name'].'<br/>';
-                        $universityDetails .= '3) '.$uni3[0]['name'].'<br/>';
-                        $universityDetails .= '4) '.$uni4[0]['name'].'<br/>';
-                        $universityDetails .= '5) '.$uni5[0]['name'].'<br/>';
+                        $universityDetails .= '1) '.(isset($uni1[0]['name']) ? $uni1[0]['name'] : '').'<br/>';
+                        $universityDetails .= '2) '.(isset($uni2[0]['name']) ? $uni2[0]['name'] : '').'<br/>';
+                        $universityDetails .= '3) '.(isset($uni3[0]['name']) ? $uni3[0]['name'] : '').'<br/>';
+                        $universityDetails .= '4) '.(isset($uni4[0]['name']) ? $uni4[0]['name'] : '').'<br/>';
+                        $universityDetails .= '5) '.(isset($uni5[0]['name']) ? $uni5[0]['name'] : '').'<br/>';
                    
 				}
-				$output[] = $universityDetails;			
+				$output[] = $universityDetails;
+
+				// "Confirmed University" - the view's <thead> in
+				// views/iccr/newapplications.php has a "Confirmed University"
+				// column (between University and Scheme) that this array wasn't
+				// populating, so every row was one element short of what the
+				// table expected and DataTables threw "Requested unknown
+				// parameter '11' for row 0, column 11" as soon as any data
+				// actually loaded. Shows the one university (if any) that has
+				// actually accepted this applicant AND been confirmed onward to
+				// the mission - i.e. the real outcome, as opposed to the
+				// "University" column above which just lists all 5 preferences
+				// the applicant originally submitted.
+				$confirmedUniversityName = 'NA';
+				$confirmedResponse = $this->common_model->getconfirmationDataByMission($r['application_no']);
+				if (!empty($confirmedResponse)) {
+					$confirmedUniversity = $this->common_model->getFinalUniversityById($confirmedResponse[0]['regional_university']);
+					if (!empty($confirmedUniversity)) {
+						$confirmedUniversityName = $confirmedUniversity[0]['name'];
+					}
+				}
+				$output[] = $confirmedUniversityName;
+
 				$scheme = $this->common_model->getSchemeById($r['scholarship_id']);
 				if(!empty($scheme)){
-					$output[] =	$scheme[0]['scheme_name'];	
+					$output[] =	$scheme[0]['scheme_name'];
 				}else{
 					$output[] =	'NA';
 				}
-				
+
 				$output[] = $country[0]['country_name'];
-				
-				$date2 = $r['SubmitDate'];	
+
+				$date2 = $r['SubmitDate'];
 				$output[] = date('d-m-Y',$date2);
 				
 				$output[] = '<a style="float:left;width:104px;" href="'.site_url().'headquarter/viewFullApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt1" target = "_blank">View</a>';
@@ -3363,7 +3798,14 @@ function openHqrsStatus(){
             $data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
             $data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
             $data['mappingData'] = $this->common_model->getMappingData($applicationId);
-          
+
+            // The allotment actually made for this application - the confirmed
+            // university and the nomenclature (held in the course column) - so
+            // the form can show what was granted, not only what was requested.
+            // Read from iccr_university_response_by_hqrs, which is where the
+            // allotment is recorded.
+            $data['universityResponses'] = $this->common_model->getconfirmationDataforfourthoptionHqrs($applicationId);
+
             $this->load->view('iccr/header_mission');
             $this->load->view('iccr/applicationForm', $data);
             $this->load->view('iccr/footer');
@@ -3564,7 +4006,6 @@ function openHqrsStatus(){
     }
 
     public function dashboard() {
-
         try {
 		$user_data = $this->session->userdata('user_data');
 		$division = $user_data['state'];
@@ -3574,33 +4015,40 @@ function openHqrsStatus(){
 			 $data['demands'] = $this->common_model->getCountAllDemands();
 			break;
 			case "1":
-           
+
 			$data['newapplicationTwenty'] = $this->common_model->getCountHqrsNewApplication($this->ids);
-			$data['newapplicationNineteen'] = $this->common_model->getCountHqrsNineteenApplication($this->ids);
-			$data['newapplicationEighteen'] = $this->common_model->getCountHqrsEighteenApplication($this->ids);
+			// getCountHqrsNineteenApplication()/getCountHqrsEighteenApplication() removed:
+			// both fed spans that only ever render inside an HTML comment block
+			// ("Commented Start Manoj 27-02-2025" in dashboard.php), so the values
+			// were computed every request but never actually shown to the user.
+			// Each was a multi-second query. Kept as 0 so nothing breaks if referenced.
+			$data['newapplicationNineteen'] = 0;
+			$data['newapplicationEighteen'] = 0;
 			$data['newallapplication'] = $this->common_model->getCountAllHqrsNewApplication($this->ids);
-			
-        
-            	$data['countresponseSetByHqToMission'] = $this->common_model->getCountUniversityResponseSentByHqrsToMission();  
 
-                $data['countresponseSetByRoToMissions'] = $this->common_model->getCountUniversityResponseSentByRoToMissions(); 
+            	$data['countresponseSetByHqToMission'] = $this->common_model->getCountUniversityResponseSentByHqrsToMission();
 
-				$data['countresponseSetByRoToMission'] = $this->common_model->getCountUniversityResponseSentByRoToMission(); 
-			
-            	$data['underprocess'] = $this->common_model->getCountPendingUnderRegionalApplications($this->ids); 
+                // getCountUniversityResponseSentByRoToMissions()/...ToMission() removed:
+                // same dead-comment pattern as above, each a multi-second query feeding
+                // spans that only render inside HTML comments in dashboard.php.
+                $data['countresponseSetByRoToMissions'] = 0;
+                $data['countresponseSetByRoToMission'] = 0;
+
+            	$data['underprocess'] = $this->common_model->getCountPendingUnderRegionalApplications($this->ids);
 
             	$confapps = $this->common_model->getAppNoRegionalApplicationsConfirmationtoHqrs($this->ids);
 
 	            $confirms = 0;
 	            $notconfirms = 0;
 	            if (count($confapps) > 0) {
+	                // Batched: one query for all applications instead of one query
+	                // per application (was a severe N+1 loop here).
+	                $responsesByApp = $this->common_model->getUniversityResponsesBatch(array_column($confapps, 'application_no'));
 	                foreach ($confapps as $app) {
-
-	                    $response = $this->common_model->getUniversityResponses($app['application_no']);
-	                    $resp = explode(',', $response[0]['response']);
-	                    if ($response[0]['response'] != "2,2,2") {
+	                    $responseStr = $responsesByApp[$app['application_no']]['response'] ?? null;
+	                    if ($responseStr != "2,2,2") {
 	                        $confirms++;
-	                    } elseif ($response[0]['response'] == "2,2,2") {
+	                    } elseif ($responseStr == "2,2,2") {
 	                        $notconfirms++;
 	                    }
 	                }
@@ -3610,13 +4058,12 @@ function openHqrsStatus(){
 
 	            $data['confirmationfromallROs'] = $notconfirms;
 
-	            $data['acceptance'] = $this->common_model->countApplicantAcceptance($this->ids);  
+	            $data['acceptance'] = $this->common_model->countApplicantAcceptance($this->ids);
 
 	            $data['alunamiapplication'] = $this->common_model->getCountAllAlumaniApplications();
 
             	$data['demands'] = $this->common_model->getCountAllDemands();
 
-            	
 			break;
 
 			case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": case "10":
@@ -3656,30 +4103,31 @@ function openHqrsStatus(){
 	            $confirms = 0;
 	            $notconfirms = 0;
 	            if (count($confapps) > 0) {
+	                // Batched: one query for all applications instead of one query
+	                // per application (was a severe N+1 loop here).
+	                $responsesByApp = $this->common_model->getUniversityResponsesBatch(array_column($confapps, 'application_no'));
 	                foreach ($confapps as $app) {
-
-	                    $response = $this->common_model->getUniversityResponses($app['application_no']);
-	                    $resp = explode(',', $response[0]['response']);
-	                    if ($response[0]['response'] != "2,2,2") {
+	                    $responseStr = $responsesByApp[$app['application_no']]['response'] ?? null;
+	                    if ($responseStr != "2,2,2") {
 	                        $confirms++;
-	                    } elseif ($response[0]['response'] == "2,2,2") {
+	                    } elseif ($responseStr == "2,2,2") {
 	                        $notconfirms++;
 	                    }
 	                }
 	            }
 	            $data['confirmationfromROs'] = $confirms;
-	            $data['acceptance'] = $this->common_model->countApplicantAcceptance($this->ids);  
+	            $data['acceptance'] = $this->common_model->countApplicantAcceptance($this->ids);
 	            $data['alunamiapplication'] = $this->common_model->getCountAllAlumaniApplications();
 			break;
-			}	
+			}
             $this->load->view('iccr/header_mission');
             $this->load->view('iccr/dashboard', $data);
             $this->load->view('iccr/footer');
-            
+
         } catch (Exception $e) {
             $this->session->set_flashdata('message_type', 'error');
             $this->session->set_flashdata('error', 'Internal Server Error. Please Try After Some Time!');
-            
+
         }
     }
 
@@ -3938,6 +4386,7 @@ function openHqrsStatus(){
             $appno = $this->uri->segment(3);
 
             $content = $this->input->post("myHTML");
+            $this->load->library('mpdf60/Mpdf');
             $mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
             $mpdf->SetFont('Arial', 'B', 9);
             $mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -4214,6 +4663,7 @@ function openHqrsStatus(){
             foreach ($bankDetails as $bankDetail) {
                 if ($bankDetail['bank_doc'] != "") {
                     $filename = $bankDetail['bank_doc'];
+                    $this->load->library('zip');
                     $this->zip->read_file($path . $filename);
                 }
             }
@@ -4641,6 +5091,7 @@ function getUniversityResponseSentByHqToMission() {
 			$this->load->file('fpdi/PdfHTMLTable.php');
 			
 			
+			$this->load->library('mpdf60/Mpdf');
 			$pdf = new PdfHTMLTable();
 			$pdf->AddPage('P');
 			$pdf->SetXY(10.0,5.0);
@@ -4713,14 +5164,14 @@ function getUniversityResponseSentByHqToMission() {
 			$filenamePath = FCPATH."assets/site/main/accept/".$filename;
 			$pdf->Output($filename,"D");
 		}
-		catch(Exception $e)
+		catch(Throwable $e)
 		{
 			$this->session->set_flashdata('message_type', 'error');
 			$this->session->set_flashdata('error', 'Some Internal Error Occured While Uploading Application!');
-			
-			redirect(site_url().'mission/dashboard');
+
+			redirect(site_url().'headquarter/dashboard');
 		}
-		
+
 	}
         function counts()
         {
@@ -5292,42 +5743,47 @@ function getUniversityResponseSentByHqToMission() {
 		$counter++;
 		if(!empty($result))
 		{
-			$counter = 1;
 			foreach($result as $r)
 			{
 				$output= array();
 				$applicationDetails = $this->common_model->getApplicationStepOneByAppno($r['application_no']);
 				$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($r['application_no']);
-				$country = $this->common_model->getCountryById($r['nationality']);
+				// $country removed: was never used in this function (result set
+				// already provides $r['country_name'] directly), and $r['nationality']
+				// doesn't exist in this query's result, so it only ever threw warnings.
 				//$response1 = $this->common_model->getconfirmationDataByMission($r['application_no']);
 				
 					            $output[] = $counter;	
 								$output[] = $r['application_no'];	
                                 $output[] = $r['fullname'].' '.$r['middlename'].' '.$r['familyname']; 
                                 $output[] = $r['email']; 
-                                $output[] = $r['country_name'];	
+                                $output[] = $r['country_name'];
 								$missions = $this->common_model->getAllMissions();
+								$missionName = 'NA';
 								foreach($missions as $mission)
 	       						{
-	       							
+
 										if($applicaitonStepThree[0]['application_through'] == $mission['id'])
 										{
-											$output[] = $mission['mission_name'];
-										}										
-										
-	       						}	
+											$missionName = $mission['mission_name'];
+											break;
+										}
+
+	       						}
+								$output[] = $missionName;
 								$sch = $this->common_model->getSchemeById($r['scholarship_id']);
                                 $output[] = $sch[0]['scheme_name'];
 								
 								$confirmData = $this->common_model->getFinalUniversityById($r['regional_university']);
 								//print_r($confirmData);die;
 								// $course = $r['subject'];
-                                 $course = $r['final_course'];
+                                 $nomenclature = !empty($r['nomenclature']) ? $this->common_model->getnomenclatureByid($r['nomenclature']) : [];
+                                 $course = $nomenclature[0]['title'] ?? '';
 								 $output[] =  $course;
 								 $output[] =  $confirmData[0]['name']; 
                                  
 								 $region = $this->common_model->getRegionById($r['region_one_status']);
-								 $output[] = $region[0]['name'];
+								 $output[] = !empty($region) ? $region[0]['name'] : 'NA';
                            
 									$date2 = $r['SubmitDate'];	
 				                    $output[] = date('d-m-Y',$date2);  
@@ -5343,38 +5799,44 @@ function getUniversityResponseSentByHqToMission() {
 									//$output[] = '<a target="_blank" href="'.site_url().'headquarter/downloadDocs/'.base64url_encode($file_path_un);'" target="_blank"><span class = "label label-success">Download</span></a>';
 									if($r['university_is_accept'] == 1) {
 						if(file_exists('./'.$currentyear.'/university_approval/'.$r['region_one_doc'])){
-					
-                   $file_path_un = './'.$currentyear.'/university_approval/'.$r['region_one_doc'];  
+
+                   $file_path_un = './'.$currentyear.'/university_approval/'.$r['region_one_doc'];
                            if(strpos($r['region_one_doc'],'.pdf')){
-							 $output[] = '<a href="'.site_url().'headquarter/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank"><span class = "label label-success">Download</span></a>';   
+							 $output[] = '<a href="'.site_url().'headquarter/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank"><span class = "label label-success">Download</span></a>';
 						   }
                             else {
-						$file_path_un = './'.$currentyear.'/university_approval/'.$r['region_one_doc'];		
+						$file_path_un = './'.$currentyear.'/university_approval/'.$r['region_one_doc'];
 						if(file_exists($file_path_un)){
 						     $imgs = file_get_contents($file_path_un);
 							 $data = base64_encode($imgs);
 							 $f = finfo_open();
 							 $imgdata = base64_decode($data);
                              $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-				   $output[] = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank"><span class = "label label-success">Download </span></a>'; 
-						}			
-							}						   
-				   
+				   $output[] = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank"><span class = "label label-success">Download </span></a>';
+						}else{
+							$output[] = 'NA';
+						}
+							}
+
 										}else{
-								$output[] = '<a href="'.site_url().'assets/site/main/university_approval/'.$r['region_one_doc'].'" target = "_blank"><span class = "label label-success">Download</span></a>'; 				
+								$output[] = '<a href="'.site_url().'assets/site/main/university_approval/'.$r['region_one_doc'].'" target = "_blank"><span class = "label label-success">Download</span></a>';
 										}
 
 
-                                        }
-								
+                                        }else{
+											$output[] = 'NA';
+										}
+
 									if ($r['university_is_accept'] == 1) {
-                                            
+
     $output[] = '<a target="_blank" href="'.site_url().'headquarter/confirmationReceivedWithNewFormat/'.$r['application_no'].'/'.$r['regional_university'].'" target="_blank"><span class = "label label-success">Download</span></a>';
 
-                                           
-                                        }
+
+                                        }else{
+											$output[] = 'NA';
+										}
 				if ($r['scholar_acceptance'] == 1 ) {
-		$output[] = '<a target="_blank" href="'.site_url().'headquarter/undertakingFromStudent/'.base64_encode($r['application_no']).'/'.base64_encode($r['regional_university']).'" target="_blank"><span class = "label label-success">Download</span></a>';
+		$output[] = '<a target="_blank" href="'.site_url().'headquarter/undertakingFromStudent/'.base64url_encode($r['application_no']).'/'.base64url_encode($r['regional_university']).'" target="_blank"><span class = "label label-success">Download</span></a>';
 											}
 											elseif($r['scholar_acceptance'] == 2){
 												$output[] = 'Decline';
@@ -5392,7 +5854,8 @@ function getUniversityResponseSentByHqToMission() {
 				                    $output[] = "NA";
 									}
 									$output[] ='<a href="javascript:void(0);" style="float:left;width:104px;" onclick =openHqrsStatus("'.$r['application_no'].'") class="form-control sbmt1">Status</a>';
-								
+									$output[] = '<a target="_blank" href="'.site_url().'headquarter/viewProcessedApplication/'.$r['application_no'].'" class="form-control sbmt1">View</a>';
+
                         $response[] = $output;
 				        $counter++;
 					
@@ -5482,6 +5945,7 @@ function confirmationReceivedWithFormatIcar()
 			$this->load->file('fpdi/PdfHTMLTable.php');
 			
 			
+			$this->load->library('mpdf60/Mpdf');
 			$pdf = new PdfHTMLTable();
 			$pdf->AddPage('P');
 			$pdf->SetXY(10.0,5.0);
@@ -5939,15 +6403,29 @@ function confirmationReceivedWithFormatIcar()
 		
 	    function undertakingFromStudent()
 	    {
-		try 
+		try
 		{
-			$applicationId = base64_decode($this->uri->segment(3));
+			// NOTE: application numbers are passed as plain, unencoded segments
+			// everywhere else in the codebase (mission/university/regional's
+			// undertakingFromStudent all use $this->uri->segment(3) directly).
+			// This used to run the segment through base64url_decode(), but no
+			// view actually base64url_encodes the appno before building this
+			// link, so the decode corrupted the application number and made
+			// every lookup below fail silently, which triggered the "Application
+			// record not found" redirect for every request. Reverted to match
+			// the convention used by every other stakeholder's implementation.
+			$applicationId = $this->uri->segment(3);
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];	
 			//$applicationId = $this->common_model->getApplicationAppnoByUserId($userId);	
 			//$applicationId =  $applicationId[0]['application_no'];
 			
-			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);		
+			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
+			if (empty($stepOne)) {
+				$this->session->set_flashdata('message_type', 'error');
+				$this->session->set_flashdata('error', 'Application record not found for this undertaking letter.');
+				redirect(site_url() . 'headquarter/dashboard');
+			}
 			$country = $this->common_model->getCountryById($stepOne[0]['nationality']);
             //echo '<pre>'; print_r($country); die;
             //echo '<pre>'; print_r($stepOne[0]['nationality']);die;
@@ -5956,25 +6434,21 @@ function confirmationReceivedWithFormatIcar()
 			$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']); 
 			$applicantAcceptanceDate = $schemeId[0]['undertaking_doc'];
-			$date1 = $applicaitonSubmitData[0]['created'];						
+			// $date1 removed: was read from undefined $applicaitonSubmitData and
+			// never used anywhere below (only threw warnings).
 			$acDate =  date('d-m-Y',$applicantAcceptanceDate);
-			$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-			$data = base64_encode($imgs);
-			$f = finfo_open();
-			$imgdata = base64_decode($data);
-            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-			$img_base64_encoded = 'data:'.$mime_type.';base64,'.$data.'';
-			$imageContent = file_get_contents($img_base64_encoded);
-			$imgPath = tempnam(sys_get_temp_dir(), 'prefix');
+			// The block that used to be here (file_get_contents + base64-encode
+			// into a temp file) was entirely dead: $imgPath gets reassigned
+			// immediately below regardless, so none of that work was ever used.
+			// It also threw "file not found" warnings whenever $userd->dir was
+			// empty or the file was missing. Removed; the fallback-aware logic
+			// below is what's actually used.
 
-			//file_put_contents ($imgPath, $imageContent);
-            
-			/* if($userd == ''){
+			if(empty($userd->dir)){
 				$imgPath = site_url().'assets/site/main/profile_signature/'.$applicaitonStepThree[0]['signature_doc'];
 			}else{
 				$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
-			} */
-			$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
+			}
 			$new = '<img src="'.$imgPath.'" style="width:100px;">';
 
 			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
@@ -5983,8 +6457,11 @@ function confirmationReceivedWithFormatIcar()
 			//echo "<pre>";print_r($imgPath);die;
 			$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
 			//echo $uni1[0]['name'];
-			$course = $response[0]['final_course'];
-			//echo $course;die;
+			// $course removed: was read from a 'final_course' key that doesn't
+			// exist on $response (only threw warnings), and never used below.
+			$nomenid = $response[0]['nomenclature'];
+			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+			$nomenclature = $nomclature[0]['title'];
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			ob_start();
         ?>
@@ -6015,17 +6492,26 @@ function confirmationReceivedWithFormatIcar()
         <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
 		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 40px;margin: 0;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
 
-        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP</b></p>
+        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP/Undertaking</b></p>
 		<br>
-		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue course  ' . $course;?> 
-    	<p style="text-align: justify;">1)  I Mr./Ms./Mrs. <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' do hereby affirm that I have read the Terms and Conditions including Financial Terms of ICCR’s scholarship with due diligence and agree to abide by them.'; ?></p>
-        <p style="text-align: justify;">2)  I also confirm that the course <?php echo $course . ' offered to me in ' . $uni1[0]['name'] . ' is accepted to me and that I will not ask for a change in course or university.'; ?></p>
-        <p style="text-align: justify;">3)  I will complete the entire course of study in which I have been admitted.</p>
-        <p style="text-align: justify;">4)  I will purchase medical insurance of minimum sum assured of INR (Rs.) 5 lakhs / equivalent to approximate US$ 6700 per year. I understand that it is compulsory for continuation of ICCR Scholarship.</p>
-        <p style="text-align: justify;">5)  I certify that I do not suffer from terminal illness or ailments affecting vital organs. I also certify that I am not in family way. In case of illness require long absence of my course of study, I undertake to return to my country.</p>
-        <p style="text-align: justify;">6)  I agree to deliberately study in India.  In case I fail to get promoted to next level of course / fail, I understand that ICCR will stop scholarship. If such situation arises, I undertake that I will clear the level of study in which I have failed with my own financial resources and once I clear the level, I will request for revival of scholarship.</p>
-        <p style="text-align: justify;">7)  I agree to abide by and respect the law of India.  In case if I get involved in illegal activities and /or events concerning law and order issues, I understand that I will be prosecuted as per the law of India and I also agree on being deported to my country.</p>
-		<p style="text-align: justify;">8)  I understand that ICCR has right to change its Scholarship Policy (ies) including financial terms of scholarship from time to time.  I agree to abide by them.  If I disagree to follow the revised terms and conditions, ICCR will have right to discontinue my scholarship.</p>	
+		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue nomenclature  ' . $nomenclature;?>
+    	<p style="text-align: justify;">1.  That I have accepted the award of scholarship for the Course and University as mentioned above and will not ask for the change of course or University at any later stage.</p>
+        <p style="text-align: justify;">2.  That I have read and understood fully the Guidelines/Rules of the scholarship as provided on the A2A Portal and undertake to abide by the same.</p>
+        <p style="text-align: justify;">3.  That I have also understood that the said Guidelines/Rules are subject to change at the discretion of ICCR and I undertake to abide by the Guidelines/Rules as amended from time to time. I have also noted and understand the provisions regarding deductions from scholarship dues, including the quarterly submission of attendance records, the half-yearly submission of academic progress reports, compliance with medical insurance and so on.</p>
+        <p style="text-align: justify;">4.  That I have understood the following norms regarding ex-India period and any violation of these norms will attract deduction of my scholarship dues- Student must note that the paid ex-India period for students of any levels of courses will not exceed 60 days in an academic year with the conditions that (a) Ex-India period can be availed maximum twice in an academic year; (b) Ex-India period upto 30 days at a time will not attract any deduction in scholarship allowances; (c) Any number of days of continuous ex-India period beyond 30 days and upto 60 days will attract 50% deduction on the amount of stipend; (d) Any number of days beyond 60 days limit will attract deduction of entire scholarship allowances excluding HRA; (e) Any number of days beyond the second time even if it is within the total 60 days limit will attract deduction of entire scholarship allowances excluding HRA.</p>
+        <p style="text-align: justify;">5.  That I will complete the entire course of study and abide by all the rules, regulations, guidelines or any instructions of the University/Institution as prevalent at the time of admission or amended from time to time.</p>
+        <p style="text-align: justify;">6.  That I certify that documents related to my eligibility for study in India with regard age and educational qualification are correct and in case of any discrepancy the award of admission and scholarship will be terminated without any notice and that I will go back to my country on my own expenses within the permissible duration as per the law of India.</p>
+        <p style="text-align: justify;">7.  That I will respect and abide by the laws of India and not indulge in any illegal, unlawful, anti-social, criminal, political, religious, demonstrations, protest activities and any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">8.  That I will abide by all the rules, regulations, guidelines, laws of the Government of India or any other Indian authorities in its entirety. I will be sensible in using social media handles and will not post/comment any content against India, its people, culture, institutions or any entity and/or the content/post that can disturb relations between India and other countries. Any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">9.  That I undertake to follow visa / immigration rules and keep my registration as temporary foreign resident in India valid during my entire stay in India. I also undertake to pay any charges, penalties, fines etc. involved in keeping my Visa/residential permit status valid all the time. In case of any violation of Visa/immigration norms, I will be prosecuted under the laws of India and its authorities which may lead to heavy penalties/charges/fines, deportation, detention/confinement/imprisonment etc. as per prevailing laws.</p>
+		<p style="text-align: justify;">10.  That I certify that I am physically and mentally fit, not suffering from any chronic contagious/non-communicable diseases, terminal illness or ailments affecting vital organs, not pregnant (applicable for a female candidate) and having undergone mandatory and obligatory vaccinations.</p>
+		<p style="text-align: justify;">11.  That I will be responsible for my health and purchase Medical Health Insurance Policy with a minimum cover of Rs.5,00,000/- (Rupees Five Lacs) to cover my medical expenses. I also undertake that the expenses not covered under the Medical Insurance Policy will be borne by me and I will not raise any claim for the same to ICCR or University or any other authorities of India and understand that in absence of sufficient medical cover or funds, I myself would be responsible for any repercussions on account of my health conditions. I will return to my country on my own expenses in case of any illness requiring long absence from course of study and in that case the scholarship will be terminated. I also undertake to keep my insurance cover valid during my entire stay in India and submit the copy of valid insurance to the concerned Zonal Office annually for their records.</p>
+		<p style="text-align: justify;">12.  That I undertake to be regular in attendance and academics, failing which ICCR, University and other authorities have the right to terminate my scholarship and under any such circumstances, I shall bear all my expenses on my return to my native country. I will also submit the self-declaration, signed by the Dean FSR every month, in this regard in December and June by email for the release of my stipend.</p>
+		<p style="text-align: justify;">13.  That in case I fail in an academic year, my scholarship will be suspended and will be re-instated only after I will pass my examination and during such intervening period, I will study an self-finance basis.</p>
+		<p style="text-align: justify;">14.  That I understood that the Indian Mission and ICCR have the right to terminate my scholarship at any stage without assigning any reason whatsoever.</p>
+		<p style="text-align: justify;">15.  That I undertake to refund voluntarily in case any excess or over disbursement is made to me on account of scholarship allowances to ICCR in India or through the Indian Mission in my country if such wrong disbursement is noticed after completion of my course in India.</p>
+		<p style="text-align: justify;">16.  That I undertake to pay, in a timely manner and/or as per the schedule of the demanding authority, any dues payable by me on account of any charges of the University, which are not covered by ICCR under the tuition fees and other compulsory fees, such as Library fee, security deposit, caution money, lab charges, hostel/utility charges, private accommodation/utility charges, any other charges etc. Any violation will attract suspension of my scholarship dues till the pending dues are settled by me.</p>
+		<p style="text-align: justify;">17.  That I understand that the admission granted to me is provisional and confirmed only after my arrival in India on the basis of original documents with transcripts and if I am not found eligible, I will go back to my country on my own expenses.</p>
 	</br>
 
 		<p style="text-align: left;"><?php echo $new;?></p>
@@ -6034,18 +6520,16 @@ function confirmationReceivedWithFormatIcar()
 		<p style="text-align: left;">Country: <?php echo $country[0]['country_name'];?> </p>
 		<p style="text-align: left;">Date: <?php echo $acDate;?> </p>
 		<p style="text-align: left;">Passport No: <?php echo $stepOne[0]['passport_no']; ?></p>
-		
+
 	</div>
     </body>
-</html>     
-<?php	
+</html>
+<?php
 
 
-die;
-
-      $html = ob_get_clean();		
+      $html = ob_get_clean();
 			$this->load->library('GenPdf');
-			
+
 			$dompdf = new GenPdf();
 			//$canvas = $dompdf->get_canvas();
 			$dompdf->set_option('isHtml5ParserEnabled', true);
@@ -6056,20 +6540,21 @@ die;
 			$dompdf->stream("welcome.pdf", array("Attachment"=>0));
 
 			//$pdf->debug = true;
-		} catch (Exception $e) {
+		} catch (Throwable $e) {
 			$this->session->set_flashdata('message_type', 'error');
 			$this->session->set_flashdata('error', 'Some Internal Error Occured While Uploading Application!');
 
-			redirect(site_url() . 'mission/dashboard');
+			redirect(site_url() . 'headquarter/dashboard');
 		}
-		
+
 	}
-	
-	
+
+
 	function downloadTotalConfirmation()
 	{
 		
 		$nowtime = time();
+		 $this->load->library('excel');
 		 $this->excel->setActiveSheetIndex(0);
         //name the worksheet
 		$this->excel->getActiveSheet()->setTitle('S.No');
@@ -6289,17 +6774,980 @@ die;
 			$file_name = base64url_decode($this->uri->segment(3));
 			fileForceDownload($file_name);
 		}
-		
+
+		/**
+		 * ---------------------------------------------------------------
+		 * Bulk "Download All (ZIP)" export for the newapplications/<year> list.
+		 * ---------------------------------------------------------------
+		 * Three-step flow, driven from JS on views/iccr/newapplications.php, so a
+		 * single HTTP request never has to process hundreds of students (this
+		 * host has no SSH/CLI access, so a synchronous "click and wait" button
+		 * risks the web server's own request timeout regardless of what
+		 * set_time_limit() is set to in PHP):
+		 *
+		 *   1. exportZipStart()  - resolves the exact same filtered
+		 *      application_no list the on-screen table is showing (same
+		 *      filters, same year, no pagination limit) and writes it to a
+		 *      small manifest file. Returns an export_id + total count.
+		 *   2. exportZipBatch()  - processes a small batch of application_nos
+		 *      per call: renders each student's application as a PDF and
+		 *      copies their uploaded documents into
+		 *      assets/exports/<export_id>/files/<application_no>/. The browser
+		 *      calls this repeatedly (advancing offset) to drive a progress bar.
+		 *   3. exportZipFinish() - zips the accumulated per-student folders
+		 *      into one file, streams it back as the download, then cleans up.
+		 *
+		 * export_id is always validated against a strict hex pattern before
+		 * being used in any filesystem path, to rule out path traversal.
+		 */
+
+		private function _exportIdIsValid($exportId)
+		{
+			return is_string($exportId) && preg_match('/^[a-f0-9]{16,40}$/', $exportId) === 1;
+		}
+
+		/**
+		 * Emit a JSON response that always carries a currently-valid CSRF
+		 * token. config.php has csrf_protection ON with csrf_regenerate ON,
+		 * so the token rotates on every accepted POST - and cookie_httponly
+		 * is TRUE, so the browser's JS cannot read the rotated value out of
+		 * the cookie itself. Without handing the fresh token back in the
+		 * response body, only the very first POST of the export would pass
+		 * and every subsequent batch would be rejected with a 403 (which
+		 * jQuery surfaces only as a generic "Network error"). Error
+		 * responses include it too, so a retry after a failure still works.
+		 */
+		private function _jsonWithCsrf($payload)
+		{
+			$payload['csrf_name'] = $this->security->get_csrf_token_name();
+			$payload['csrf_hash'] = $this->security->get_csrf_hash();
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode($payload));
+		}
+
+		private function _exportBaseDir($exportId)
+		{
+			return FCPATH . 'assets' . DIRECTORY_SEPARATOR . 'exports' . DIRECTORY_SEPARATOR . $exportId . DIRECTORY_SEPARATOR;
+		}
+
+		public function exportZipStart()
+		{
+			try {
+				set_time_limit(0);
+				$year = $this->uri->segment(3);
+				$vars = $this->input->post();
+				// Same fields the DataTables ajax() call on newapplications.php
+				// always sends, defaulted so a direct/older POST that omits one
+				// doesn't throw a PHP notice inside the model's filter checks.
+				$defaults = array('ApplicantName'=>'','Mail'=>'','Programme'=>'','Counrse'=>'','Universtiy'=>'','Country'=>'','Scheme'=>'','Confirmed'=>'','Application'=>'','MinDate'=>'','MaxDate'=>'','Region'=>'');
+				$vars = array_merge($defaults, is_array($vars) ? $vars : array());
+
+				$rows = $this->hqrs_model->getHqrsAllApplicationNosForExport($this->ids, $vars, $year);
+				$applicationNos = array();
+				foreach ($rows as $r) {
+					if (!empty($r['application_no'])) {
+						$applicationNos[] = $r['application_no'];
+					}
+				}
+				$applicationNos = array_values(array_unique($applicationNos));
+
+				$exportsRoot = FCPATH . 'assets' . DIRECTORY_SEPARATOR . 'exports' . DIRECTORY_SEPARATOR;
+				if (!is_dir($exportsRoot)) {
+					@mkdir($exportsRoot, 0755, true);
+				}
+				// This directory only ever holds temporary per-export files
+				// (application PDFs + copies of uploaded documents) that are
+				// meant to be fetched through exportZipFinish(), never browsed
+				// to directly - export_id is a random 128-bit hex token, but
+				// block direct web access too as defense in depth.
+				if (!is_file($exportsRoot . '.htaccess')) {
+					@file_put_contents($exportsRoot . '.htaccess', "Require all denied\nDeny from all\n");
+				}
+
+				// Sweep exports older than 6 hours. Each run can leave
+				// hundreds of MB behind if the user closes the tab midway, so
+				// without this the assets/exports directory grows unbounded.
+				foreach ((array) glob($exportsRoot . '*', GLOB_ONLYDIR) as $old) {
+					$marker = $old . DIRECTORY_SEPARATOR . 'manifest.json';
+					if (is_file($marker) && (time() - filemtime($marker)) > 21600) {
+						$this->_recursiveDelete($old);
+					}
+				}
+
+				$exportId = bin2hex(random_bytes(16));
+				$dir = $this->_exportBaseDir($exportId);
+				@mkdir($dir . 'files', 0755, true);
+				file_put_contents($dir . 'manifest.json', json_encode(array(
+					'year' => $year,
+					'created' => time(),
+					'application_nos' => $applicationNos,
+				)));
+
+				$this->_jsonWithCsrf(array('status' => true, 'export_id' => $exportId, 'total' => count($applicationNos)));
+			} catch (\Throwable $e) {
+				log_message('error', 'Headquarter::exportZipStart() failed: ' . $e->getMessage());
+				$this->_jsonWithCsrf(array('status' => false, 'message' => 'Could not start export.'));
+			}
+		}
+
+		public function exportZipBatch()
+		{
+			try {
+				set_time_limit(0);
+				$exportId = (string) $this->input->post('export_id');
+				$offset = (int) $this->input->post('offset');
+				$batchSize = (int) $this->input->post('batch');
+				// Deliberately small: each student now renders the full
+				// viewFullApplication page through mPDF, which is far heavier
+				// than a plain text summary. Keeping the per-request work
+				// short is what stops the gateway timing the request out.
+				if ($batchSize < 1 || $batchSize > 10) {
+					$batchSize = 3;
+				}
+
+				if (!$this->_exportIdIsValid($exportId)) {
+					$this->_jsonWithCsrf(array('status' => false, 'message' => 'Invalid export id.'));
+					return;
+				}
+				$dir = $this->_exportBaseDir($exportId);
+				$manifestPath = $dir . 'manifest.json';
+				if (!is_file($manifestPath)) {
+					$this->_jsonWithCsrf(array('status' => false, 'message' => 'Export not found or expired.'));
+					return;
+				}
+				$manifest = json_decode(file_get_contents($manifestPath), true);
+				$applicationNos = isset($manifest['application_nos']) ? $manifest['application_nos'] : array();
+				$total = count($applicationNos);
+				$batch = array_slice($applicationNos, $offset, $batchSize);
+
+				$problems = array();
+				$produced = 0;
+				foreach ($batch as $appno) {
+					$outcome = $this->_exportOneApplication($dir . 'files' . DIRECTORY_SEPARATOR, $appno);
+					if ($outcome['pdf'] || $outcome['docs'] > 0) {
+						$produced++;
+					}
+					if (!empty($outcome['errors'])) {
+						$problems[] = $outcome['appno'] . ': ' . implode('; ', $outcome['errors']);
+					}
+				}
+
+				$done = min($offset + count($batch), $total);
+
+				// If a whole batch produced nothing, stop rather than run the
+				// bar to 100% and fail at the end with no explanation.
+				if ($produced === 0 && !empty($batch)) {
+					$this->_jsonWithCsrf(array(
+						'status' => false,
+						'message' => 'No files could be produced for these applications. ' . implode(' | ', array_slice($problems, 0, 3)),
+					));
+					return;
+				}
+
+				$this->_jsonWithCsrf(array(
+					'status' => true,
+					'done' => $done,
+					'total' => $total,
+					'problems' => array_slice($problems, 0, 5),
+				));
+			} catch (\Throwable $e) {
+				log_message('error', 'Headquarter::exportZipBatch() failed: ' . $e->getMessage());
+				$this->_jsonWithCsrf(array('status' => false, 'message' => 'Export batch failed.'));
+			}
+		}
+
+		/**
+		 * Zip the per-student folders built by exportZipBatch(), a few
+		 * students at a time.
+		 *
+		 * This used to happen in one shot inside exportZipFinish(), which is
+		 * what made the download appear to hang forever: ZipArchive does all
+		 * of its actual work in close(), so a 700-student export sat in a
+		 * single request for many minutes and the web server's own gateway
+		 * timeout killed it. set_time_limit(0) does NOT help there - it only
+		 * raises PHP's limit, not Apache/FastCGI's. So packing is now driven
+		 * in small batches by the same JS progress loop that builds the files.
+		 *
+		 * Output is split into numbered parts once a part passes
+		 * MAX_PART_BYTES. A filtered export of a few dozen students still
+		 * produces exactly one zip; a full 700-student run produces several,
+		 * which is deliberate - a single multi-gigabyte download is very
+		 * likely to fail partway through with nothing to show for it.
+		 */
+		public function exportZipPack()
+		{
+			try {
+				set_time_limit(0);
+				$exportId = (string) $this->input->post('export_id');
+				$packBatch = (int) $this->input->post('batch');
+				if ($packBatch < 1 || $packBatch > 50) {
+					$packBatch = 15;
+				}
+
+				if (!$this->_exportIdIsValid($exportId)) {
+					$this->_jsonWithCsrf(array('status' => false, 'message' => 'Invalid export id.'));
+					return;
+				}
+				$dir = $this->_exportBaseDir($exportId);
+				$filesDir = $dir . 'files';
+				$manifestPath = $dir . 'manifest.json';
+				if (!is_file($manifestPath) || !is_dir($filesDir)) {
+					$this->_jsonWithCsrf(array('status' => false, 'message' => 'Export not found or expired.'));
+					return;
+				}
+
+				// ~1.2 GB per part. Large enough that normal exports stay in
+				// one file, small enough that a part stays downloadable.
+				$maxPartBytes = 1200 * 1024 * 1024;
+
+				$statePath = $dir . 'pack_state.json';
+				$state = is_file($statePath)
+					? json_decode(file_get_contents($statePath), true)
+					: array('offset' => 0, 'parts' => array());
+				if (!is_array($state)) {
+					$state = array('offset' => 0, 'parts' => array());
+				}
+
+				$studentDirs = glob($filesDir . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR);
+				sort($studentDirs);
+				$total = count($studentDirs);
+				$offset = (int) $state['offset'];
+				$slice = array_slice($studentDirs, $offset, $packBatch);
+
+				if (!empty($slice)) {
+					$partIndex = count($state['parts']);
+					if ($partIndex === 0) {
+						$state['parts'][] = array('file' => 'part1.zip');
+						$partIndex = 0;
+					} else {
+						// Continue filling the last part unless it's already
+						// over the size cap, in which case start a new one.
+						$lastPath = $dir . $state['parts'][$partIndex - 1]['file'];
+						if (is_file($lastPath) && filesize($lastPath) >= $maxPartBytes) {
+							$state['parts'][] = array('file' => 'part' . (count($state['parts']) + 1) . '.zip');
+							$partIndex = count($state['parts']) - 1;
+						} else {
+							$partIndex = count($state['parts']) - 1;
+						}
+					}
+
+					$zipPath = $dir . $state['parts'][$partIndex]['file'];
+					$zip = new ZipArchive();
+					if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+						$this->_jsonWithCsrf(array('status' => false, 'message' => 'Could not open zip file for writing.'));
+						return;
+					}
+
+					// The payload is overwhelmingly PDFs and JPG/PNG scans,
+					// which are already compressed - re-deflating them costs
+					// a lot of CPU for almost no size saving, and CPU time is
+					// exactly what we're trying not to spend here.
+					$alreadyCompressed = array('pdf','jpg','jpeg','png','gif','zip','rar','7z','docx','xlsx','pptx');
+
+					foreach ($slice as $studentDir) {
+						$appno = basename($studentDir);
+						$iterator = new RecursiveIteratorIterator(
+							new RecursiveDirectoryIterator($studentDir, FilesystemIterator::SKIP_DOTS)
+						);
+						foreach ($iterator as $file) {
+							if (!$file->isFile()) continue;
+							$localPath = $appno . '/' . substr($file->getPathname(), strlen($studentDir) + 1);
+							$localPath = str_replace('\\', '/', $localPath);
+							$zip->addFile($file->getPathname(), $localPath);
+							$ext = strtolower(pathinfo($file->getPathname(), PATHINFO_EXTENSION));
+							if (in_array($ext, $alreadyCompressed, true) && method_exists($zip, 'setCompressionName')) {
+								@$zip->setCompressionName($localPath, ZipArchive::CM_STORE);
+							}
+						}
+					}
+					$zip->close();
+
+					$state['offset'] = $offset + count($slice);
+					file_put_contents($statePath, json_encode($state));
+				}
+
+				$done = (int) $state['offset'];
+				$complete = ($done >= $total);
+
+				if ($total === 0) {
+					$this->_jsonWithCsrf(array(
+						'status' => false,
+						'message' => 'Nothing to zip - no student folders were created during the previous step.',
+					));
+					return;
+				}
+
+				$parts = array();
+				if ($complete) {
+					foreach ($state['parts'] as $i => $p) {
+						$path = $dir . $p['file'];
+						if (is_file($path)) {
+							$parts[] = array(
+								'index' => $i,
+								'size' => filesize($path),
+								'size_human' => $this->_humanBytes(filesize($path)),
+							);
+						}
+					}
+				}
+
+				$this->_jsonWithCsrf(array(
+					'status' => true,
+					'done' => $done,
+					'total' => $total,
+					'complete' => $complete,
+					'parts' => $parts,
+				));
+			} catch (\Throwable $e) {
+				log_message('error', 'Headquarter::exportZipPack() failed: ' . $e->getMessage());
+				$this->_jsonWithCsrf(array('status' => false, 'message' => 'Packing failed: ' . $e->getMessage()));
+			}
+		}
+
+		private function _humanBytes($bytes)
+		{
+			$units = array('B','KB','MB','GB','TB');
+			$i = 0;
+			$bytes = (float) $bytes;
+			while ($bytes >= 1024 && $i < count($units) - 1) {
+				$bytes /= 1024;
+				$i++;
+			}
+			return round($bytes, 1) . ' ' . $units[$i];
+		}
+
+		/**
+		 * Stream one already-built zip part.
+		 * URL: headquarter/exportZipDownload/<export_id>/<part index>
+		 *
+		 * Streamed in chunks rather than via readfile() so that a multi-
+		 * hundred-megabyte part doesn't have to sit in memory, and so output
+		 * starts flowing immediately instead of after a long silent pause.
+		 */
+		public function exportZipDownload()
+		{
+			try {
+				set_time_limit(0);
+				$exportId = $this->uri->segment(3);
+				$partIndex = (int) $this->uri->segment(4);
+				if (!$this->_exportIdIsValid($exportId)) {
+					show_error('Invalid export id.', 400);
+					return;
+				}
+				$dir = $this->_exportBaseDir($exportId);
+				$statePath = $dir . 'pack_state.json';
+				$manifestPath = $dir . 'manifest.json';
+				if (!is_file($statePath) || !is_file($manifestPath)) {
+					show_error('Export not found or expired.', 404);
+					return;
+				}
+				$state = json_decode(file_get_contents($statePath), true);
+				if (!isset($state['parts'][$partIndex]['file'])) {
+					show_error('Export part not found.', 404);
+					return;
+				}
+				$zipPath = $dir . $state['parts'][$partIndex]['file'];
+				if (!is_file($zipPath)) {
+					show_error('Export part not found.', 404);
+					return;
+				}
+
+				$manifest = json_decode(file_get_contents($manifestPath), true);
+				$year = isset($manifest['year']) ? $manifest['year'] : date('Y');
+				$totalParts = count($state['parts']);
+				$suffix = $totalParts > 1 ? '_part' . ($partIndex + 1) . 'of' . $totalParts : '';
+				$downloadName = 'applications_' . $year . $suffix . '.zip';
+
+				while (ob_get_level()) { ob_end_clean(); }
+				header('Content-Description: File Transfer');
+				header('Content-Type: application/zip');
+				header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+				header('Content-Transfer-Encoding: binary');
+				header('Content-Length: ' . filesize($zipPath));
+				header('X-Accel-Buffering: no');
+
+				$fh = fopen($zipPath, 'rb');
+				if ($fh === false) {
+					show_error('Could not read export part.', 500);
+					return;
+				}
+				while (!feof($fh)) {
+					echo fread($fh, 1024 * 1024);
+					flush();
+				}
+				fclose($fh);
+				exit;
+			} catch (\Throwable $e) {
+				log_message('error', 'Headquarter::exportZipDownload() failed: ' . $e->getMessage());
+				show_error('Download failed.', 500);
+			}
+		}
+
+		/**
+		 * Delete an export's temp files. Called by the browser once every
+		 * part has been downloaded. Cleanup is no longer done inside the
+		 * download response itself - with multiple parts, deleting after the
+		 * first one would break the rest.
+		 */
+		public function exportZipCleanup()
+		{
+			try {
+				$exportId = (string) $this->input->post('export_id');
+				if ($this->_exportIdIsValid($exportId)) {
+					$this->_recursiveDelete($this->_exportBaseDir($exportId));
+				}
+				$this->_jsonWithCsrf(array('status' => true));
+			} catch (\Throwable $e) {
+				log_message('error', 'Headquarter::exportZipCleanup() failed: ' . $e->getMessage());
+				$this->_jsonWithCsrf(array('status' => false));
+			}
+		}
+
+		private function _recursiveDelete($path)
+		{
+			if (!file_exists($path)) return;
+			if (is_file($path) || is_link($path)) { @unlink($path); return; }
+			$items = @scandir($path);
+			if ($items === false) return;
+			foreach ($items as $item) {
+				if ($item === '.' || $item === '..') continue;
+				$this->_recursiveDelete($path . DIRECTORY_SEPARATOR . $item);
+			}
+			@rmdir($path);
+		}
+
+		/**
+		 * Build one student's export folder: <destDir>/<application_no>/ with
+		 * application_info.pdf (the same information shown on
+		 * viewFullApplication, rendered as a PDF) plus a documents/ subfolder
+		 * holding every file they uploaded.
+		 */
+		private function _exportOneApplication($destDir, $appno)
+		{
+			// Returns a per-student outcome instead of swallowing problems.
+			// Previously any failure here was logged and discarded, so the
+			// progress bar could run to 100% having produced nothing at all,
+			// and the only symptom was an empty zip at the very end.
+			$outcome = array('appno' => $appno, 'pdf' => false, 'docs' => 0, 'errors' => array());
+			$studentDir = $destDir . $appno . DIRECTORY_SEPARATOR;
+
+			if (!is_dir($studentDir) && !@mkdir($studentDir, 0755, true)) {
+				$outcome['errors'][] = 'could not create folder (check write permission on assets/exports)';
+				return $outcome;
+			}
+
+			try {
+				$outcome['pdf'] = (bool) $this->_writeApplicationPdf($studentDir . 'application_info.pdf', $appno);
+				if (!$outcome['pdf']) {
+					$outcome['errors'][] = 'PDF was not produced';
+				}
+			} catch (\Throwable $e) {
+				$outcome['errors'][] = 'PDF: ' . $e->getMessage();
+				log_message('error', 'Headquarter export PDF failed for ' . $appno . ': ' . $e->getMessage());
+			}
+
+			try {
+				$documents = $this->common_model->getApplicationDocumentsbyAppNo($appno);
+				if (!empty($documents)) {
+					$docsDir = $studentDir . 'documents' . DIRECTORY_SEPARATOR;
+					@mkdir($docsDir, 0755, true);
+					$doctypes = $this->config->item('doc_types');
+					$labelByTypeId = array();
+					foreach ($doctypes as $key => $meta) {
+						// The configured titles carry an upload hint in a
+						// <span> ("(Document size must be less than 2 MB)").
+						// Drop the span *with* its text - stripping tags alone
+						// would bake that hint into every filename - along with
+						// any other parenthesised aside.
+						// Note: only the <span> is removed, not parenthesised
+						// text generally - "(Synopsis)" and "(Research Paper)"
+						// are what distinguish the two Doctorate entries, and
+						// collapsing them would make one silently overwrite
+						// the other.
+						$label = preg_replace('#<span\b[^>]*>.*?</span>#is', '', $meta['title']);
+						$label = preg_replace('/<[^>]*>/', '', $label);
+						$label = trim(preg_replace('/\s+/', ' ', $label));
+						$label = preg_replace('/[^A-Za-z0-9]+/', '_', $label);
+						$label = trim($label, '_');
+						// Keep filenames manageable for Windows path limits.
+						if (strlen($label) > 60) {
+							$label = rtrim(substr($label, 0, 60), '_');
+						}
+						$labelByTypeId[$meta['type']] = $label !== '' ? $label : $key;
+					}
+
+					$seenTypes = array();
+					foreach ($documents as $doc) {
+						$path = isset($doc['doc_path']) ? $doc['doc_path'] : '';
+						if ($path === '') continue;
+						$resolved = $this->_resolveSafeFilePath($path);
+						if ($resolved === null) continue;
+
+						$typeId = isset($doc['doc_type']) ? $doc['doc_type'] : 0;
+						if (isset($seenTypes[$typeId])) continue; // dedupe, same as viewFullApplication's $docsArray
+						$seenTypes[$typeId] = true;
+
+						$label = isset($labelByTypeId[$typeId]) ? $labelByTypeId[$typeId] : ('doc_' . $typeId);
+						$ext = strtolower(pathinfo($resolved, PATHINFO_EXTENSION));
+						$destName = $label . ($ext !== '' ? '.' . $ext : '');
+						// Never let one document overwrite another if two
+						// labels ever collide after sanitising.
+						if (file_exists($docsDir . $destName)) {
+							$destName = $label . '_' . $typeId . ($ext !== '' ? '.' . $ext : '');
+						}
+						if (@copy($resolved, $docsDir . $destName)) {
+							$outcome['docs']++;
+						}
+					}
+				}
+			} catch (\Throwable $e) {
+				$outcome['errors'][] = 'documents: ' . $e->getMessage();
+				log_message('error', 'Headquarter export documents failed for ' . $appno . ': ' . $e->getMessage());
+			}
+
+			// An empty folder would make ZipArchive produce a zero-entry
+			// archive, which it silently declines to write to disk at all -
+			// that is exactly how "packing finished but no zip was produced"
+			// happened. Drop it and let the caller report the reason.
+			if (!$outcome['pdf'] && $outcome['docs'] === 0) {
+				$this->_recursiveDelete($studentDir);
+			}
+
+			return $outcome;
+		}
+
+		/**
+		 * Same confinement rule as fileForceDownload() in status_helper.php:
+		 * only hand back a path if it resolves to a real, non-executable file
+		 * inside the web root. doc_path values come straight from the
+		 * database, so this is the only thing standing between a bad row and
+		 * reading an arbitrary file off the server.
+		 */
+		private function _resolveSafeFilePath($path)
+		{
+			$resolved = @realpath($path);
+			if ($resolved === false) return null;
+			$root = @realpath(FCPATH);
+			if ($root === false) return null;
+			$root = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+			if (strncasecmp($resolved, $root, strlen($root)) !== 0) return null;
+			$blocked = array('php','php3','php4','php5','php7','phtml','phps','inc','htaccess','ini','env','sql');
+			if (in_array(strtolower(pathinfo($resolved, PATHINFO_EXTENSION)), $blocked, true)) return null;
+			if (!is_file($resolved)) return null;
+			return $resolved;
+		}
+
+		/**
+		 * Render one student's application to PDF.
+		 *
+		 * Built from clean markup rather than by re-rendering the
+		 * iccr/viewFullApplication view. That view was tried first, but its
+		 * table structure is invalid in ways a browser silently repairs and a
+		 * PDF engine cannot: cells outside rows, blocks inside <tbody>, and a
+		 * main table left unclosed across whole sections. Dompdf ends up with
+		 * a cell whose parent table is missing and aborts with "Call to a
+		 * member function get_cellmap() on null", producing no PDF at all.
+		 * Generating the document here keeps the export deterministic and
+		 * independent of that page's markup.
+		 *
+		 * Content mirrors the on-screen application: the same numbered
+		 * sections, the same field values, and both images (profile photo and
+		 * passport scan).
+		 */
+		private function _writeApplicationPdf($destPath, $appno)
+		{
+			$html = $this->_buildApplicationHtml($appno);
+			if ($html === null) {
+				return false;
+			}
+
+			$this->load->library('GenPdf');
+			$dompdf = new GenPdf();
+			$dompdf->set_option('isHtml5ParserEnabled', true);
+			$dompdf->set_option('isRemoteEnabled', false);
+			$dompdf->set_option('chroot', FCPATH);
+			$dompdf->set_option('defaultFont', 'DejaVu Sans');
+			$dompdf->loadHtml($html, 'UTF-8');
+			$dompdf->setPaper('A4', 'portrait');
+			$dompdf->render();
+			file_put_contents($destPath, $dompdf->output());
+			return is_file($destPath);
+		}
+
+		/** Read an image off disk as a data URI, or null if unusable. */
+		private function _imageDataUri($path)
+		{
+			$resolved = $this->_resolveSafeFilePath($path);
+			if ($resolved === null) {
+				return null;
+			}
+			$bytes = @file_get_contents($resolved);
+			if ($bytes === false || $bytes === '') {
+				return null;
+			}
+			$ext = strtolower(pathinfo($resolved, PATHINFO_EXTENSION));
+			$mimes = array('jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif');
+			if (!isset($mimes[$ext])) {
+				return null;
+			}
+			return 'data:' . $mimes[$ext] . ';base64,' . base64_encode($bytes);
+		}
+
+		private function _buildApplicationHtml($appno)
+		{
+			$stepOne = $this->common_model->getHeadquarterApplicationStepOneByAppno($appno);
+			if (empty($stepOne)) {
+				return null;
+			}
+			$s = $stepOne[0];
+			$uid = $s['uid'];
+
+			$two   = $this->common_model->getApplicationStepTwoByAppno($appno);
+			$edu   = !empty($two) ? $two[0] : array();
+			$three = $this->common_model->getApplicationStepThreebyAppNo($appno);
+			$oth   = !empty($three) ? $three[0] : array();
+			$reg   = $this->common_model->getUserData($uid);
+			$r     = !empty($reg) ? $reg[0] : array();
+
+			$v = function ($arr, $key, $default = '') {
+				return (is_array($arr) && isset($arr[$key]) && $arr[$key] !== null && $arr[$key] !== '')
+					? $arr[$key] : $default;
+			};
+			$e = function ($x) { return htmlspecialchars((string) $x, ENT_QUOTES, 'UTF-8'); };
+			$yn = function ($x) { return ((string) $x === '1') ? 'Yes' : (((string) $x === '2' || (string) $x === '0') ? 'No' : ''); };
+
+			// ---- lookups -------------------------------------------------
+			$countryName = function ($id) {
+				if (empty($id)) return '';
+				$c = $this->common_model->getCountryById($id);
+				return isset($c[0]['country_name']) ? $c[0]['country_name'] : (isset($c[0]['name']) ? $c[0]['name'] : '');
+			};
+			$nationality = $countryName($v($s, 'nationality'));
+
+			$missionName = '';
+			if ($v($oth, 'application_through') !== '') {
+				$mi = $this->common_model->getMissionInfo($oth['application_through']);
+				if (!empty($mi[0])) {
+					$missionName = trim($v($mi[0], 'mission_type') . ' ' . $v($mi[0], 'mission_name')
+						. (($v($mi[0], 'country_name') !== '') ? ', ' . $mi[0]['country_name'] : ''));
+				}
+			}
+
+			$programmeName = '';
+			if ($v($s, 'programme') !== '') {
+				$p = $this->common_model->getProgrammeById($s['programme']);
+				$programmeName = isset($p[0]['name']) ? $p[0]['name'] : '';
+			}
+
+			$streamName = '';
+			if ($v($s, 'course_type') !== '') {
+				$row = $this->db->get_where('iccr_course_type', array('id' => $s['course_type']))->row();
+				if ($row && isset($row->course_type)) $streamName = $row->course_type;
+			}
+
+			$titleMap = array('1' => 'Mr', '2' => 'Ms', '3' => 'Mrs');
+			$title = isset($titleMap[(string) $v($s, 'student_title')]) ? $titleMap[(string) $s['student_title']] : '';
+			$fullName = trim($title . ' ' . $v($s, 'fullname') . ' ' . $v($s, 'middlename') . ' ' . $v($s, 'familyname'));
+			$gender = ((string) $v($s, 'gender') === '1') ? 'Male' : (((string) $v($s, 'gender') === '2') ? 'Female' : '');
+
+			// ---- images --------------------------------------------------
+			$photo = null;
+			$userInfo = $this->common_model->getUserInfo($uid);
+			$imgArr = $this->common_model->getUserImage($uid);
+			$imgName = isset($imgArr[0]['name']) ? $imgArr[0]['name'] : '';
+			if ($imgName !== '') {
+				$dir = ($userInfo && isset($userInfo->dir)) ? $userInfo->dir : '';
+				if ($dir !== '') {
+					$photo = $this->_imageDataUri(rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $imgName);
+				}
+				if ($photo === null) {
+					$photo = $this->_imageDataUri(FCPATH . 'assets/site/main/profile_pics/' . $imgName);
+				}
+			}
+			$passportImg = null;
+			if ($userInfo && !empty($userInfo->passport_file)) {
+				$passportImg = $this->_imageDataUri(FCPATH . ltrim($userInfo->passport_file, '/\\'));
+			}
+			$signatureImg = null;
+			if ($v($oth, 'signature_doc') !== '') {
+				$signatureImg = $this->_imageDataUri(FCPATH . 'assets/site/main/profile_signature/' . $oth['signature_doc']);
+			}
+
+			// ---- course / university preferences -------------------------
+			$nomKeys = array('nomenclature','nomenclature_two','nomenclature_three','nomenclature_fourth','nomenclature_fifth');
+			$uniKeys = array('universty_choice','universty_choice_two','universty_choice_three','universty_choice_fourth','universty_choice_fifth');
+			$choices = array();
+			for ($i = 0; $i < 5; $i++) {
+				$nom = ''; $uni = '';
+				if ($v($s, $nomKeys[$i]) !== '') {
+					$n = $this->common_model->getnomenclatureByid($s[$nomKeys[$i]]);
+					$nom = isset($n[0]['title']) ? $n[0]['title'] : '';
+				}
+				if ($v($s, $uniKeys[$i]) !== '') {
+					$u = $this->common_model->getUniversityById($s[$uniKeys[$i]]);
+					$uni = isset($u[0]['name']) ? $u[0]['name'] : '';
+				}
+				if ($nom !== '' || $uni !== '') {
+					$choices[] = array($i + 1, $nom, $uni);
+				}
+			}
+
+			// ---- education ----------------------------------------------
+			$eduRows = array();
+			$eduSpec = array(
+				array('Grade X (equivalent to Grade X in India)', 'school_leaving_country_x', 'school_leaving_university_x', 'school_leaving_year_x', 'school_leaving_percentage_x'),
+				array('Grade XII (equivalent to Grade XII in India)', 'school_leaving_country', 'school_leaving_university', 'school_leaving_year', 'school_leaving_percentage'),
+				array('Under Graduate', 'ug_leaving_country', 'ug_leaving_university', 'ug_leaving_year', 'ug_leaving_percentage'),
+				array('Post Graduate', 'pg_leaving_country', 'pg_leaving_university', 'pg_leaving_year', 'pg_leaving_percentage'),
+			);
+			foreach ($eduSpec as $row) {
+				list($label, $ck, $uk, $yk, $pk) = $row;
+				if ($v($edu, $uk) === '' && $v($edu, $yk) === '' && $v($edu, $pk) === '') continue;
+				$eduRows[] = array($label, $v($edu, $ck), $v($edu, $uk), $v($edu, $yk), $v($edu, $pk));
+			}
+			if ($v($edu, 'other_course') !== '' || $v($edu, 'other_course_university') !== '') {
+				$eduRows[] = array($v($edu, 'other_course', 'Other'), '', $v($edu, 'other_course_university'), $v($edu, 'other_course_year'), '');
+			}
+
+			// ---- documents ----------------------------------------------
+			$documents = $this->common_model->getApplicationDocumentsbyAppNo($appno);
+			$doctypes = $this->config->item('doc_types');
+			$docTitleById = array();
+			foreach ($doctypes as $meta) {
+				$t = preg_replace('#<span\b[^>]*>.*?</span>#is', '', $meta['title']);
+				$t = trim(preg_replace('/\s+/', ' ', preg_replace('/<[^>]*>/', '', $t)));
+				$docTitleById[$meta['type']] = $t;
+			}
+			$docRows = array(); $seenDoc = array();
+			foreach ($documents as $d) {
+				$tid = isset($d['doc_type']) ? $d['doc_type'] : 0;
+				if (isset($seenDoc[$tid])) continue;
+				$seenDoc[$tid] = true;
+				$docRows[] = array(
+					isset($docTitleById[$tid]) ? $docTitleById[$tid] : ('Document type ' . $tid),
+					!empty($d['added_on']) ? date('d-m-Y H:i', $d['added_on']) : '',
+				);
+			}
+
+			// ---- university status --------------------------------------
+			$confirmRows = array();
+			$confirmed = $this->common_model->getconfirmationDataByMission($appno);
+			if (!empty($confirmed)) {
+				foreach ($confirmed as $cr) {
+					$un = '';
+					if (!empty($cr['regional_university'])) {
+						$u = $this->common_model->getFinalUniversityById($cr['regional_university']);
+						$un = isset($u[0]['name']) ? $u[0]['name'] : '';
+					}
+					$confirmRows[] = array($un, $v($cr, 'final_course', $v($cr, 'course')), $v($cr, 'date_of_joining'));
+				}
+			}
+
+			// ---- assemble -------------------------------------------------
+			$row = function ($label, $value) use ($e) {
+				if (trim((string) $value) === '') return '';
+				return '<tr><td class="k">' . $e($label) . '</td><td class="v">' . $e($value) . '</td></tr>';
+			};
+
+			$h = array();
+			$h[] = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
+				. '@page{margin:12mm 10mm;}'
+				. 'body{font-family:"DejaVu Sans",sans-serif;font-size:9.5px;color:#000;}'
+				. 'h1{font-size:14px;text-align:center;margin:0 0 2px;}'
+				. 'h2{font-size:10.5px;background:#e9e9e9;padding:4px 6px;margin:12px 0 5px;border-left:3px solid #666;}'
+				. '.sub{text-align:center;font-size:9px;margin:0 0 8px;}'
+				. '.appno{text-align:right;font-size:9px;margin-bottom:4px;}'
+				. 'table{width:100%;border-collapse:collapse;margin-bottom:4px;}'
+				. 'td,th{border:1px solid #bbb;padding:3px 5px;vertical-align:top;}'
+				. 'th{background:#f2f2f2;text-align:left;font-weight:bold;}'
+				. 'td.k{width:34%;font-weight:bold;background:#fafafa;}'
+				. '.plain td{border:none;padding:2px 0;}'
+				. '.photo{width:104px;height:124px;object-fit:cover;border:1px solid #999;}'
+				. '.scan{max-width:210px;max-height:120px;border:1px solid #999;}'
+				. '.essay{white-space:pre-wrap;text-align:justify;border:1px solid #bbb;padding:5px;}'
+				. '.note{font-size:8.5px;color:#444;margin:3px 0 0;}'
+				. '</style></head><body>';
+
+			$h[] = '<div class="appno">Application No. <b>' . $e($appno) . '</b></div>';
+			$h[] = '<h1>APPLICATION FORM FOR SCHOLARSHIP THROUGH ICCR</h1>';
+			$h[] = '<p class="sub">TO BE FILLED BY APPLICANT</p>';
+
+			// header block: details + photo side by side
+			$h[] = '<table class="plain"><tr><td style="width:78%">';
+			$h[] = '<table>';
+			$h[] = $row('Application Made Through', $missionName);
+			$h[] = $row('1. Full name (IN BLOCK LETTERS)', $fullName);
+			$h[] = $row('2. Gender', $gender);
+			$h[] = $row('3. Date of Birth', $v($s, 'dob'));
+			$h[] = $row('Age', $v($s, 'age'));
+			$h[] = $row('4. Place of Birth', trim($v($s, 'city') . (($v($s,'birth_country')!=='') ? ', ' . $countryName($s['birth_country']) : '')));
+			$h[] = $row('5. Location', $nationality);
+			$h[] = '</table></td><td style="width:22%;text-align:right">';
+			$h[] = ($photo !== null) ? '<img class="photo" src="' . $photo . '">' : '';
+			$h[] = '</td></tr></table>';
+
+			$h[] = '<h2>Passport Details</h2><table>';
+			$h[] = $row('6. Passport No', $v($s, 'passport_no', 'NA'));
+			$h[] = $row('7. Issue of Passport (City, Country)', trim($v($s,'passport_issue_place') . (($v($s,'passport_issue_country')!=='') ? ', ' . $countryName($s['passport_issue_country']) : '')));
+			$h[] = $row('8. Passport Issue Date', $v($s, 'passport_issue_date'));
+			$h[] = $row('9. Passport Expiry Date', $v($s, 'passport_expiry_date'));
+			$h[] = '</table>';
+			if ($passportImg !== null) {
+				$h[] = '<div><img class="scan" src="' . $passportImg . '"></div>';
+			}
+
+			$h[] = '<h2>Contact &amp; Address</h2><table>';
+			$h[] = $row('10. Postal Address', $v($s, 'postal_address'));
+			$h[] = $row('a) City', $v($s, 'postal_address_city'));
+			$h[] = $row('b) State', $v($s, 'postal_address_state'));
+			$h[] = $row('c) Country', $v($s, 'postal_address_country'));
+			$h[] = $row('d) Zipcode', $v($s, 'postal_address_pincode'));
+			$h[] = $row('11. Mobile Number', trim($v($s, 'tel_country_code') . ' ' . $v($s, 'phone_number')));
+			$h[] = $row('12. WhatsApp Number', $v($s, 'whatsapp_number'));
+			$h[] = $row('13. Email Id', $v($s, 'email'));
+			$h[] = $row('14. Unique Identifcation No.', $v($s, 'unique_id'));
+			$h[] = '</table>';
+
+			$h[] = '<h2>15. Details of Father / Mother / Guardian</h2>';
+			$h[] = '<table><tr><th>Name</th><th>Relation</th><th>Phone Number</th><th>Email ID</th></tr>';
+			$people = array(
+				array(trim($v($r,'father_fname').' '.$v($r,'father_mname').' '.$v($r,'father_lname')), 'Father', $v($s,'father_number'), $v($s,'father_email')),
+				array(trim($v($r,'mother_fname').' '.$v($r,'mother_mname').' '.$v($r,'mother_lname')), 'Mother', $v($s,'mother_number'), $v($s,'mother_email')),
+				array(trim($v($r,'gurdian_fname').' '.$v($r,'gurdian_mname').' '.$v($r,'gurdian_lname')), 'Guardian', $v($s,'gurdian_number'), $v($s,'gurdian_email')),
+			);
+			$anyPerson = false;
+			foreach ($people as $p) {
+				if (trim($p[0]) === '' && trim($p[2]) === '' && trim($p[3]) === '') continue;
+				$anyPerson = true;
+				$h[] = '<tr><td>' . $e($p[0]) . '</td><td>' . $e($p[1]) . '</td><td>' . $e($p[2]) . '</td><td>' . $e($p[3]) . '</td></tr>';
+			}
+			if (!$anyPerson) $h[] = '<tr><td colspan="4">NA</td></tr>';
+			$h[] = '</table>';
+			$gAddr = trim(implode(', ', array_filter(array($v($s,'guardian_address'), $v($s,'gardiuan_address_city'), $v($s,'gardiuan_address_state'), $v($s,'gardiuan_address_country'), $v($s,'gardiuan_address_pincode')))));
+			if ($gAddr !== '') $h[] = '<table>' . $row('Address', $gAddr) . '</table>';
+
+			$h[] = '<h2>English Proficiency</h2><table>';
+			$h[] = $row('16. English as a subject in School/College', $yn($v($s, 'is_english_as_subject')));
+			$h[] = $row('Till What Level', $v($s, 'english_level'));
+			$h[] = $row('TOEFL Score', ((string) $v($s,'is_toefl') === '1') ? $v($s, 'toefl_score', 'NA') : '');
+			$h[] = $row('IELTS Score', ((string) $v($s,'is_ielts') === '1') ? $v($s, 'ielts_score', 'NA') : '');
+			$h[] = $row('Duolingo Score', ((string) $v($s,'is_duolingo') === '1') ? $v($s, 'duolingo_score', 'NA') : '');
+			$h[] = $row('GMAT Score', $v($s, 'gmat_score'));
+			$h[] = '</table>';
+
+			if ($v($s, 'english_test_essay') !== '') {
+				$h[] = '<h2>18. Essay</h2><div class="essay">' . $e($s['english_test_essay']) . '</div>';
+			}
+
+			$h[] = '<h2>Academic Programme</h2><table>';
+			$h[] = $row('19. Academic Year', $v($s, 'acedemic_year'));
+			$h[] = $row('20. Level of Course', $programmeName);
+			$h[] = $row('21. Course Main Stream', $streamName);
+			$h[] = '</table>';
+
+			if (!empty($choices)) {
+				$h[] = '<p class="note"><b>22. Universities/Institutes in India where you wish to seek admission:</b></p>';
+				$h[] = '<table><tr><th style="width:6%">#</th><th style="width:44%">Nomenclature</th><th>University</th></tr>';
+				foreach ($choices as $c) {
+					$h[] = '<tr><td>' . $e($c[0]) . '</td><td>' . $e($c[1]) . '</td><td>' . $e($c[2]) . '</td></tr>';
+				}
+				$h[] = '</table>';
+				$h[] = '<p class="note">Note: Once admission is confirmed, no change in either course or University/Institute will be permitted by the Council. Allotment of colleges is done by the respective Universities.</p>';
+			}
+
+			if (!empty($eduRows)) {
+				$h[] = '<h2>23. Previous Educational Qualifications</h2>';
+				$h[] = '<table><tr><th>Certificate/Degree</th><th>Country</th><th>Name of School/University/Board</th><th>Year</th><th>%/Grade</th></tr>';
+				foreach ($eduRows as $er) {
+					$h[] = '<tr><td>' . $e($er[0]) . '</td><td>' . $e($er[1]) . '</td><td>' . $e($er[2]) . '</td><td>' . $e($er[3]) . '</td><td>' . $e($er[4]) . '</td></tr>';
+				}
+				$h[] = '</table>';
+			}
+
+			$refs = array(
+				array($v($oth,'enq_ref_one_name'), $v($oth,'enq_ref_one_designation'), $v($oth,'enq_ref_one_email'), $v($oth,'enq_ref_one_phone'), $v($oth,'enq_ref_one_address')),
+				array($v($oth,'enq_ref_two_name'), $v($oth,'enq_ref_two_designation'), $v($oth,'enq_ref_two_email'), $v($oth,'enq_ref_two_phone'), $v($oth,'enq_ref_two_address')),
+			);
+			$hasRef = false;
+			foreach ($refs as $rf) { if (trim($rf[0]) !== '') $hasRef = true; }
+			if ($hasRef) {
+				$h[] = '<h2>24. References</h2>';
+				$h[] = '<table><tr><th>Name</th><th>Occupation</th><th>Email</th><th>Telephone</th><th>Postal Address</th></tr>';
+				foreach ($refs as $rf) {
+					if (trim($rf[0]) === '') continue;
+					$h[] = '<tr><td>' . $e($rf[0]) . '</td><td>' . $e($rf[1]) . '</td><td>' . $e($rf[2]) . '</td><td>' . $e($rf[3]) . '</td><td>' . $e($rf[4]) . '</td></tr>';
+				}
+				$h[] = '</table>';
+			}
+
+			if ($v($oth, 'relative_ref_name') !== '') {
+				$h[] = '<h2>25. Close relative(s) or friends in India</h2>';
+				$h[] = '<table><tr><th>Name</th><th>Relationship</th><th>Occupation</th><th>Telephone</th><th>Email</th><th>Postal Address</th></tr>';
+				$h[] = '<tr><td>' . $e($v($oth,'relative_ref_name')) . '</td><td>' . $e($v($oth,'relative_ref_relation'))
+					. '</td><td>' . $e($v($oth,'relative_ref_designation')) . '</td><td>' . $e($v($oth,'relative_ref_contact'))
+					. '</td><td>' . $e($v($oth,'relative_ref_email')) . '</td><td>' . $e($v($oth,'relative_ref_address')) . '</td></tr>';
+				$h[] = '</table>';
+			}
+
+			$h[] = '<h2>Additional Declarations</h2><table>';
+			$h[] = $row('26. Have you travelled or lived in India in the past?', $yn($v($oth, 'is_travel_or_live_in_india_before')));
+			$h[] = $row('27. Have you ever availed of ICCR Scholarship earlier?', $yn($v($oth, 'is_iccr_scholarship_avail_before')));
+			if ((string) $v($oth, 'is_iccr_scholarship_avail_before') === '1') {
+				$h[] = $row('   Year', $v($oth, 'iccr_scholar_year'));
+				$h[] = $row('   Course', $v($oth, 'iccr_scholar_course'));
+				$h[] = $row('   Institute', $v($oth, 'iccr_scholar_institute'));
+				$h[] = $row('   Duration', trim($v($oth,'iccr_scholar_duration_from') . ' - ' . $v($oth,'iccr_scholar_duration_to'), ' -'));
+			}
+			$h[] = $row('28. Are you currently a resident in India?', $yn($v($oth, 'currently_non_nri')));
+			$h[] = $row('   Postal Address', $v($oth, 'currently_non_nri_address'));
+			$h[] = $row('29. Are you married to an Indian national?', $yn($v($oth, 'is_married')));
+			$h[] = $row('30. Do you have an International driving licence?', $yn($v($oth, 'is_international_lic')));
+			$h[] = $row('   Licence No.', $v($oth, 'is_international_lic_no'));
+			$h[] = $row('   Issuing Authority', $v($oth, 'is_international_lic_auth'));
+			$h[] = $row('31. Any Other Information', $v($oth, 'any_other_info'));
+			$h[] = '</table>';
+
+			if (!empty($confirmRows)) {
+				$h[] = '<h2>University Status</h2>';
+				$h[] = '<table><tr><th>University Name</th><th>Confirmed Course</th><th>Date of Joining</th></tr>';
+				foreach ($confirmRows as $cr) {
+					$h[] = '<tr><td>' . $e($cr[0]) . '</td><td>' . $e($cr[1]) . '</td><td>' . $e($cr[2]) . '</td></tr>';
+				}
+				$h[] = '</table>';
+			}
+
+			if (!empty($docRows)) {
+				$h[] = '<h2>Uploaded Documents</h2>';
+				$h[] = '<p class="note">The files themselves are in the <b>documents</b> folder alongside this PDF.</p>';
+				$h[] = '<table><tr><th style="width:6%">S.No.</th><th>Document Name</th><th style="width:22%">Uploaded</th></tr>';
+				$i = 1;
+				foreach ($docRows as $dr) {
+					$h[] = '<tr><td>' . $i++ . '</td><td>' . $e($dr[0]) . '</td><td>' . $e($dr[1]) . '</td></tr>';
+				}
+				$h[] = '</table>';
+			}
+
+			$h[] = '<h2>Declaration</h2>';
+			$h[] = '<p style="text-align:justify">I hereby declare that the particulars given above are true to the best of my knowledge and belief and that I have understood the financial terms and conditions of the Scholarship Scheme. I hereby undertake to abide by them, and I also undertake to return to my country after completion of my studies in India.</p>';
+			$h[] = '<table class="plain"><tr><td>Date: ' . $e($v($oth, 'created') !== '' ? date('d-m-Y', (int) $oth['created']) : '') . '</td><td style="text-align:right">';
+			$h[] = ($signatureImg !== null) ? '<img src="' . $signatureImg . '" style="max-width:150px;max-height:50px;"><br>Signature' : 'Signature';
+			$h[] = '</td></tr></table>';
+
+			$h[] = '</body></html>';
+			return implode("\n", $h);
+		}
+
 		public function __destruct() {
     $this->db->close();
     }
 public function loginHistory()
 		{
-			
-			$user_data = $this->session->userdata('user_data');	
-			
+
+			$user_data = $this->session->userdata('user_data');
+
 			$data['loginHistorys'] = $this->common_model->getloginHistory();
-			
+
 			$this->load->view('iccr/header_mission');
                $this->load->view('iccr/list_of_lgin_history',$data);
                 $this->load->view('iccr/footer');

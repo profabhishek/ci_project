@@ -83,25 +83,33 @@ marquee{
 						<td><?php echo $app['fullname'].' '.$app['middlename'].' '.$app['familyname'].$new;?></td>						
 						<td><?php echo $app['email'];?></td>
 						<td><?php
-							if($app['programme'] == 3 || $app['programme'] == 4 || $app['programme'] == 8)
+							// Prefer Nomenclature (reliable, set once a university confirms
+							// the admission) over the raw applied-course lookup below, which
+							// is frequently null/mismatched and was showing as "NA".
+							$nomenclature = !empty($app['nomenclature']) ? $this->common_model->getnomenclatureByid($app['nomenclature']) : [];
+							if(!empty($nomenclature))
+							{
+								echo $nomenclature[0]['title'];
+							}
+							else if($app['programme'] == 3 || $app['programme'] == 4 || $app['programme'] == 8)
 							{
 								$course = $this->common_model->getProgrammeById($app['programme']);
 								echo $course[0]['name'].' ('.$app['course_subject'].')';
 							}
 							else
 							{
-								$course = $this->common_model->getCoursesById($app['course']);							
+								$course = $this->common_model->getCoursesById($app['course']);
 								$strm1 = $this->common_model->getStreamById($app['course_option_name']);
-								
-								echo $course[0]['title'].' '.$strm1[0]['name'].'<br/>';
-						}?></td>	
+
+								echo (!empty($course) ? $course[0]['title'] : 'NA').' '.(!empty($strm1) ? $strm1[0]['name'] : '').'<br/>';
+						}?></td>
 						<td>
 							<?php
 							$response = $this->common_model->getconfirmationDataByMission($app['application_no']);
 							//echo "<pre>";print_r($response);die;
-						    $uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
+						    $uni1 = !empty($response) ? $this->common_model->getUniversityById($response[0]['regional_university']) : array();
 							//echo "<pre>";print_r($uni1);die;;
-							echo $uni1[0]['name'];
+							echo !empty($uni1) ? $uni1[0]['name'] : 'NA';
 							?>
 						</td>				
 					
@@ -135,33 +143,39 @@ marquee{
 					//echo "<pre>";print_r($response);die;
 					?>
 						<td>
-					<?php if ($response[0]['university_is_accept'] == 1) {
-                                            
-						$file_path_un = './2025/university_approval/'.$response[0]['region_one_doc']; 
+					<?php if (!empty($response) && $response[0]['university_is_accept'] == 1) {
+
+						$file_path_un = null;
+						foreach (array(date('Y'), date('Y')-1, date('Y')-2) as $ua_year) {
+							$ua_candidate = './'.$ua_year.'/university_approval/'.$response[0]['region_one_doc'];
+							if (file_exists($ua_candidate)) {
+								$file_path_un = $ua_candidate;
+								break;
+							}
+						}
                         if(strpos($response[0]['region_one_doc'],'.pdf')){
-							if(file_exists($file_path_un)) {	
-							 $output = '<a href="'.site_url().'mission/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank">Download</a>';   
+							if($file_path_un) {
+							 $output = '<a href="'.site_url().'mission/downloadDocs/'.base64url_encode($file_path_un).'" target = "_blank">Download</a>';
 							}
 							else{
-							$output = '<a target="_blank" href="'.site_url().'assets/site/main/university_approval/'.$response[0]["region_one_doc"].'" target="_blank">Download</a>';		
+							$output = '<a target="_blank" href="'.site_url().'assets/site/main/university_approval/'.$response[0]["region_one_doc"].'" target="_blank">Download</a>';
 							}
 						   }
 						   else {
-						$file_path_un = './2024/university_approval/'.$response[0]['region_one_doc'];
-							if(file_exists($file_path_un)) {						
+							if($file_path_un) {
 						     $imgs = file_get_contents($file_path_un);
 							 $data = base64_encode($imgs);
 							 $f = finfo_open();
 							 $imgdata = base64_decode($data);
                              $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-				   $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank">Download</a>'; 
+				   $output = '<a download="'.rand().time().'" href="data:'.$mime_type.';base64,'.$data.'" target = "_blank">Download</a>';
 							}
 							else{
-						$output = '<a target="_blank" href="'.site_url().'assets/site/main/university_approval/'.$response[0]["region_one_doc"].'" target="_blank">Download</a>';	
+						$output = '<a target="_blank" href="'.site_url().'assets/site/main/university_approval/'.$response[0]["region_one_doc"].'" target="_blank">Download</a>';
 							}
 							}
-							echo $output;							
-							
+							echo $output;
+
 						   ?>
                                             <!--<a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[0]['region_one_doc']; ?>" target="_blank">Download</a>-->
                                             <?php
@@ -169,7 +183,7 @@ marquee{
 						</td>
 						<td>
 						
-						<a style="float:left;width:104px;" href="<?php echo site_url(); ?>mission/historyview/<?php echo $response[0]['application_id'];?>" class="form-control sbmt1" target = "_blank">View</a>
+						<a style="float:left;width:104px;" href="<?php echo site_url(); ?>mission/historyview/<?php echo !empty($response) ? $response[0]['application_id'] : '';?>" class="form-control sbmt1" target = "_blank">View</a>
 						
 						</td>
 						<td>
@@ -300,60 +314,86 @@ marquee{
 						<td><?php echo $app['fullname'].' '.$app['middlename'].' '.$app['familyname'].$new;?></td>						
 						<td><?php echo $app['email'];?></td>
 						<td><?php
-						if($app['programme'] == 3 || $app['programme'] == 4 || $app['programme'] == 8)
+						// For AYUSH applications, $app['course']/course_two/.../course_fifth
+						// all point to a generic AYUSH category record whose title is just
+						// "Ayush" - so echoing all 5 just repeats "Ayush" five times, which
+						// looks broken even though nothing is technically failing. The
+						// actual confirmed course/discipline lives in Nomenclature once a
+						// university has confirmed the admission, so show that instead when
+						// it's available.
+						$nomenclature = !empty($app['nomenclature']) ? $this->common_model->getnomenclatureByid($app['nomenclature']) : [];
+						if(!empty($nomenclature))
+						{
+							echo $nomenclature[0]['title'];
+						}
+						else if($app['programme'] == 3 || $app['programme'] == 4 || $app['programme'] == 8)
 						{
 							$course = $this->common_model->getProgrammeById($app['programme']);
 							echo $course[0]['name'].' ('.$app['course_subject'].')';
 						}
 						else
 						{
-							$course1 = $this->common_model->getCoursesById($app['course']);
-							$course2 = $this->common_model->getCoursesById($app['course_two']);
-							$course3 = $this->common_model->getCoursesById($app['course_three']);
-							$course4 = $this->common_model->getCoursesById($app['course_fourth']);
-							$course5 = $this->common_model->getCoursesById($app['course_fifth']);
-										
-							$strm1 = $this->common_model->getStreamById($app['course_option_name']);
-							
-							echo $course1[0]['title'].'<br/>';
-							echo $course2[0]['title'].'<br/>';
-							echo $course3[0]['title'].'<br/>';
-							echo $course4[0]['title'].'<br/>';
-							echo $course5[0]['title'].'<br/>';
-							
+							$course1 = $this->common_model->getCoursesById($app['course'] ?? null);
+							$course2 = $this->common_model->getCoursesById($app['course_two'] ?? null);
+							$course3 = $this->common_model->getCoursesById($app['course_three'] ?? null);
+							$course4 = $this->common_model->getCoursesById($app['course_fourth'] ?? null);
+							$course5 = $this->common_model->getCoursesById($app['course_fifth'] ?? null);
+
+							$strm1 = $this->common_model->getStreamById($app['course_option_name'] ?? null);
+
+							echo (!empty($course1) ? $course1[0]['title'] : 'NA').'<br/>';
+							echo (!empty($course2) ? $course2[0]['title'] : 'NA').'<br/>';
+							echo (!empty($course3) ? $course3[0]['title'] : 'NA').'<br/>';
+							echo (!empty($course4) ? $course4[0]['title'] : 'NA').'<br/>';
+							echo (!empty($course5) ? $course5[0]['title'] : 'NA').'<br/>';
+
 						}?>
-						</td>	
+						</td>
 						
 						<td>
 							<?php
-							$uni1 = $this->common_model->getUniversityById($app['universty_choice']);
-							$uni2 = $this->common_model->getUniversityById($app['universty_choice_two']);
-							$uni3 = $this->common_model->getUniversityById($app['universty_choice_three']);
-							$uni4 = $this->common_model->getUniversityById($app['universty_choice_fourth']);
-							$uni5 = $this->common_model->getUniversityById($app['universty_choice_fifth']);
-							echo $uni1[0]['name'].'<br/>';
-							echo $uni2[0]['name'].'<br/>';
-							echo $uni3[0]['name'].'<br/>';
-							echo $uni4[0]['name'].'<br/>';
-							echo $uni5[0]['name'].'<br/>';
+							$uni1 = $this->common_model->getUniversityById($app['universty_choice'] ?? null);
+							$uni2 = $this->common_model->getUniversityById($app['universty_choice_two'] ?? null);
+							$uni3 = $this->common_model->getUniversityById($app['universty_choice_three'] ?? null);
+							$uni4 = $this->common_model->getUniversityById($app['universty_choice_fourth'] ?? null);
+							$uni5 = $this->common_model->getUniversityById($app['universty_choice_fifth'] ?? null);
+							echo (!empty($uni1) ? $uni1[0]['name'] : 'NA').'<br/>';
+							echo (!empty($uni2) ? $uni2[0]['name'] : 'NA').'<br/>';
+							echo (!empty($uni3) ? $uni3[0]['name'] : 'NA').'<br/>';
+							echo (!empty($uni4) ? $uni4[0]['name'] : 'NA').'<br/>';
+							echo (!empty($uni5) ? $uni5[0]['name'] : 'NA').'<br/>';
 							?>
 						</td>				
 
 						<td><?php $sch = $this->common_model->getSchemeById($app['scholarship_id']);
-							echo $sch[0]['scheme_name'];?>
+							echo !empty($sch) ? $sch[0]['scheme_name'] : 'NA';?>
 						</td>
 
 						
 						<td>
-                             <?php 
+                             <?php
                               if(!empty($app['region_one_doc'])){
+                                  $ua_file_path = null;
+                                  foreach (array(date('Y'), date('Y')-1, date('Y')-2) as $ua_year) {
+                                      $ua_candidate = './'.$ua_year.'/university_approval/'.$app['region_one_doc'];
+                                      if (file_exists($ua_candidate)) {
+                                          $ua_file_path = $ua_candidate;
+                                          break;
+                                      }
+                                  }
+                                  if ($ua_file_path) {
+                              ?>
+                               <a href="<?php echo site_url().'mission/downloadDocs/'.base64url_encode($ua_file_path); ?>" target="_blank"><span class = "label label-success">Download</span></a>
+                                <?php
+                                  } else {
                               ?>
                                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $app['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
                                 <?php
+                                  }
                                } else {
                                 echo "NA";
                                 }
-                               ?>   
+                               ?>
                         </td>
 
 						<!--<td><a target="_blank" href="<?php echo site_url();?>mission/viewfullApplication/<?php echo base64_encode($app['application_no']);?>" class="form-control sbmt1"> View</a></td>

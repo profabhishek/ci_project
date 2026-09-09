@@ -363,8 +363,18 @@ class User_model extends CI_Model {
 		   $dateY = '2021-02-09';
 	   }
 	   // and user_country != 1
-	   $sql = "select * from iccr_users where email_id = '".$email."' and date(created) > date '".$dateY."' and (YEAR(created) = ".$year." OR YEAR(created) = ".$previousYear.") and status = '1'";
-	   
+	   // Rewritten to avoid wrapping "created" in date(...)/YEAR(...): those
+	   // functions prevent MySQL from using any index on created, forcing a
+	   // full table scan on every login. The range comparisons below match
+	   // exactly the same rows (created is a datetime column) but let the
+	   // query planner use an index if one exists.
+	   $yearInt = (int)$year;
+	   $prevYearInt = (int)$previousYear;
+	   $sql = "select * from iccr_users where email_id = '".$email."' and created > '".$dateY." 00:00:00' and (
+	                (created >= '".$yearInt."-01-01 00:00:00' and created < '".($yearInt+1)."-01-01 00:00:00')
+	             or (created >= '".$prevYearInt."-01-01 00:00:00' and created < '".($prevYearInt+1)."-01-01 00:00:00')
+	           ) and status = '1'";
+
 	   /* $sql = "select * from iccr_users where email_id = '".$email."' and user_country != 1 and apply_course_type != 10 and date(created) > date '2022-02-09' and (YEAR(created) = ".$year." OR YEAR(created) = ".$previousYear.") and status = '1'"; */
        //$sql = "select * from iccr_users where email_id = '".$email."' and YEAR(created) = ".$year." and status = '1'" ;
 	   //echo $sql;die;
@@ -599,11 +609,11 @@ class User_model extends CI_Model {
        $sql = "select * from iccr_users where email_id = '".$email."' and YEAR(created) = ".$year." and status = '1'" ;
 	   $rs = $this->db->query($sql)->num_rows();
 	   if($rs > 0){
-            return COUNT($rs);
+            return $rs;
 		}else{
-			
+
 			return false;
-		}       
+		}
     }
 	
 	
@@ -635,10 +645,14 @@ class User_model extends CI_Model {
 	}
 	
 		public function checkType($data)
-    {     
+    {
 	   $status = 1;
 	   $email =$data['username'];
-       $sql = "select id,email_id,user_type,apply_course_type from iccr_users where email_id = '".$email."' and date(created) >= date '2021-03-15' and status = ".$status."" ;
+       // Rewritten to compare "created" directly against a literal instead of
+       // wrapping it in date(...): DATE(created) >= ... can't use an index on
+       // created, forcing a full table scan on every login. This is logically
+       // identical (created is a datetime, so >= midnight covers the same range).
+       $sql = "select id,email_id,user_type,apply_course_type from iccr_users where email_id = '".$email."' and created >= '2021-03-15 00:00:00' and status = ".$status."" ;
 	   $rs = $this->db->query($sql)->row();
 	   if(is_object($rs)){
             return $rs;
@@ -1018,11 +1032,11 @@ class User_model extends CI_Model {
 	   $rs = $this->db->query($sql)->num_rows();
 	   //echo $rs;die;
 	   if($rs > 0){
-            return COUNT($rs);
+            return $rs;
 		}else{
-			
+
 			return false;
-		}       
+		}
     }
 	
 	
@@ -1033,11 +1047,14 @@ class User_model extends CI_Model {
        $sql = "select * from iccr_users where email_id = '".$email."' and status = '1'" ;
 	   $rs = $this->db->query($sql)->num_rows();
 	   if($rs > 0){
-            return COUNT($rs);
+            // $rs is already a row count (int) from num_rows(); COUNT($rs)
+            // is invalid in PHP 8 (count() requires an array/Countable and
+            // throws a fatal TypeError on a plain int).
+            return $rs;
 		}else{
-			
+
 			return false;
-		}       
+		}
     }
 	
 	

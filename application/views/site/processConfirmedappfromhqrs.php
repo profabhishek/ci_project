@@ -68,8 +68,12 @@ $states_array = json_encode($statewiseUniversites);
 				<?php $userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
 				//echo "<pre>";print_r($userd);
 				$currentyear = date('Y');
-				$ar = explode('/',$userd->dir);
-				$oldYear = $ar[2]; 
+				if (!empty($userd->dir)) {
+					$ar = explode('/',$userd->dir);
+					$oldYear = isset($ar[2]) ? $ar[2] : 'main';
+				} else {
+					$oldYear = 'main';
+				}
 				//echo $oldYear;die;
 				if($oldYear == 'main')
 				{
@@ -87,11 +91,11 @@ $states_array = json_encode($statewiseUniversites);
 						}						
 						else
 						{
-							if(file_exists($userd->dir.'/'. $userImage))
+							if(!empty($userImage) && is_file($userd->dir.'/'. $userImage))
 							{
 								?>
 							<img style="width:151px;height:171px;" id="profil_image_div" src="<?php echo site_url();?><?php echo $userd->dir.'/'. $userImage; ?>"/>
-							<?php		
+							<?php
 							}
 							else{
 								?>
@@ -113,12 +117,19 @@ $states_array = json_encode($statewiseUniversites);
 						$dirdata = $userd->dir;
 						//$oldYear = explode('/',$dirdata);
 						//echo "<pre>";print_r($oldYear);die;
-						$imgs = file_get_contents($userd->dir .'/'.$userImage);
+						// file_exists() matches directories as well as files, so when $userImage
+						// is genuinely blank (no photo uploaded) the path collapses to just
+						// $userd->dir - a real directory - and file_exists() passed, then
+						// file_get_contents() failed with "Is a directory". is_file() plus a
+						// non-empty filename check correctly treats a missing photo as "no image".
+						if (!empty($userImage) && is_file($userd->dir .'/'.$userImage)) {
+							$imgs = file_get_contents($userd->dir .'/'.$userImage);
 							//echo $imgs;
 							$data = base64_encode($imgs);
 							$f = finfo_open();
 							$imgdata = base64_decode($data);
                             $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
+						}
 						//echo "<pre>";print_r($userd->dir);die;
           				if($userd->dir == "")
 						{
@@ -128,7 +139,7 @@ $states_array = json_encode($statewiseUniversites);
 						}						
 						else
 						{
-							if(file_exists($userd->dir.'/'. $userImage))
+							if(!empty($userImage) && is_file($userd->dir.'/'. $userImage))
 							{
 								?>
 							<img style="width:151px;height:171px;" id="profil_image_div" src="data:<?php if(!empty($mime_type)){echo $mime_type;}?>;base64,<?php if(!empty($data)){echo $data;}?>"/>
@@ -188,9 +199,11 @@ if ($userImage == "") {
                                             if ($title == 1) {
                                                 echo 'Mr.';
                                             } elseif ($title == 2) {
-                                                echo 'Mrs';
+                                                echo 'Ms.';
+                                            } elseif ($title == 3) {
+                                                echo 'Mrs.';
                                             }
-                                            ?>	
+                                            ?>
                                         <?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname'].' '.$applicaitonStepOne[0]['middlename'].' '.$applicaitonStepOne[0]['familyname'];?></td>
                                 </tr>
                                 <tr >
@@ -394,8 +407,8 @@ if ($userImage == "") {
                                                         <?php
         $response = $this->common_model->getconfirmationDataforHqrs($this->uri->segment(3));
 		$responseMission = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-		$applicaitonsResubmitStatus = $this->common_model->getCommonApplicationStatus($responseMission[0]['application_id'],$universityId,$flag);
-		//echo "<pre>";print_r($applicaitonsResubmitStatus);
+		// $applicaitonsResubmitStatus removed: never used below, and was called
+		// with undefined $universityId/$flag (only threw warnings).
                                                        ?>
 			<?php if(count($responseMission) >1)
 			{
@@ -471,6 +484,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 							 
                                 <?php
 								
+								$file_path_un = isset($file_path_un) ? $file_path_un : '';
 								if($oldYear == 'main')
 								{
 									     //echo "<pre>";print_r($mappingData);
@@ -479,7 +493,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 							   //echo "<pre>";print_r($response);
                                    if($mappingData[0]['mission_status'] == 1) {
 									   ?>
-                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[1]['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
+                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo isset($response[1]['region_one_doc']) ? $response[1]['region_one_doc'] : ''; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
 										<?php
                                     }
 									
@@ -576,15 +590,15 @@ if (count($applicaitonStepOne) > 0 ) {
                                 <?php $university = $this->common_model->getconfirmationDataByMission($applicaitonStepOne[0]['application_no']);
                                 //$university = $this->common_model->getagreeconfirmationDataByMission($applicaitonStepOne[0]['application_no']);
                                 //echo "<pre>";print_r($applicaitonStepOne);die;
-                                $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
-                                echo $universityData[0]['name'];
+                                $universityData = !empty($university) ? $this->common_model->getUniversityById($university[0]['regional_university']) : [];
+                                echo !empty($universityData) ? $universityData[0]['name'] : 'NA';
                                 ?>
                             </td>
-                                
+
 							<td>
               					<?php
-              					echo $this->common_model->getCourseName($applicaitonStepOne[0]['application_no'],$university[0]['regional_university']);
-              					
+              					echo $this->common_model->getCourseName($applicaitonStepOne[0]['application_no'], !empty($university) ? $university[0]['regional_university'] : null);
+
               					?>
               				</td>
 							<td>
@@ -606,57 +620,41 @@ if (count($applicaitonStepOne) > 0 ) {
               				</td>
                            
 							<td>
-              				<?php if($university[0]['university_is_accept'] == 1)
+              				<?php if(!empty($university) && $university[0]['university_is_accept'] == 1)
               					  {
 									echo "Confirmed";
 								  }
-								  
+								  else
+								  {
+									echo "NA";
+								  }
               				?>
               				</td>
                             
 							
 							
-							<!-- <td>
-                                <?php
-								
-								if($oldYear == 'main')
-								{
-									     //echo "<pre>";print_r($mappingData);
-							  $response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = './'.$currentyear.'/university_approval/'.$response[1]['region_one_doc'];
-							   //echo "<pre>";print_r($response);
-                                   if($mappingData[0]['mission_status'] == 1) {
-									   ?>
-                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[1]['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
-										<?php
-                                    }
-									
-                                
-                            
-								}
-								else
-								{
-									?>
-												
-<a target="_blank" href="<?php echo site_url().'applicant/downloadDocs/'.base64url_encode($file_path_un);?>" target="_blank">Download</a>
-<?php
-								}
-                         ?>
-
-                            </td> -->
+							<!-- Duplicate "University Letter" download column removed: it was
+							     wrapped in an HTML comment (never rendered) but the PHP
+							     inside still executed on every load, recomputing $response
+							     and $file_path_un for a column that was never displayed.
+							     The live version of this download link is the <td> below. -->
 
                             <td>
                                 <?php
-							$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
+							$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']);
                                 //echo "<pre>";print_r($userd);die;
                                 $currentyear = date('Y');
-                                $ar = explode('/',$userd->dir);
-                                $oldYear = $ar[1];
-								
+                                if (!empty($userd->dir)) {
+                                    $ar = explode('/',$userd->dir);
+                                    $oldYear = isset($ar[1]) ? $ar[1] : 'main';
+                                } else {
+                                    $oldYear = 'main';
+                                }
+
 									     //echo "<pre>";print_r($mappingData);
-										 
+
 							  $response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = './'.$currentyear.'/university_approval/'.$response[0]['region_one_doc'];
+							  $file_path_un = './'.$currentyear.'/university_approval/'.(!empty($response) ? $response[0]['region_one_doc'] : '');
 							  // echo "<pre>";print_r($ar);
 							  if($oldYear == 'main')
 								{
@@ -664,7 +662,7 @@ if (count($applicaitonStepOne) > 0 ) {
 							   //echo "<pre>";print_r($response);
                                    if($mappingData[0]['mission_status'] == 1) {
 									   ?>
-                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[1]['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
+                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo isset($response[1]['region_one_doc']) ? $response[1]['region_one_doc'] : ''; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
 										<?php
                                     }
 									
@@ -677,8 +675,8 @@ if (count($applicaitonStepOne) > 0 ) {
 							 if(strpos($file_path_un,'.pdf')){ ?>
 					<a target="_blank" href="<?php echo site_url().'applicant/downloadDocs/'.base64url_encode($file_path_un);?>" target="_blank"><span class = "label label-success">Download</span></a>
 						   <?php }
-                            else {
-								
+                            else if (!empty($file_path_un) && file_exists($file_path_un)) {
+
 						     $imgs = file_get_contents($file_path_un);
 							 $data = base64_encode($imgs);
 							 $f = finfo_open();
@@ -700,7 +698,7 @@ if (count($applicaitonStepOne) > 0 ) {
                                 <?php
                               //echo "<pre>";print_r($mappingData);
                                    if($mappingData[0]['mission_status'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
                                             ?>
                                             <a target="_blank" href="<?php echo site_url(); ?>applicant/confirmationReceivedWithFormat/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
 
@@ -721,7 +719,7 @@ if (count($applicaitonStepOne) > 0 ) {
                                 <?php
                               //echo "<pre>";print_r($mappingData);
                                    if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
                                             ?>
                                             <a target="_blank" href="<?php echo site_url(); ?>applicant/undertakingFromStudent/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
 
@@ -729,7 +727,7 @@ if (count($applicaitonStepOne) > 0 ) {
                                         }
                                     }
 									elseif($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 2) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
 											echo "Decline";
                                             ?>
                                             <!----<a target="_blank" href="<?php echo site_url(); ?>applicant/undertakingFromStudent/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>--->
@@ -788,14 +786,21 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                             <td><?php $university = $this->common_model->getconfirmationDataByMission($applicaitonStepOne[0]['application_no']);
 						    //echo "<pre>";print_r($university);die;
 							//echo $university[0]['regional_university'];
-							 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
-							 echo $universityData[0]['name'];
+							 if (!empty($university)) {
+								 $universityData = $this->common_model->getUniversityById($university[0]['regional_university']);
+								 echo !empty($universityData) ? $universityData[0]['name'] : 'NA';
+							 } else {
+								 echo 'NA';
+							 }
 							 //echo $applicaitonStepOne[0]['application_no'];
                                 ?></td>
-							<td> 
+							<td>
               					<?php
+              					if (!empty($university)) {
               					echo $this->common_model->getCourseName($applicaitonStepOne[0]['application_no'],$university[0]['regional_university']);
-              					
+              					} else {
+              					echo 'NA';
+              					}
               					?>
               				</td>
 							<td>
@@ -817,11 +822,14 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
               				</td>
                            
 							<td>
-              				<?php if($university[0]['university_is_accept'] == 1)
+              				<?php if(!empty($university) && $university[0]['university_is_accept'] == 1)
               					  {
 									echo "Confirmed";
 								  }
-								  
+								  else
+								  {
+									echo "NA";
+								  }
               				?>
               				</td>
                             
@@ -856,45 +864,12 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
     ?>
 </td>
 							
-							<!--------<td>
-							 
-							 
-							 
-                                <?php
-							$userd = $this->common_model->getUserInfo($applicaitonStepOne[0]['uid']); 
-				//echo "<pre>";print_r($userd);die;
-				//$currentyear = date('Y');
-				$ar = explode('/',$userd->dir);
-				$oldYear = $ar[2];
-								
-									     //echo "<pre>";print_r($mappingData);
-										 
-							  $response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
-							  $file_path_un = '../../'.$currentyear.'/university_fee_structure/'.$response[0]['fee_structure'];
-							  // echo "<pre>";print_r($response);
-							  if($oldYear == 'main')
-								{
-
-							   //echo "<pre>";print_r($response);
-                                   if($mappingData[0]['mission_status'] == 1) {
-									   ?>
-                                        <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $response[1]['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Downloads</span></a>
-										<?php
-                                    }
-									
-                                
-                            
-								}
-								elseif($oldYear == 2022)
-								{
-									?>
-												
-<a target="_blank" href="<?php echo site_url().'applicant/downloadDocs/'.base64url_encode($file_path_un);?>" target="_blank">Download</a>
-<?php
-								}
-                         ?>
-
-                            </td>--->
+							<!-- Fee Structure column removed: it was disabled via HTML comment,
+							but PHP still executed inside it on every row (it doesn't understand
+							HTML comments), recomputing $userd/$oldYear/$response for a column
+							that was never actually displayed. Also threw undefined-key warnings
+							when $userd->dir was empty. -->
+							<!-- Fee Structure -->
 
                             <td>
                             <!--<a target="_blank" href="<?php echo site_url(); ?>applicant/viewOfferLetter" target="_blank"><span class = "label label-success">View</span></a>-->
@@ -902,7 +877,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                 <?php
                                     //echo "<pre>";print_r($mappingData);
                                    if($mappingData[0]['mission_status'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
                                             ?>
                                             <a target="_blank" href="<?php echo site_url(); ?>applicant/confirmationReceivedWithFormat/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download / Print</span></a>
 
@@ -921,7 +896,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                 <?php
                               //echo "<pre>";print_r($mappingData);
                                    if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
 											
 											
 											$response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
@@ -934,7 +909,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                         }
                                     }
 									elseif($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 2) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
 											echo "Decline";
                                             ?>
                                             <!----<a target="_blank" href="<?php echo site_url(); ?>applicant/undertakingFromStudent/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>--->
@@ -955,7 +930,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                 <?php
                               //echo "<pre>";print_r($mappingData);
                                    if($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 1) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
 											
 											
 											//$response = $this->common_model->getconfirmationDataByMission($mappingData[0]['application_no']);
@@ -968,7 +943,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                         }
                                     }
 									elseif($mappingData[0]['mission_status'] == 1 && $mappingData[0]['scholar_acceptance'] == 2) {
-                                        if ($university[0]['university_is_accept'] == 1) {
+                                        if (!empty($university) && $university[0]['university_is_accept'] == 1) {
 											echo "Decline";
                                             ?>
                                             <!----<a target="_blank" href="<?php echo site_url(); ?>applicant/undertakingFromStudent/<?php echo $university[0]['application_id']; ?>/<?php echo $university[0]['regional_university']; ?>" target="_blank"><span class = "label label-success">Download</span></a>--->

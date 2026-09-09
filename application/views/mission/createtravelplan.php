@@ -162,10 +162,10 @@ input,select,label{font-size:14px !important;}
 		    <label for="inputEmail3" class="col-sm-3 control-label  pdright pdleft">Regional Office to be contacted</label>
 		    <div class="col-sm-6">
 		    	<?php
-					$reg = $this->common_model->getRegionById($data[0]->region_one_status);					
+					$reg = $this->common_model->getRegionById(isset($data[0]['region_one_status']) ? $data[0]['region_one_status'] : null);					
 				?>
-		     	<input type="text" class="form-control" value="<?php echo $reg[0]['name'];?>" readonly="true"/>
-		     	<input type="hidden" name="regional_office_contacted" id="regional_office_contacted" class="form-control" value="<?php echo $reg[0]['id'];?>"/>
+		     	<input type="text" class="form-control" value="<?php echo isset($reg[0]['name']) ? $reg[0]['name'] : '';?>" readonly="true"/>
+		     	<input type="hidden" name="regional_office_contacted" id="regional_office_contacted" class="form-control" value="<?php echo isset($reg[0]['id']) ? $reg[0]['id'] : '';?>"/>
 		    </div>	
 		  </div>
 		  <div class="form-group col-xs-10">

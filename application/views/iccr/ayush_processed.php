@@ -92,20 +92,83 @@
 						?>
 						
 						
-						<td><a  href="<?php echo site_url();?>headquarter/universityLetter/<?php echo $app['application_no'];?>">Download</a></td>
+						<?php
+						// target="_blank" added to match the Application Form and
+						// Contact Form links above. The letter now opens inline in
+						// the browser's PDF viewer rather than downloading, so
+						// without this it would replace the listing and staff would
+						// have to go back and re-apply their filters each time.
+						?>
+						<td><a target="_blank" href="<?php echo site_url();?>headquarter/universityLetter/<?php echo $app['application_no'];?>">Download</a></td>
 
 						<td><?php echo date("Y-m-d", strtotime($array['date']));?></td>
 						
 						<td>
-                             <?php 
+                             <?php
+                              // University approval letters are written to two different
+                              // places depending on which module uploaded them. The
+                              // University module saves to ./<year>/university_approval/
+                              // (outside the web root, so it cannot be linked directly),
+                              // while Headquarters and Regional save to
+                              // assets/site/main/university_approval/.
+                              //
+                              // This page previously built the assets/ link regardless,
+                              // so a letter saved by the University module - or one that
+                              // was never written to disk at all - produced a link to a
+                              // file that does not exist. Apache then rewrote the request
+                              // to index.php, no route matched, and the 404_override in
+                              // routes.php sent it to home/not_found, which renders the
+                              // "Error 500" page. Staff saw an internal server error for
+                              // what was only a missing file.
+                              //
+                              // Confirm the file is actually present before offering a
+                              // link: year folders first (served through downloadDocs,
+                              // which reads from disk), then the public assets folder.
+                              // If it is in neither, say so rather than linking to it.
                               if(!empty($app['region_one_doc'])){
-                              ?>
-                               <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $app['region_one_doc']; ?>" target="_blank"><span class = "label label-success">Download</span></a>
-                                <?php
-                               } else {
+                                  $ayushDoc   = $app['region_one_doc'];
+                                  $ayushYear  = (int) date('Y');
+                                  $ayushFound = '';
+
+                                  // Look in the year folders first. The letter may have
+                                  // been uploaded in an earlier cycle, so check a few
+                                  // years back rather than only the current one.
+                                  for($y = $ayushYear; $y >= $ayushYear - 3; $y--){
+                                      $tryPath = './'.$y.'/university_approval/'.$ayushDoc;
+                                      if(file_exists($tryPath)){ $ayushFound = $tryPath; break; }
+                                  }
+
+                                  if($ayushFound !== ''){
+                                      // Held outside the web root, so serve it through
+                                      // the existing route that reads it from disk.
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url().'headquarter/downloadDocs/'.base64url_encode($ayushFound); ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  elseif(file_exists(FCPATH.'assets/site/main/university_approval/'.$ayushDoc)){
+                                      // Present in the public assets folder, link directly.
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $ayushDoc; ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  else{
+                                      // The database records a filename but the file is
+                                      // not on the server in either location. Previously
+                                      // this still produced a Download link; clicking it
+                                      // found no file, so the request fell through to the
+                                      // framework's 404 handler, which renders the
+                                      // "Error 500" page. Staff were shown a server error
+                                      // for what is simply a missing upload. Say so
+                                      // plainly instead, and show the expected filename
+                                      // so the record can be traced and re-uploaded.
+                                      ?>
+                                      <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($ayushDoc, ENT_QUOTES); ?>">File not found</span>
+                                      <?php
+                                  }
+                              } else {
                                 echo "NA";
                                 }
-                               ?>   
+                               ?>
                         </td>
 						<td>
 

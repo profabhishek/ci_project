@@ -85,8 +85,16 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
         </a>
 		</div>
 		<div class="row">
-		<!----<div class="col-12 col-sm-12 col-md-3 left-menu-sec">
-			<div id="sidebar-wrapper">       
+		<?php /* This sidebar was already disabled (wrapped in an HTML comment,
+		so nothing here ever rendered) but the PHP inside an HTML comment still
+		executes - only the output is hidden from the browser. That meant every
+		one of these undefined $newCountApplication/$countresubmitapplication/etc.
+		variables logged a warning on every page load even though the sidebar
+		was invisible. Switching to a real PHP if(false) block stops the PHP
+		from running at all, matching the already-invisible behavior exactly. */
+		if (false): ?>
+		<div class="col-12 col-sm-12 col-md-3 left-menu-sec">
+			<div id="sidebar-wrapper">
 	        <ul class="sidebar-nav" id="sidebar">
 	          <li><a href="<?php echo site_url(); ?>university/new_applications">Applications Received<span class="pull-right fltright"><?php echo $newCountApplication;?></span></a></li>
 			<li><a href="<?php echo site_url(); ?>university/missingDocs">Cases of Missing Documents<span class="pull-right fltright"><?php echo $countresubmitapplication; ?></span></a></li>
@@ -94,7 +102,7 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 	          <li><a href="<?php echo site_url(); ?>university/resubmitapplication">Cases of Re-Subuniversity by Applicant<span class="pull-right fltright"><?php echo $countresubmitapplication; ?></span></a></li>
 	          <li><a href="<?php echo site_url(); ?>university/hold_applications">Applications on Hold<span class="pull-right fltright"><?php echo $countholdapplications; ?></span></a></li>
 	          <li><a href="<?php echo site_url(); ?>university/approved_applications">Processed Applications<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
-	          <!-----<li><a href="<?php echo site_url(); ?>university/confirmaitonreceivesformhqrs">Confirmation from University/Institute<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
+	          <li><a href="<?php echo site_url(); ?>university/confirmaitonreceivesformhqrs">Confirmation from University/Institute<span class="pull-right fltright"><?php echo $countapprovedApplication; ?></span></a></li>
 	           <li><a href="<?php echo site_url(); ?>university/listofacceptance">Acceptance/Decline by Applicant<span class="pull-right fltright"><?php echo $countlistofacceptance; ?></span></a></li>
 			    <li><a href="<?php echo site_url(); ?>university/visaendrosment">Student/Research VISA Endorsement<span class="pull-right fltright"><?php echo $countvisaendrosment; ?></span></a></li>
 	             <li><a href="<?php echo site_url(); ?>university/travel_applications">Travel Plan of Applicant<span class="pull-right fltright"><?php echo $counttravel; ?></span></a></li>
@@ -103,7 +111,8 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 				 <li><a href="<?php echo site_url();?>university/addPages"><i class="fa fa-book"></i> Create Page</a></li>
 	        </ul>
       </div>
-		</div>--->
+		</div>
+		<?php endif; ?>
 		
 		<div class="col-12 col-sm-12 col-md-12">
 		<form id="form-filter" class="form-horizontal">

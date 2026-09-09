@@ -376,7 +376,7 @@ $dirdata = $userd->dir;
 										</thead>
 										<tbody>
 											<tr>
-												
+
 												<td><?php $course_first = $this->common_model->getCoursesById($applicaitonStepOne[0]['course']); echo $course_first[0]['title'];?></td>
 												<td><?php $course_second =  $this->common_model->getCoursesById($applicaitonStepOne[0]['course_two']);echo $course_second[0]['title'];?></td>
 												<td><?php $course_three = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_three']); echo $course_three[0]['title'];?></td>
@@ -822,7 +822,7 @@ $dirdata = $userd->dir;
 						?>
 						
 					<div class="form-group col-xs-9">
-					    <label for="inputEmail3" class="col-sm-2">Course</label>
+					    <label for="inputEmail3" class="col-sm-2">Nomenclature</label>
 					    <div class="col-sm-8">
 					      <select id="course" name="course" class="form-control" required="true">
 					      	<option value="">Select</option>
@@ -841,21 +841,29 @@ $dirdata = $userd->dir;
 						?>
 						
 						<div class="form-group col-xs-9">
-					    <label for="inputEmail3" class="col-sm-2">Course</label>
+					    <label for="inputEmail3" class="col-sm-2">Nomenclature</label>
 					    <div class="col-sm-8">
 					      <select id="course" name="course" class="form-control" required="true">
 					      	<option value="">Select</option>
 					      	<?php
-					      	$appid = $this->uri->segment(3);
-					        $courses = $this->common_model->getCourseDetails($appid,0);
-					        $coursee = $courses['course_name'];
-					      	if(count($courses)>0)
-					      	{					      		
-					      		foreach($coursee as $c=>$v)
-					      		{									
-									echo '<option value="'.$v.'">'.$v.'</option>';
-								}
-							}
+					      	// Lists the complete nomenclature list, not only the entries
+					      	// mapped to this applicant's programme, because Headquarters
+					      	// may confirm any course. Same source and ordering as the
+					      	// nomenclature dropdown in mission/checklist.php.
+					      	$nomenclatureList = $this->common_model->getnomenclature();
+					      	if(!is_array($nomenclatureList)) { $nomenclatureList = array(); }
+					      	usort($nomenclatureList, function($a, $b) {
+					      		return strcmp($a['title'], $b['title']);
+					      	});
+					      	foreach($nomenclatureList as $nomen)
+					      	{
+					      		$nomTitle = isset($nomen['title']) ? trim($nomen['title']) : '';
+					      		if($nomTitle === '') { continue; }
+					      		// Value stays the title text, which is what this field
+					      		// saved before - forwardAyuushtohqrs writes it straight
+					      		// into the course column.
+					      		echo '<option value="'.htmlspecialchars($nomTitle, ENT_QUOTES).'">'.htmlspecialchars($nomTitle, ENT_QUOTES).'</option>';
+					      	}
 					      	?>
 					      </select>
 					    </div>

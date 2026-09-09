@@ -22,9 +22,9 @@ class Applicant extends CI_Controller
 		$this->load->helper('status_helper');
 		$this->load->model('user_model');
 		$this->load->model('common_model');
-		$this->load->library('mpdf60/Mpdf');
+		// Moved out of the constructor for performance: 'mpdf60/Mpdf' is now loaded only inside the methods that use it.
 		$this->load->helper('pdf_helper');
-		$this->load->library('fpdi/PDF_HTML');
+		// Moved out of the constructor for performance: 'fpdi/PDF_HTML' is now loaded only inside the methods that use it.
 		//$this->load->library('fpdi/Htmltable');     
 		$this->load->helper('file');
 		$userdata = $this->session->userdata('user_data');
@@ -188,7 +188,7 @@ class Applicant extends CI_Controller
 			$name = str_replace(" ", "_", $files['name']);
 			$imgname = time() . '_bank_doc_' . $name;
 			$target_file = 'assets/site/main/bank_docs/' . $imgname;
-			if (move_uploaded_file($_FILES["bank_doc"]["tmp_name"], $target_file)) {
+			if (iccr_safe_move_upload($_FILES["bank_doc"], $target_file)) {
 				if (count($uresponse) > 0) {
 					$rid = $uresponse[0]['region_one_status'];
 					$signature = $uresponse[0]['signature_doc'];
@@ -251,7 +251,7 @@ class Applicant extends CI_Controller
 			$name = str_replace(" ", "_", $files['name']);
 			$imgname = time() . '_complaint_signature_' . $name;
 			$target_file = 'assets/site/main/complaint_signature/' . $imgname;
-			if (move_uploaded_file($_FILES["applicant_signature"]["tmp_name"], $target_file)) {
+			if (iccr_safe_move_upload($_FILES["applicant_signature"], $target_file)) {
 				if (count($uresponse) > 0) {
 					$rid = $uresponse[0]['region_one_status'];
 					$schid = $uresponse[0]['scholarship_id'];
@@ -417,6 +417,7 @@ class Applicant extends CI_Controller
 
 			// 		$pdfString = $mpdf->Output($pdfnm,'D');
 			// die;
+			$this->load->library('mpdf60/Mpdf');
 			$mpdf = new Mpdf('s', 'A4', '', '', 7, 7, 05, 10, 10, 10);
 			// $mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
@@ -951,7 +952,10 @@ class Applicant extends CI_Controller
 	{
 		//echo "<pre>";
 		//print_r($_POST);die;
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		// HTTP_REFERER isn't always sent by the browser (privacy settings, direct
+		// requests, some mobile browsers), so reading it directly was throwing an
+		// "Undefined array key" warning; falls back to the dashboard if missing.
+		$actual_link = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url().'applicant/dashboard';
 		try {
 			$year = date('Y');
 			$user_data = $this->session->userdata('user_data');
@@ -1079,8 +1083,13 @@ class Applicant extends CI_Controller
 			
 			$nomenclature = $this->input->post('nomenclature');
 			$university   = $this->input->post('universty_choice');
-			
-			
+			// 4th/5th (and sometimes fewer) choices are legitimately optional -
+			// initialize all five pairs upfront so whichever ones the applicant
+			// didn't fill in stay safely blank instead of triggering "Undefined
+			// variable" further down where they're read unconditionally.
+			$nomenclature1 = $nomenclature2 = $nomenclature3 = $nomenclature4 = $nomenclature5 = '';
+			$university1 = $university2 = $university3 = $university4 = $university5 = '';
+
 			if (!empty($nomenclature) && !empty($university)) {
                  $i=1;
 				foreach ($nomenclature as $key => $value) {
@@ -1311,7 +1320,7 @@ class Applicant extends CI_Controller
 	public function applicant_other_info_save()
 		{
 			//echo "<pre>";print_r($_POST);die;
-			$actual_link =  $_SERVER['HTTP_REFERER'];
+			$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 			try
 			{
 				$user_data = $this->session->userdata('user_data');
@@ -1369,7 +1378,7 @@ class Applicant extends CI_Controller
 	public function applicant_other_info()
 	{
 		
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		$actual_link =  isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url();
 		try {
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];
@@ -1418,11 +1427,11 @@ class Applicant extends CI_Controller
 	public function applicant_documents()
 	{
 
-		//$actual_link =  $_SERVER['HTTP_REFERER'];
+		//$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 		//echo "<pre>";
 		//print_r($actual_link);die;
 		if (isset($_SERVER['HTTP_REFERER'])) {
-			$actual_link =  $_SERVER['HTTP_REFERER'];
+			$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 		} else {
 			$actual_link =  '';
 		}
@@ -1471,7 +1480,7 @@ class Applicant extends CI_Controller
 	public function applicant_document_info_save()
 	{
 		//echo "<pre>";print_r($_POST);die;
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 		//echo "<pre>";
 		//print_r($actual_link);die;
 		try {
@@ -1543,6 +1552,13 @@ class Applicant extends CI_Controller
 			$fnmae = $_FILES['file']['name'];
 			$typpe = $_FILES['file']['type'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -1590,7 +1606,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'signature_doc' => $imgname,
 						'created' => time()
@@ -1627,6 +1643,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -1684,7 +1707,7 @@ class Applicant extends CI_Controller
 				$target_file = $target_file . $imgname;
 
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -1719,6 +1742,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -1773,7 +1803,7 @@ class Applicant extends CI_Controller
 				$target_file = $target_file . $imgname;
 
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -1808,6 +1838,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -1863,7 +1900,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -1898,6 +1935,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -1954,7 +1998,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -1988,6 +2032,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2042,7 +2093,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2077,6 +2128,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2128,7 +2186,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2163,6 +2221,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2214,7 +2279,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2248,6 +2313,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2302,7 +2374,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2337,6 +2409,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2391,7 +2470,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2426,6 +2505,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2475,7 +2561,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2509,6 +2595,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2562,7 +2655,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2595,6 +2688,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2649,7 +2749,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2684,6 +2784,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2738,7 +2845,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2771,6 +2878,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2822,7 +2936,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2863,7 +2977,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2896,6 +3010,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -2949,7 +3070,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -2983,6 +3104,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -3033,7 +3161,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -3068,6 +3196,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -3121,7 +3256,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -3155,6 +3290,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -3208,7 +3350,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -3243,6 +3385,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -3292,7 +3441,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -3383,6 +3532,13 @@ class Applicant extends CI_Controller
 			$fnmae = $_FILES['file']['name'];
 			$typpe = $_FILES['file']['type'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -3428,7 +3584,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					if ($this->common_model->imageExists($userId)) {
 						if ($this->common_model->uploadProfilePic($imgname, $userId)) {
 							echo json_encode(array('status' => TRUE, 'file_path' => base_url() . $target_file));
@@ -4080,6 +4236,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4131,7 +4294,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4165,6 +4328,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4216,7 +4386,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4249,6 +4419,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4303,7 +4480,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4337,6 +4514,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4391,7 +4575,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4425,6 +4609,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4479,7 +4670,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4513,6 +4704,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4567,7 +4765,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4601,6 +4799,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -4655,7 +4860,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -4742,7 +4947,10 @@ class Applicant extends CI_Controller
 	{
 		//echo "<pre>";
 		//print_r($_POST);die;
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		// HTTP_REFERER isn't always sent by the browser (privacy settings, direct
+		// requests, some mobile browsers), so reading it directly was throwing an
+		// "Undefined array key" warning; falls back to the dashboard if missing.
+		$actual_link = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url().'applicant/dashboard';
 		try {
 			$year = date('Y');
 			$user_data = $this->session->userdata('user_data');
@@ -4835,7 +5043,7 @@ class Applicant extends CI_Controller
 	public function applicant_sfs_other_info()
 	{
 		//echo "sfs";die;
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 		try {
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];
@@ -4873,7 +5081,7 @@ class Applicant extends CI_Controller
 
 	public function applicant_sfs_documents()
 	{
-		$actual_link =  $_SERVER['HTTP_REFERER'];
+		$actual_link =  $_SERVER['HTTP_REFERER'] ?? '';
 		//echo "<pre>";
 		//print_r($actual_link);die;
 		try {
@@ -4957,8 +5165,6 @@ class Applicant extends CI_Controller
 		}
 		echo '<option>------Select---------</option>';
 		foreach ($courseWiseUniversites as $key => $univercity1) {
-			echo "<pre>";
-			print_r($univercity1);
 			if (count($univercity1) > 0) {
 				$statenames = $this->common_model->getCourseById($key);
 
@@ -5223,6 +5429,13 @@ class Applicant extends CI_Controller
 			$fnmae = $_FILES['file']['name'];
 			$typpe = $_FILES['file']['type'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -5263,7 +5476,7 @@ class Applicant extends CI_Controller
 				}
 				$target_file = $target_file . $imgname;
 				$date = date("Y-m-d h:i:s");
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'signature_doc' => $imgname,
 						'created' => time()
@@ -5294,8 +5507,8 @@ class Applicant extends CI_Controller
 		$userId = $user_data['userid'];
 		$data['registerData'] = $this->common_model->getUserData($userId);
 		$imgArray = $this->common_model->getUserImage($userId);
-		if ($imgArray > 0) {
-			$data['userImage'] = $imgArray[0]['name'];
+		if (!empty($imgArray)) {
+			$data['userImage'] = $imgArray[0]['name'] ?? '';
 		} else {
 			$data['userImage'] = '';
 		}
@@ -5324,6 +5537,13 @@ class Applicant extends CI_Controller
 			/*******File Content Check**********/
 			$fnmae = $_FILES['file']['name'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -5370,7 +5590,7 @@ class Applicant extends CI_Controller
 					$target_file = $user_data['dir'] . '/';
 				}
 				$target_file = $target_file . $imgname;
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {
 					$data = array(
 						'document_name' => $imgname,
 						'doc_path' => $target_file,
@@ -5623,22 +5843,16 @@ class Applicant extends CI_Controller
 			$applicaitonSubmitData = [];
 			$date1 = (!empty($applicaitonSubmitData) ? $applicaitonSubmitData[0]['created'] : '');
 			$acDate =  date('d-m-Y', $applicantAcceptanceDate);
-			$imgs = file_get_contents($userd->dir . '/' . $applicaitonStepThree[0]['signature_doc']);
-			$data = base64_encode($imgs);
-			$f = finfo_open();
-			$imgdata = base64_decode($data);
-			$mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-			$img_base64_encoded = 'data:' . $mime_type . ';base64,' . $data . '';
-			$imageContent = file_get_contents($img_base64_encoded);
-			$imgPath = tempnam(sys_get_temp_dir(), 'prefix');
-
-			file_put_contents($imgPath, $imageContent);
-			/* if($userd == ''){
+			// The block that used to be here (file_get_contents + base64-encode
+			// into a temp file) was entirely dead: $imgPath gets reassigned
+			// immediately below regardless, so none of that work was ever used.
+			// It also threw "file not found" warnings whenever $userd->dir was
+			// empty. Removed; the fallback-aware logic below is what's actually used.
+			if(empty($userd->dir)){
 				$imgPath = site_url().'assets/site/main/profile_signature/'.$applicaitonStepThree[0]['signature_doc'];
 			}else{
 				$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
-			} */
-			$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
+			}
 			$new = '<img src="' . $imgPath . '" style="width:100px;">';
 
 			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
@@ -5647,8 +5861,8 @@ class Applicant extends CI_Controller
 			//echo "<pre>";print_r($imgPath);die;
 			$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
 			//echo $uni1[0]['name'];
-			$course = $response[0]['final_course'];
-			//echo $course;die;
+			// $course removed: was read from a 'final_course' key that doesn't
+			// exist on $response (only threw warnings), and never used below.
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			ob_start();
 ?>
@@ -5679,17 +5893,26 @@ class Applicant extends CI_Controller
         <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
 		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 40px;margin: 0;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
 
-        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP</b></p>
+        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP/Undertaking</b></p>
 		<br>
-        <p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at ' . $uni1[0]['name'] . ' to pursue ' . $nomenclature; ?>    	
-		<p style="text-align: justify;">1)  I Mr./Ms./Mrs. <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' do hereby affirm that I have read the Terms and Conditions including Financial Terms of ICCR’s scholarship with due diligence and agree to abide by them.'; ?></p>
-        <p style="text-align: justify;">2)  I also confirm that the course <?php echo $course . ' offered to me in ' . $uni1[0]['name'] . ' is accepted to me and that I will not ask for a change in course or university.'; ?></p>
-        <p style="text-align: justify;">3)  I will complete the entire course of study in which I have been admitted.</p>
-        <p style="text-align: justify;">4)  I will purchase medical insurance of minimum sum assured of INR (Rs.) 5 lakhs / equivalent to approximate US$ 6700 per year. I understand that it is compulsory for continuation of ICCR Scholarship.</p>
-        <p style="text-align: justify;">5)  I certify that I do not suffer from terminal illness or ailments affecting vital organs. I also certify that I am not in family way. In case of illness require long absence of my course of study, I undertake to return to my country.</p>
-        <p style="text-align: justify;">6)  I agree to deliberately study in India.  In case I fail to get promoted to next level of course / fail, I understand that ICCR will stop scholarship. If such situation arises, I undertake that I will clear the level of study in which I have failed with my own financial resources and once I clear the level, I will request for revival of scholarship.</p>
-        <p style="text-align: justify;">7)  I agree to abide by and respect the law of India.  In case if I get involved in illegal activities and /or events concerning law and order issues, I understand that I will be prosecuted as per the law of India and I also agree on being deported to my country.</p>
-		<p style="text-align: justify;">8)  I understand that ICCR has right to change its Scholarship Policy (ies) including financial terms of scholarship from time to time.  I agree to abide by them.  If I disagree to follow the revised terms and conditions, ICCR will have right to discontinue my scholarship.</p>	
+        <p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at ' . $uni1[0]['name'] . ' to pursue nomenclature ' . $nomenclature; ?>
+		<p style="text-align: justify;">1.  That I have accepted the award of scholarship for the Course and University as mentioned above and will not ask for the change of course or University at any later stage.</p>
+        <p style="text-align: justify;">2.  That I have read and understood fully the Guidelines/Rules of the scholarship as provided on the A2A Portal and undertake to abide by the same.</p>
+        <p style="text-align: justify;">3.  That I have also understood that the said Guidelines/Rules are subject to change at the discretion of ICCR and I undertake to abide by the Guidelines/Rules as amended from time to time. I have also noted and understand the provisions regarding deductions from scholarship dues, including the quarterly submission of attendance records, the half-yearly submission of academic progress reports, compliance with medical insurance and so on.</p>
+        <p style="text-align: justify;">4.  That I have understood the following norms regarding ex-India period and any violation of these norms will attract deduction of my scholarship dues- Student must note that the paid ex-India period for students of any levels of courses will not exceed 60 days in an academic year with the conditions that (a) Ex-India period can be availed maximum twice in an academic year; (b) Ex-India period upto 30 days at a time will not attract any deduction in scholarship allowances; (c) Any number of days of continuous ex-India period beyond 30 days and upto 60 days will attract 50% deduction on the amount of stipend; (d) Any number of days beyond 60 days limit will attract deduction of entire scholarship allowances excluding HRA; (e) Any number of days beyond the second time even if it is within the total 60 days limit will attract deduction of entire scholarship allowances excluding HRA.</p>
+        <p style="text-align: justify;">5.  That I will complete the entire course of study and abide by all the rules, regulations, guidelines or any instructions of the University/Institution as prevalent at the time of admission or amended from time to time.</p>
+        <p style="text-align: justify;">6.  That I certify that documents related to my eligibility for study in India with regard age and educational qualification are correct and in case of any discrepancy the award of admission and scholarship will be terminated without any notice and that I will go back to my country on my own expenses within the permissible duration as per the law of India.</p>
+        <p style="text-align: justify;">7.  That I will respect and abide by the laws of India and not indulge in any illegal, unlawful, anti-social, criminal, political, religious, demonstrations, protest activities and any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">8.  That I will abide by all the rules, regulations, guidelines, laws of the Government of India or any other Indian authorities in its entirety. I will be sensible in using social media handles and will not post/comment any content against India, its people, culture, institutions or any entity and/or the content/post that can disturb relations between India and other countries. Any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">9.  That I undertake to follow visa / immigration rules and keep my registration as temporary foreign resident in India valid during my entire stay in India. I also undertake to pay any charges, penalties, fines etc. involved in keeping my Visa/residential permit status valid all the time. In case of any violation of Visa/immigration norms, I will be prosecuted under the laws of India and its authorities which may lead to heavy penalties/charges/fines, deportation, detention/confinement/imprisonment etc. as per prevailing laws.</p>
+		<p style="text-align: justify;">10.  That I certify that I am physically and mentally fit, not suffering from any chronic contagious/non-communicable diseases, terminal illness or ailments affecting vital organs, not pregnant (applicable for a female candidate) and having undergone mandatory and obligatory vaccinations.</p>
+		<p style="text-align: justify;">11.  That I will be responsible for my health and purchase Medical Health Insurance Policy with a minimum cover of Rs.5,00,000/- (Rupees Five Lacs) to cover my medical expenses. I also undertake that the expenses not covered under the Medical Insurance Policy will be borne by me and I will not raise any claim for the same to ICCR or University or any other authorities of India and understand that in absence of sufficient medical cover or funds, I myself would be responsible for any repercussions on account of my health conditions. I will return to my country on my own expenses in case of any illness requiring long absence from course of study and in that case the scholarship will be terminated. I also undertake to keep my insurance cover valid during my entire stay in India and submit the copy of valid insurance to the concerned Zonal Office annually for their records.</p>
+		<p style="text-align: justify;">12.  That I undertake to be regular in attendance and academics, failing which ICCR, University and other authorities have the right to terminate my scholarship and under any such circumstances, I shall bear all my expenses on my return to my native country. I will also submit the self-declaration, signed by the Dean FSR every month, in this regard in December and June by email for the release of my stipend.</p>
+		<p style="text-align: justify;">13.  That in case I fail in an academic year, my scholarship will be suspended and will be re-instated only after I will pass my examination and during such intervening period, I will study an self-finance basis.</p>
+		<p style="text-align: justify;">14.  That I understood that the Indian Mission and ICCR have the right to terminate my scholarship at any stage without assigning any reason whatsoever.</p>
+		<p style="text-align: justify;">15.  That I undertake to refund voluntarily in case any excess or over disbursement is made to me on account of scholarship allowances to ICCR in India or through the Indian Mission in my country if such wrong disbursement is noticed after completion of my course in India.</p>
+		<p style="text-align: justify;">16.  That I undertake to pay, in a timely manner and/or as per the schedule of the demanding authority, any dues payable by me on account of any charges of the University, which are not covered by ICCR under the tuition fees and other compulsory fees, such as Library fee, security deposit, caution money, lab charges, hostel/utility charges, private accommodation/utility charges, any other charges etc. Any violation will attract suspension of my scholarship dues till the pending dues are settled by me.</p>
+		<p style="text-align: justify;">17.  That I understand that the admission granted to me is provisional and confirmed only after my arrival in India on the basis of original documents with transcripts and if I am not found eligible, I will go back to my country on my own expenses.</p>
 	</br>
 
 		<p style="text-align: left;"><?php echo $new;?></p>
@@ -5734,6 +5957,13 @@ die;
 	{
 		try {
 			$user_data = $this->session->userdata('user_data');
+			// Reject up front if the request didn't send an application id at
+			// all, rather than warning and continuing with an undefined value
+			// that would make every lookup below fail anyway.
+			if (!isset($_POST['id'])) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No application id was submitted! Please try again.'));
+				return;
+			}
 			$applicationId = $_POST['id'];
 			//echo $applicationId;die;
 			if (!empty($_POST)) {
@@ -5747,6 +5977,13 @@ die;
 			$fnmae = $_FILES['file']['name'];
 			$typpe = $_FILES['file']['type'];
 			$tempfile = $_FILES['file']['tmp_name'];
+			// If no file was actually received (empty/failed upload), $tempfile is
+			// an empty string and fopen()/filesize() throw "Path cannot be empty"
+			// in PHP 8 instead of returning a normal error - bail out gracefully.
+			if (empty($tempfile)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
+				return;
+			}
 			$sizekbb = filesize($tempfile); //10485760= 10mb
 			$head = fgets(fopen($tempfile, "r"), 5);
 			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
@@ -5794,7 +6031,7 @@ die;
 				}
 				$target_file = $target_file . $imgname;
 
-				if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {					
+				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {					
 						$imgname1 = $imgname;					
 					
 				} else {
@@ -6401,14 +6638,14 @@ die;
 	{
 		try {
 			$imgname = "";
-			$files = $_FILES['travel_plan_doc'];
+			$files = $_FILES['travel_plan_doc'] ?? array('name' => '');
 			$applicationId = $this->uri->segment(3);
 			if ($files["name"] != "") {
 				$name = str_replace(" ", "_", $files['name']);
 				$imgname = time() . '_TravelPlan_' . $name;
 
 				$target_file = 'assets/site/main/travelplan/' . $imgname;
-				if (move_uploaded_file($_FILES["travel_plan_doc"]["tmp_name"], $target_file)) {
+				if (iccr_safe_move_upload($_FILES["travel_plan_doc"], $target_file)) {
 					$data = array(
 						'travel_plan_doc' => $imgname,
 						'departure_date' => $this->input->post('departure_date'),
@@ -6656,24 +6893,27 @@ die;
 			//echo "<pre>";print_r($response);die;
 			if (count($response) > 1) {
 				$uni1 = $this->common_model->getUniversityById($response[1]['regional_university']);
-				$course = $response[1]['final_course'];
 			} else {
-				$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
-				$course = $response[0]['final_course'];
+				// $response can be completely empty at this point (e.g. no
+				// confirmation data recorded yet for this application), in which
+				// case $response[0] doesn't exist - guard instead of assuming a
+				// row was always found.
+				$uni1 = $this->common_model->getUniversityById(!empty($response[0]['regional_university']) ? $response[0]['regional_university'] : null);
 			}
-			if ($stepOne[0]['course_type'] == 2) {
-				$course = $response[0]['final_course'];
-			} else {
-				$course = $response[0]['final_course'];
-			}
+			// $course removed: was computed from a 'final_course' key that
+			// doesn't exist on $response (only threw warnings) and was never
+			// actually used below — the offer letter uses $nomenclature instead.
 
 			$current = date('d-m-Y');
 			$fy = $this->getFinancialYears($current, 1);
 			$user_data = $this->session->userdata('user_data');
 			$userId = $user_data['userid'];
-			$nomenid = $response[0]['nomenclature'];
+			$nomenid = !empty($response) ? $response[0]['nomenclature'] : null;
 			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
-			$nomenclature=$nomclature[0]['title'];
+			// getnomenclatureByid(null) (when $response was empty above) returns
+			// no rows, so $nomclature[0] doesn't exist - guard instead of
+			// assuming a match was always found.
+			$nomenclature = !empty($nomclature[0]['title']) ? $nomclature[0]['title'] : '';
 			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
 
 			$studentOther = $this->common_model->getStudentOtherDetails($applicationId);
@@ -6737,7 +6977,7 @@ die;
         <p style="text-align: right;"><?php echo  $mission[0]['mission_type'] . ': ' . $mission[0]['mission_name'].',<br>'.$mission[0]['country_name']; ?></p>
         <p><b>Subject:-</b> Offer of Provisional admission with award of ICCR Scholarship for A.Y 2026-27</p>
         <p>Dear: Mr./Ms./Mrs. <?php echo  $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname']; ?></p>
-		<p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . $uninmae[0]['name'] . ' ' . $schemename[0]['scheme_name'] . ' for the Academic Year 2026-2027. You are requested to report ' . $regionInfo[0]['name'] . ' University physically along with all original certificate and testimonials latest by '   . $response[0]['date_of_joining'] . ' and also to Regional Office through Email.'; ?></p>
+		<p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . (isset($uninmae[0]['name']) ? $uninmae[0]['name'] : '') . ' ' . (isset($schemename[0]['scheme_name']) ? $schemename[0]['scheme_name'] : '') . ' for the Academic Year 2026-2027. You are requested to report ' . (!empty($regionInfo) ? $regionInfo[0]['name'] : '') . ' University physically along with all original certificate and testimonials latest by '   . (!empty($response[0]['date_of_joining']) ? $response[0]['date_of_joining'] : '') . ' and also to Regional Office through Email.'; ?></p>
         <p style="text-align: justify;">2)  Hostel accommodation will be provided to you subject to its availability by University authorities. You are required to report at the nearest “Foreign Regional Registration Office” within fourteen days of arrival in India.</p>
         <p style="text-align: justify;">3)  You are advised to contact the Education Wing of this Mission immediately along with your passport for grant of visa and finalization of your date of departure. You are also hereby directed to obtain your final departure letter from the Mission before joining the concerned Institution in India failing which this offer letter stands cancelled. Furthermore no request of change of course and University will be entertained.</p>
         <p style="text-align: justify;">4)  Scholarship expenses will be managed into two parts, which are as follows:-</p>
@@ -6876,6 +7116,7 @@ die;
 {
 
 	//$appno = $this->uri->segment(3);
+	 $this->load->library('mpdf60/Mpdf');
 	 $mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 	$mpdf->SetFont('Arial','B',9);
 	 $mpdf->SetWatermarkText('NATIONAL SPORTS UNIVERSITY');

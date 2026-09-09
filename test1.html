@@ -1,0 +1,2917 @@
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  ICCR HOMEPAGE — FULL PAGE, BLOCK-NUMBERED EDITION            ║
+     ║                                                                ║
+     ║  BLOCK 0  : Global fixes (theme padding, shared notes)        ║
+     ║  BLOCK 1  : Hero Highlights banner (mhx-)                     ║
+     ║  BLOCK 2  : Awards popup modal + chevron card                 ║
+     ║  BLOCK 3  : Flash News ticker                                 ║
+     ║  BLOCK 4  : Events + Social Feed + DG card (evx-, redesigned) ║
+     ║  BLOCK 5  : Publications & Media (pbx-)                       ║
+     ║  BLOCK 6  : Cultural Delegations (cdx-)                       ║
+     ║  BLOCK 7  : Centers Map + Follow ICCR (ihx-)                  ║
+     ║  BLOCK 8  : Testimonials carousel                             ║
+     ║  BLOCK 9  : Image & Video Gallery                             ║
+     ║  BLOCK 10 : Government links logo carousel                    ║
+     ║                                                                ║
+     ║  Page panel colour everywhere: #E8EEFC (buttons keep colors)  ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+
+
+<!-- ================================================================
+  ██ BLOCK 0 — GLOBAL FIXES ██
+================================================================= -->
+<style>
+#block-iccr-theme-content {
+  padding: 0px !important;
+}
+</style>
+
+
+<!-- ================================================================
+  ██ BLOCK 1 — HERO HIGHLIGHTS BANNER (mhx-) ██
+  Auto-advance 5s · pause on hover · ▼▲❚❚ overlay controls
+================================================================= -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500;600&family=Roboto:wght@400;500&display=swap');
+
+.mhx-hero {
+  --mea-panel: #E8EEFC;
+  --mea-ink: #202124;
+  --mea-gray: #5F6368;
+  --mea-inactive: #9AA0A6;
+  --mea-link: #1A73E8;
+  --mea-line: rgba(32,33,36,0.14);
+  --mea-serif: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --mea-sans: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--mea-sans);
+  box-sizing: border-box;
+}
+.mhx-hero *, .mhx-hero *::before, .mhx-hero *::after { box-sizing: border-box; }
+
+.mhx-hero .mea-date {
+  font-family: var(--mea-sans);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: var(--mea-gray);
+  display: block;
+}
+
+.mhx-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+  gap: 22px;
+  max-width: 1500px;
+  margin: 0 auto 14px;
+  padding: 0 4px;
+}
+.mhx-main {
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(32,33,36,0.14);
+}
+.mhx-stage { position: relative; height: 430px; background: #101418; overflow: hidden; }
+.mhx-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.7s ease; pointer-events: none; }
+.mhx-slide.active { opacity: 1; pointer-events: auto; }
+.mhx-slide .mhx-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: blur(28px) brightness(0.9) saturate(1.02);
+  transform: scale(1.2);
+}
+.mhx-slide img.mhx-photo {
+  position: absolute; inset: 0; margin: auto;
+  max-width: 100%; height: 100%; object-fit: contain; z-index: 2;
+}
+.mhx-caption {
+  background: var(--mea-panel);
+  padding: 22px 30px 24px;
+  min-height: 176px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mhx-caption h2 {
+  margin: 0;
+  font-family: var(--mea-sans);
+  font-weight: 400;
+  font-size: clamp(18px, 1.6vw, 24px);
+  line-height: 1.5;
+  color: var(--mea-ink) !important;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+.mhx-caption.fading h2, .mhx-caption.fading .mea-date { opacity: 0; }
+.mhx-caption .mea-date { transition: opacity 0.3s ease; }
+.mhx-viewall {
+  margin-top: auto; align-self: flex-start;
+  font-size: 14px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important;
+}
+.mhx-viewall:hover { text-decoration: underline !important; }
+
+/* side column */
+.mhx-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; height: 100%; position: relative; }
+.mhx-side-list { display: flex; flex-direction: column; gap: 16px; flex: 1; min-width: 0; min-height: 0; }
+
+/* CRITICAL: our own display:flex would otherwise override the hidden
+   attribute — this guarantees ONLY the 2 visible cards ever render */
+.mhx-side-card[hidden] { display: none !important; }
+
+.mhx-side-card {
+  display: flex; flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  border-radius: 4px; overflow: hidden;
+  background: #fff; box-shadow: 0 1px 5px rgba(32,33,36,0.14);
+  cursor: pointer; border: none; padding: 0; text-align: left;
+  font-family: inherit;
+  transition: box-shadow 0.25s ease;
+}
+.mhx-side-card:hover { box-shadow: 0 3px 12px rgba(32,33,36,0.22); }
+
+@keyframes mhxSlideIn {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mhx-side-card.mhx-anim { animation: mhxSlideIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .mhx-side-card.mhx-anim { animation: none; }
+}
+
+.mhx-side-card .mhx-thumb {
+  flex: 1 1 auto;
+  min-height: 120px;
+  background-size: cover; background-position: center;
+}
+.mhx-side-card .mhx-side-text { background: var(--mea-panel); padding: 12px 16px 45px; flex: 0 0 auto; }
+.mhx-side-card .mea-date { font-size: 11.5px; margin-bottom: 5px; }
+.mhx-side-card p {
+  margin: 0;
+  font-size: 14px; line-height: 1.5; color: var(--mea-ink);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mhx-side-nav {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+.mhx-side-nav button {
+  width: 30px; height: 30px; border-radius: 4px;
+  border: 1px solid var(--mea-line); background: #fff; color: var(--mea-ink);
+  font-size: 13px; line-height: 1; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(32,33,36,0.25);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.mhx-side-nav button:hover { background: var(--mea-link); border-color: var(--mea-link); color: #fff; }
+
+/* ---------- Block 1 mobile ---------- */
+@media (max-width: 900px) {
+  .mhx-hero { grid-template-columns: 1fr; gap: 14px; padding: 0 10px; }
+  .mhx-stage { height: 240px; }
+  .mhx-caption { min-height: 0; padding: 16px 18px 18px; }
+  .mhx-caption h2 { -webkit-line-clamp: 4; font-size: 16px; }
+  .mhx-side { height: auto; }
+  .mhx-side-list { flex-direction: row; gap: 12px; }
+  .mhx-side-card { flex: 1; }
+  .mhx-side-card .mhx-thumb { flex: none; height: 100px; min-height: 0; }
+  .mhx-side-card .mhx-side-text { padding: 10px 12px 34px; }
+  .mhx-side-card p { font-size: 12px; -webkit-line-clamp: 3; }
+  .mhx-side-nav { right: 6px; bottom: 6px; }
+  .mhx-side-nav button { width: 28px; height: 28px; font-size: 12px; }
+}
+</style>
+
+<section class="mhx-hero" id="mhx-hero">
+  <div class="mhx-main">
+    <div class="mhx-stage" id="mhx-stage"></div>
+    <div class="mhx-caption" id="mhx-caption">
+      <span class="mea-date" id="mhx-date"></span>
+      <h2 id="mhx-title"></h2>
+    </div>
+  </div>
+  <aside class="mhx-side">
+    <div class="mhx-side-list" id="mhx-side-list"></div>
+    <div class="mhx-side-nav">
+      <button type="button" id="mhx-next" aria-label="Next highlight">&#9660;</button>
+      <button type="button" id="mhx-prev" aria-label="Previous highlight">&#9650;</button>
+      <button type="button" id="mhx-pause" aria-label="Pause slideshow">&#10074;&#10074;</button>
+    </div>
+  </aside>
+</section>
+
+<script>
+(function () {
+  /* ============ EDIT DATA — hero slides ============ */
+  var MHX_SLIDES = [
+    {
+      img: "https://iccr.gov.in/sites/default/files/homepage/2.jpeg",
+      date: "02 July, 2026",
+      title: "DG, ICCR Mrs. K. Nandini Singla met H.E. Ms. Mahishini Colonne, High Commissioner of Sri Lanka to India, at ICCR HQ, New Delhi to explore specific areas of cultural collaboration and strengthen bilateral relations."
+    },
+    {
+      img: "https://iccr.gov.in/sites/default/files/homepage/3.jpeg",
+      date: "30 June, 2026",
+      title: "DG, ICCR Smt K. Nandini Singla and Secretary, Information & Cultural Affairs, Government of West Bengal Dr. Saumitra Mohan signed a landmark MoU at Kolkata to promote West Bengal's vibrant traditions, performing arts, and handicrafts internationally through ICCR's global network."
+    },
+    {
+      img: "https://iccr.gov.in/sites/default/files/homepage/1.jpeg",
+      date: "25 June, 2026",
+      title: "Ms. Manisha Swami, DDG, ICCR met with Gimhae Vice Mayor Mr. Shin Dae-ho to expand cultural cooperation and visited the India Pavilion at Gaya Theme Park to review the \"Mythologies of India: Born from the Brush\" exhibition."
+    },
+    {
+      img: "https://iccr.gov.in/sites/default/files/homepage/4.jpeg",
+      date: "23 June, 2026",
+      title: "A proud moment for India's global medical heritage as the statue of Maharishi Sushruta, the Father of Surgery, is unveiled at the world's oldest surgical college in Edinburgh, Scotland."
+    }
+  ];
+  var MHX_INTERVAL = 5000; /* 5 seconds */
+
+  var stage = document.getElementById("mhx-stage");
+  var sideList = document.getElementById("mhx-side-list");
+  var captionBox = document.getElementById("mhx-caption");
+  var dateEl = document.getElementById("mhx-date");
+  var titleEl = document.getElementById("mhx-title");
+  var n = MHX_SLIDES.length;
+  var idx = 0, timer = null;
+
+  var slideEls = MHX_SLIDES.map(function (s, i) {
+    var d = document.createElement("div");
+    d.className = "mhx-slide" + (i === 0 ? " active" : "");
+    var bg = document.createElement("div");
+    bg.className = "mhx-bg";
+    bg.style.backgroundImage = "url('" + s.img + "')";
+    var img = document.createElement("img");
+    img.className = "mhx-photo";
+    img.src = s.img;
+    img.alt = s.title;
+    img.decoding = "async";
+    if (i > 0) img.loading = "lazy";
+    d.appendChild(bg); d.appendChild(img);
+    stage.appendChild(d);
+    return d;
+  });
+
+  var sideEls = MHX_SLIDES.map(function (s, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "mhx-side-card";
+    b.innerHTML =
+      '<span class="mhx-thumb" style="background-image:url(\'' + s.img + '\')"></span>' +
+      '<span class="mhx-side-text"><span class="mea-date">' + s.date + '</span><p>' + s.title + '</p></span>';
+    b.addEventListener("click", function () { goTo(i); restart(); });
+    sideList.appendChild(b);
+    return b;
+  });
+
+  function setCaption(s) {
+    captionBox.classList.add("fading");
+    setTimeout(function () {
+      dateEl.textContent = s.date;
+      titleEl.textContent = s.title;
+      captionBox.classList.remove("fading");
+    }, 160);
+  }
+
+  function goTo(i) {
+    idx = (i + n) % n;
+    slideEls.forEach(function (el, k) { el.classList.toggle("active", k === idx); });
+
+    var a = (idx + 1) % n, b = (idx + 2) % n;
+    sideEls.forEach(function (el, k) {
+      var show = (k === a || k === b);
+      el.hidden = !show;
+      el.style.order = (k === a) ? 1 : 2;
+      el.classList.remove("mhx-anim");
+      el.style.animationDelay = "";
+    });
+
+    requestAnimationFrame(function () {
+      sideEls[a].style.animationDelay = "0s";
+      sideEls[b].style.animationDelay = "0.12s";
+      sideEls[a].classList.add("mhx-anim");
+      sideEls[b].classList.add("mhx-anim");
+    });
+
+    setCaption(MHX_SLIDES[idx]);
+  }
+
+  function start() {
+    if (!timer && isPlaying && !isHovered) {
+      timer = setInterval(function () { goTo(idx + 1); }, MHX_INTERVAL);
+    }
+  }
+  function stop() { clearInterval(timer); timer = null; }
+  function restart() { stop(); start(); }
+
+  var isPlaying = true;
+  var pauseBtn = document.getElementById("mhx-pause");
+  pauseBtn.addEventListener("click", function () {
+    isPlaying = !isPlaying;
+    pauseBtn.innerHTML = isPlaying ? "&#10074;&#10074;" : "&#9654;";
+    pauseBtn.setAttribute("aria-label", isPlaying ? "Pause slideshow" : "Play slideshow");
+    if (isPlaying) start(); else stop();
+  });
+
+  document.getElementById("mhx-next").addEventListener("click", function () { goTo(idx + 1); restart(); });
+  document.getElementById("mhx-prev").addEventListener("click", function () { goTo(idx - 1); restart(); });
+
+  var hero = document.getElementById("mhx-hero");
+  var isHovered = false;
+  hero.addEventListener("mouseenter", function () { isHovered = true; stop(); });
+  hero.addEventListener("mouseleave", function () { isHovered = false; start(); });
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else start(); });
+
+  goTo(0);
+  start();
+})();
+</script>
+
+
+
+<!-- ================================================================
+  ██ BLOCK 2 — AWARDS POPUP MODAL + CHEVRON CARD ██
+  Opens on homepage load, auto-collapses into the right-edge
+  chevron after 5s. Unchanged behaviour, verbatim from your code.
+================================================================= -->
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+
+    #myModal1 {
+      display: none;
+      position: fixed;
+      z-index: 99;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6); /* Removed in JS */
+      backdrop-filter: blur(6px);     /* Removed in JS */
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content1 {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 50px 25px 50px 25px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      transition: transform 0.6s ease, opacity 0.6s ease;
+      transform-origin: center center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: auto;
+    }
+
+    .modal-close1 {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    .modal-close1 button {
+      background: rgba(255, 255, 255, 0.3);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-close1 button:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .modal-close1 img {
+      width: 18px;
+      height: 18px;
+    }
+
+.section-card1 {
+  padding: 30px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 400px;
+  justify-content: center;
+}
+
+    .section-card1:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+    }
+
+    .padma-awardee1 {
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    }
+
+    .iccr-khoj {
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      color: #062c3d;
+    }
+
+    .section-icon1 {
+      font-size: 26px;
+    }
+
+    .section-texts1 {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-title1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .section-desc1 {
+      font-size: 14px;
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+
+    .shrink-to-chevron {
+      transform: translateX(400px) scale(0.2);
+      opacity: 0;
+    }
+
+    .chevron-card {
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px 0 0 16px;
+      width: 60px;
+      transition: width 0.4s ease;
+      z-index: 99998;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      overflow: hidden;
+      display: none;
+    }
+
+    .chevron-card.expanded {
+      width: 300px;
+    }
+
+    .chevron-toggle {
+      background: #4e54c8;
+      color: white;
+      border: none;
+      padding: 10px 12px;
+      font-size: 20px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .chevron-items {
+      display: none;
+      flex-direction: column;
+      padding: 15px;
+    }
+
+    .chevron-card.expanded .chevron-items {
+      display: flex;
+    }
+
+.chevron-option {
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.chevron-option.purple-option {
+  background: linear-gradient(135deg, #4e54c8, #8f94fb);
+  color: white;
+}
+
+.chevron-option.yellow-option {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: #062c3d;
+}
+
+    .chevron-option:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    @media screen and (max-width: 500px) {
+      .section-title1 { font-size: 16px; }
+      .section-desc1 { font-size: 13px; }
+      .section-card1 { padding: 14px 16px; }
+      .modal-content1 { padding: 50px 16px 16px 16px; }
+      .chevron-card.expanded { width: 90%; right: 5%; }
+    }
+
+    @keyframes pulseOnce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.chevron-card.showHint {
+  animation: pulseOnce 0.6s ease;
+}
+.section-wrapper1 {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  width: 100%;
+}
+</style>
+
+  <!-- Modal -->
+  <div id="myModal1">
+    <div class="modal-content1" id="modalBox1">
+      <div class="modal-close1">
+        <button onclick="animateToChevron()">
+          X
+        </button>
+      </div>
+
+<div class="section-wrapper1">
+
+  <div class="section-card1 padma-awardee1" onclick="redirectToPadma()">
+      <div class="section-icon1">🎖️</div>
+      <div class="section-texts1">
+      <div class="section-title1">ICCR Yuva Mitra Prize</div>
+    </div>
+  </div>
+
+  <div class="section-card1 iccr-khoj" onclick="redirectToKhoj()">
+    <div class="section-icon1">🌟</div>
+    <div class="section-texts1">
+      <div class="section-title1">ICCR Kala Saadhak Prize</div>
+    </div>
+  </div>
+
+  <div class="section-card1 padma-awardee1" onclick="redirectToKhojSeries()">
+    <div class="section-icon1">🔍</div>
+    <div class="section-texts1">
+      <div class="section-title1">ICCR ki Khoj Series</div>
+    </div>
+  </div>
+
+  <div class="section-card1 iccr-khoj" onclick="redirectToPadmaSeries()">
+    <div class="section-icon1">🏅</div>
+    <div class="section-texts1">
+      <div class="section-title1">Padma Awardee Series</div>
+    </div>
+  </div>
+</div>
+
+
+    </div>
+  </div>
+
+  <!-- Chevron Expand Card -->
+  <div class="chevron-card" id="chevronCard">
+    <button class="chevron-toggle" onclick="toggleChevron()">❯</button>
+    <div class="chevron-items">
+        <div class="chevron-option purple-option" onclick="redirectToPadma()">🎖️ ICCR Yuva Mitra Prize</div>
+        <div class="chevron-option yellow-option" onclick="redirectToKhoj()">🌟 ICCR Kala Saadhak Prize</div>
+        <div class="chevron-option purple-option" onclick="redirectToKhojSeries()">🔍 ICCR ki Khoj Series</div>
+        <div class="chevron-option yellow-option" onclick="redirectToPadmaSeries()">🏅 Padma Awardee Series</div>
+    </div>
+  </div>
+
+  <script>
+    const modal1 = document.getElementById('myModal1');
+    const modalBox1 = document.getElementById('modalBox1');
+    const chevronCard = document.getElementById('chevronCard');
+    const chevronBtn = chevronCard.querySelector('.chevron-toggle');
+
+    function animateToChevron() {
+  modal1.style.background = 'transparent';
+  modal1.style.backdropFilter = 'none';
+
+  chevronCard.style.display = 'block';
+  chevronCard.style.visibility = 'hidden';
+
+  requestAnimationFrame(() => {
+    const modalRect = modalBox1.getBoundingClientRect();
+    const chevronRect = chevronCard.getBoundingClientRect();
+
+    const deltaX = chevronRect.left - modalRect.left;
+    const deltaY = chevronRect.top + chevronRect.height / 2 - (modalRect.top + modalRect.height / 2);
+
+    modalBox1.style.position = 'fixed';
+    modalBox1.style.top = `${modalRect.top}px`;
+    modalBox1.style.left = `${modalRect.left}px`;
+    modalBox1.style.margin = '0';
+    modalBox1.style.zIndex = '99999';
+
+    modalBox1.style.transition = 'transform 0.6s ease, opacity 0.6s ease';
+    modalBox1.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.2)`;
+    modalBox1.style.opacity = '0';
+
+    setTimeout(() => {
+      modal1.style.display = 'none';
+      modalBox1.style.display = 'none';
+      chevronCard.style.visibility = 'visible';
+    }, 600);
+    chevronCard.classList.add('showHint');
+setTimeout(() => chevronCard.classList.remove('showHint'), 800);
+
+  });
+}
+
+  function toggleChevron() {
+    chevronCard.classList.toggle('expanded');
+    chevronBtn.textContent = chevronCard.classList.contains('expanded') ? '❮' : '❯';
+  }
+
+  function redirectToPadma() {
+    window.location.href = '/iccr-yuva-mitra-prize';
+  }
+
+  function redirectToKhoj() {
+    window.location.href = '/iccr-kala-saadhak-prize';
+  }
+
+function redirectToKhojSeries() {
+  window.location.href = '/iccr-ki-khoj';
+}
+
+function redirectToPadmaSeries() {
+  window.location.href = '/padma-awardee';
+}
+
+  window.addEventListener("click", function (event) {
+    if (event.target === modal1) {
+      animateToChevron();
+    }
+  });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const path = window.location.pathname;
+  if (path === '/' || path === '/home' || path === '/hi' || path.endsWith('.html')) {
+    modal1.style.display = 'flex';
+
+    // Auto-close modal after 5 seconds
+    setTimeout(() => {
+      if (modal1.style.display === 'flex') {
+        animateToChevron();
+      }
+    }, 5000);
+  }
+});
+  </script>
+
+
+<!-- ================================================================
+  ██ BLOCK 3 — FLASH NEWS TICKER ██
+  Restyled: #E8EEFC background (was skyblue), Roboto links,
+  MEA blue hover. Marquee behaviour unchanged.
+================================================================= -->
+<div class="containers">
+    <div class="flash-container">
+        <p class="flash">Flash News</p>
+    </div>
+
+<div class="marquee-container">
+    <div class="marquee-content">
+        <span>
+
+<a href="https://a2ascholarships.iccr.gov.in/" style="text-decoration: none;">A2A Portal is now open for award of scholarships to foreign students for the AY 2026-27 from 27 February 2026 till 15 April 2026</a> <span>|</span>
+
+<a href="/event/advertisement-empanelment-directors-indian-cultural-centres-abroad" style="text-decoration: none;">Advertisement for Empanelment as Directors of Indian Cultural Centres abroad</a> <span>|</span>
+
+ <a href="/event/advertisement-tic-yoga-and-performing-arts-and-hindi-teachers" style="text-decoration: none;">Advertisement for TIC (Yoga and Performing Arts) and Hindi Teachers</a> <span>|</span>
+
+            <a href="https://iccr.gov.in/sites/default/files/2025-10/iccr.pdf" style="text-decoration: none;">April Spring Friendship Art Festival</a> <span>|</span>
+
+            <a href="/iccr-kala-saadhak-prize" style="text-decoration: none;">Registration for the ICCR Kala Saadhak Prize is now live (Last Submission date: 30th June 2026).</a> <span>|</span>
+
+            <a href="/iccr-yuva-mitra-prize" style="text-decoration: none;">Registration for the ICCR Yuva Mitra Prize is now live (Last Submission date: 30th June 2026).</a> <span>|</span>
+
+            <a href="/iccr-scholarship-contact-person">In case of any issue while applying for ICCR scholarship</a>
+        </span>
+    </div>
+</div>
+
+</div>
+
+<style>
+
+.containers {
+    height: 48px;
+    max-width: 1500px;
+    background: #E8EEFC;
+    display: flex;
+    align-items: center;
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+    justify-content: center;
+    margin: 34px auto;
+}
+
+    .flash-container {
+        flex-shrink: 0;
+        padding: 0 22px 0 25px;
+        height: 48px;
+        background: #ffffff;
+        display: flex;
+        border-radius: 0 30px 30px 0;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 4px rgba(32,33,36,0.15);
+        z-index: 1;
+    }
+
+    .flash {
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: 0.04em;
+        font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+        color: #202124;
+        margin: 0;
+        white-space: nowrap;
+    }
+
+.marquee-container {
+    position: relative;
+    height: 48px;
+    width: 100%;
+    overflow: hidden;
+    background: #E8EEFC;               /* was skyblue */
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.marquee-content {
+    display: inline-block;
+    color: #202124;
+    position: absolute;
+    width: max-content;
+    transform: translateX(100vw);
+    animation: marquee 60s linear infinite;
+}
+
+@keyframes marquee {
+    0%   { transform: translateX(100vw); }
+    100% { transform: translateX(-100%); }
+}
+
+    .marquee-content:hover {
+        animation-play-state: paused;
+    }
+
+    .marquee-content a {
+        color: #202124;
+        text-decoration: none !important;
+        font-weight: 400;
+        font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+        font-size: 17px;
+        margin-left: 40px;
+        margin-right: 40px;
+        transition: color 0.3s;
+    }
+
+    .marquee-content a:hover {
+        color: #1A73E8;                 /* MEA blue on hover */
+    }
+
+    .marquee-content span span {
+        color: #9AA0A6;                 /* soft separator */
+        font-size: 17px;
+    }
+
+    /* ---------- Block 3 mobile ---------- */
+    @media (max-width: 768px) {
+        .containers, .marquee-container, .flash-container { height: 42px; }
+        .marquee-content a {
+            font-size: 14px;
+            margin-left: 22px;
+            margin-right: 22px;
+        }
+        .flash { font-size: 13px; }
+        .flash-container { padding: 0 14px 0 10px; }
+    }
+</style>
+
+
+<!-- ================================================================
+  ██ BLOCK 4 — EVENTS + SOCIAL FEED + DG CARD (evx-) ██
+  REDESIGNED to match the MEA family: one #E8EEFC panel,
+  serif tabs, white cards, three symmetric equal-height columns.
+================================================================= -->
+<style>
+.evx-wrap {
+  --mea-panel: #E8EEFC;
+  --mea-ink: #202124;
+  --mea-gray: #5F6368;
+  --mea-inactive: #9AA0A6;
+  --mea-link: #1A73E8;
+  --mea-line: rgba(32,33,36,0.14);
+  --mea-serif: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --mea-sans: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--mea-sans);
+  box-sizing: border-box;
+
+  max-width: 1500px;
+  margin: 34px auto;
+  padding: 34px 44px 30px;
+  background: var(--mea-panel);
+  border-radius: 6px;
+}
+.evx-wrap *, .evx-wrap *::before, .evx-wrap *::after { box-sizing: border-box; }
+
+.evx-wrap .mea-date {
+  font-family: var(--mea-sans);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: var(--mea-gray);
+  display: block;
+}
+
+.evx-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.72fr);
+  gap: 28px;
+  align-items: stretch;
+}
+
+/* ---------- Column 1: Events (serif tabs, list rows) ---------- */
+.evx-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 18px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.evx-tabs { display: flex; align-items: baseline; }
+.evx-tab {
+  font-family: var(--mea-serif);
+  font-size: clamp(19px, 1.5vw, 24px);
+  font-weight: 500;
+  color: var(--mea-inactive);
+  background: none; border: none; padding: 0; cursor: pointer;
+  transition: color 0.25s ease;
+  line-height: 1.3;
+}
+.evx-tab:hover, .evx-tab.active { color: var(--mea-ink); }
+.evx-sep { width: 1px; height: 20px; background: var(--mea-line); margin: 0 16px; align-self: center; }
+.evx-viewall {
+  font-size: 13.5px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important; white-space: nowrap;
+}
+.evx-viewall:hover { text-decoration: underline !important; }
+
+.evx-panel[hidden] { display: none !important; }
+
+.evx-row {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--mea-line);
+}
+.evx-row:last-of-type { border-bottom: none; }
+.evx-row img {
+    width: 80px;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 3px;
+    background: transparent;
+    flex-shrink: 0;
+}
+.evx-row-body { min-width: 0; }
+.evx-row .mea-date { margin-bottom: 6px; }
+.evx-row p { margin: 0; font-size: 15.5px; line-height: 1.5; font-weight: 400; }
+.evx-row p a { color: var(--mea-ink); text-decoration: none !important; }
+.evx-row p a:hover { color: var(--mea-link); }
+.evx-empty {
+  padding: 24px 0;
+  color: var(--mea-gray);
+  font-size: 15px;
+  font-style: italic;
+}
+
+/* ---------- Columns 2 & 3: white cards ---------- */
+.evx-card {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(32,33,36,0.14);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 540px;
+}
+
+/* Facebook feed card */
+.evx-feed-toggle { display: flex; border-bottom: 1px solid var(--mea-line); flex-shrink: 0; }
+.evx-person {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px 8px 10px;
+  background: none; border: none; cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-family: inherit;
+  transition: border-color 0.25s ease;
+}
+.evx-person img {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+}
+.evx-person .evx-p-text { text-align: left; line-height: 1.2; }
+.evx-person .evx-p-name { display: block; font-size: 13.5px; font-weight: 500; color: var(--mea-inactive); transition: color 0.25s ease; }
+.evx-person .evx-p-role { display: block; font-size: 10.5px; color: var(--mea-inactive); }
+.evx-person.active { border-bottom-color: var(--mea-link); }
+.evx-person.active .evx-p-name { color: var(--mea-ink); }
+.evx-feed-body { flex: 1; position: relative; min-height: 0; }
+.evx-fpanel { position: absolute; inset: 0; padding: 10px; }
+.evx-fpanel[hidden] { display: none !important; }
+.evx-fpanel iframe { width: 100%; height: 100%; border: none; }
+.evx-feed-foot {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--mea-line);
+}
+.evx-feed-foot a {
+  font-size: 13.5px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important;
+}
+.evx-feed-foot a:hover { text-decoration: underline !important; }
+
+/* DG card */
+.evx-dg { align-items: center; text-align: center; padding: 30px 22px 26px; justify-content: flex-start; }
+.evx-dg img {
+  width: 116px; height: 120px; border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--mea-link);
+}
+.evx-dg h2 {
+  font-family: var(--mea-serif);
+  font-size: 21px; font-weight: 600;
+  color: var(--mea-ink) !important;
+  margin: 16px 0 4px;
+  line-height: 1.3;
+}
+.evx-dg h3 {
+  font-family: var(--mea-sans);
+  font-size: 14.5px; font-weight: 400; font-style: italic;
+  color: var(--mea-gray);
+  margin: 0 0 6px;
+}
+.evx-dg .mea-date { margin-bottom: 18px; }
+.evx-dg .evx-dg-btn {
+  margin-top: auto;
+  display: inline-block;
+  padding: 11px 26px;
+  font-size: 14px; font-weight: 500; color: #fff;
+  background: linear-gradient(to right, #1E3C8C, #6A91F2);  /* button keeps its colour */
+  border-radius: 24px;
+  text-decoration: none !important;
+  transition: all 0.3s ease;
+}
+.evx-dg .evx-dg-btn:hover { background: linear-gradient(to right, #1A326E, #5F82D4); }
+
+/* ---------- Block 4 mobile ---------- */
+@media (max-width: 1100px) {
+  .evx-grid { grid-template-columns: 1fr 1fr; }
+  .evx-events { grid-column: 1 / -1; }
+}
+@media (max-width: 768px) {
+  .evx-wrap { padding: 24px 18px 22px; margin: 20px auto; }
+  .evx-grid { grid-template-columns: 1fr; gap: 20px; }
+  .evx-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .evx-sep { margin: 0 12px; height: 17px; }
+  .evx-card { min-height: 480px; }
+  .evx-dg { min-height: 0; }
+  .evx-row img { width: 88px; height: 62px; }
+  .evx-row p { font-size: 14px; }
+}
+</style>
+
+<section class="evx-wrap">
+  <div class="evx-grid">
+
+    <!-- Column 1 : Events -->
+    <div class="evx-events">
+      <div class="evx-head">
+        <div class="evx-tabs">
+          <button type="button" class="evx-tab active" data-panel="evx-current">Current Events</button>
+          <span class="evx-sep"></span>
+          <button type="button" class="evx-tab" data-panel="evx-upcoming">Upcoming Events</button>
+        </div>
+        <a class="evx-viewall" href="/announcements/whats-new/current-events">View All</a>
+      </div>
+
+      <div class="evx-panel" id="evx-current">
+        <div class="evx-row">
+          <img src="https://iccr.gov.in/sites/default/files/2025-04/award.png" alt="" loading="lazy" decoding="async">
+          <div class="evx-row-body">
+            <span class="mea-date">03 October, 2025</span>
+            <p><a href="/iccr-kala-saadhak-prize">Registration for the ICCR Kala Saadhak Prize is now live (Last Submission date: 31st July 2026).</a></p>
+          </div>
+        </div>
+        <div class="evx-row">
+          <img src="https://iccr.gov.in/sites/default/files/2025-04/award.png" alt="" loading="lazy" decoding="async">
+          <div class="evx-row-body">
+            <span class="mea-date">03 October, 2025</span>
+            <p><a href="/iccr-yuva-mitra-prize">Registration for the ICCR Yuva Mitra Prize is now live (Last Submission date: 31st July 2026).</a></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="evx-panel" id="evx-upcoming" hidden>
+        <p class="evx-empty">We will notify soon...</p>
+      </div>
+    </div>
+
+    <!-- Column 2 : Facebook feed -->
+    <div class="evx-card">
+      <div class="evx-feed-toggle" id="evx-feed-toggle">
+        <button type="button" class="evx-person active" data-person="modi">
+          <img src="https://www.pmindia.gov.in/wp-content/uploads/2025/12/02.jpg" alt="Narendra Modi" loading="lazy" decoding="async">
+          <span class="evx-p-text">
+            <span class="evx-p-name">Narendra Modi</span>
+            <span class="evx-p-role">Prime Minister of India</span>
+          </span>
+        </button>
+        <button type="button" class="evx-person" data-person="jaishankar">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/The%20Minister%20of%20External%20Affairs%2C%20Dr.%20Subrahmanyam%20Jaishankar.jpg" alt="Dr. S. Jaishankar" loading="lazy" decoding="async">
+          <span class="evx-p-text">
+            <span class="evx-p-name">Dr. S. Jaishankar</span>
+            <span class="evx-p-role">External Affairs Minister</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="evx-feed-body">
+        <div class="evx-fpanel" id="evx-fp-modi">
+          <iframe
+            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fnarendramodi%2F%3Fref%3Dembed_page%23&tabs=timeline&width=500&height=470&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
+            loading="lazy" scrolling="no" frameborder="0"
+            allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+          </iframe>
+        </div>
+        <div class="evx-fpanel" id="evx-fp-jaishankar" hidden>
+          <iframe
+            src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fdrsjaishankar%2F%3Fref%3Dembed_page%23&tabs=timeline&width=500&height=470&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
+            loading="lazy" scrolling="no" frameborder="0"
+            allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+          </iframe>
+        </div>
+      </div>
+
+      <div class="evx-feed-foot">
+        <a id="evx-follow" href="https://www.facebook.com/narendramodi" target="_blank" rel="noopener">Follow on Facebook &#8599;</a>
+      </div>
+    </div>
+
+    <!-- Column 3 : Director General -->
+    <div class="evx-card evx-dg">
+      <img src="https://iccr.gov.in/sites/default/files/2025-09/DG.jpeg" alt="Mrs. K. Nandini Singla" loading="lazy" decoding="async">
+      <h2>Mrs. K. Nandini Singla</h2>
+      <h3>Director General</h3>
+      <span class="mea-date">INDIAN COUNCIL FOR CULTURAL RELATIONS</span>
+      <a class="evx-dg-btn" href="/about-us/director-general">Learn More</a>
+    </div>
+
+  </div>
+</section>
+
+<script>
+(function () {
+  /* Events tabs */
+  var tabs = document.querySelectorAll(".evx-tabs .evx-tab");
+  var panels = {
+    "evx-current": document.getElementById("evx-current"),
+    "evx-upcoming": document.getElementById("evx-upcoming")
+  };
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var target = tab.getAttribute("data-panel");
+      tabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
+      Object.keys(panels).forEach(function (k) { panels[k].hidden = (k !== target); });
+    });
+  });
+
+  /* Facebook person toggle */
+  var urls = {
+    modi: "https://www.facebook.com/narendramodi",
+    jaishankar: "https://www.facebook.com/DrSJaishankar"
+  };
+  var personBtns = document.querySelectorAll("#evx-feed-toggle .evx-person");
+  var fpanels = {
+    modi: document.getElementById("evx-fp-modi"),
+    jaishankar: document.getElementById("evx-fp-jaishankar")
+  };
+  var follow = document.getElementById("evx-follow");
+  personBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var person = btn.getAttribute("data-person");
+      personBtns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+      Object.keys(fpanels).forEach(function (k) { fpanels[k].hidden = (k !== person); });
+      follow.href = urls[person];
+    });
+  });
+})();
+</script>
+
+
+<!-- ================================================================
+  ██ BLOCK 5 — PUBLICATIONS & MEDIA (pbx-) ██
+  Gagananchal | Annual Report | Press Releases + Video Briefings
+  Panel colour #E8EEFC. Mobile: serif tabs scroll horizontally.
+================================================================= -->
+<style>
+.pbx-wrap {
+  --mea-panel: #E8EEFC;
+  --mea-ink: #202124;
+  --mea-gray: #5F6368;
+  --mea-inactive: #9AA0A6;
+  --mea-link: #1A73E8;
+  --mea-line: rgba(32,33,36,0.14);
+  --mea-serif: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --mea-sans: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--mea-sans);
+  box-sizing: border-box;
+}
+.pbx-wrap *, .pbx-wrap *::before, .pbx-wrap *::after { box-sizing: border-box; }
+
+.pbx-wrap .mea-date {
+  font-family: var(--mea-sans);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: var(--mea-gray);
+  display: block;
+}
+
+.pbx-wrap {
+  max-width: 1500px;
+  margin: 34px auto;
+  padding: 34px 44px 30px;
+  background: var(--mea-panel);
+  border-radius: 6px;
+  content-visibility: auto;
+  contain-intrinsic-size: 480px;
+}
+.pbx-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 56px;
+}
+.pbx-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 18px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.pbx-tabs { display: flex; align-items: baseline; flex-wrap: wrap; }
+.pbx-tab {
+  font-family: var(--mea-serif);
+  font-size: clamp(20px, 1.75vw, 27px);
+  font-weight: 500;
+  color: var(--mea-inactive);
+  background: none; border: none; padding: 0; cursor: pointer;
+  transition: color 0.25s ease;
+  line-height: 1.3;
+}
+.pbx-tab:hover { color: var(--mea-ink); }
+.pbx-tab.active { color: var(--mea-ink); }
+.pbx-sep {
+  width: 1px; height: 22px; background: var(--mea-line);
+  margin: 0 18px; align-self: center;
+  flex: none;
+}
+.pbx-viewall-top, .pbx-viewall-bottom, .pbx-vb-viewall {
+  font-size: 13.5px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important; white-space: nowrap;
+}
+.pbx-viewall-top:hover, .pbx-viewall-bottom:hover, .pbx-vb-viewall:hover { text-decoration: underline !important; }
+
+.pbx-row {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--mea-line);
+}
+.pbx-row:last-of-type { border-bottom: none; }
+.pbx-thumb {
+  width: 62px; height: 82px;
+  object-fit: cover; object-position: top;
+  border-radius: 3px; background: #fff;
+  border: 1px solid var(--mea-line);
+  flex-shrink: 0;
+}
+.pbx-row-body { min-width: 0; }
+.pbx-row .mea-date { margin-bottom: 6px; }
+.pbx-title {
+  margin: 0;
+  font-size: 16px; line-height: 1.5; font-weight: 400;
+  color: var(--mea-ink);
+}
+.pbx-title a { color: inherit; text-decoration: none !important; }
+.pbx-title a:hover { color: var(--mea-link); }
+.pbx-dl {
+  display: inline-block; margin-top: 6px;
+  font-size: 13px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important;
+}
+.pbx-dl:hover { text-decoration: underline !important; }
+.pbx-viewall-bottom { display: inline-block; margin-top: 14px; }
+
+.pbx-vb-title {
+  font-family: var(--mea-serif);
+  font-size: clamp(20px, 1.75vw, 27px);
+  font-weight: 500; color: var(--mea-ink);
+  margin: 0; line-height: 1.3;
+}
+.pbx-vb-card { display: block; text-decoration: none !important; margin-top: 14px; }
+.pbx-vb-card img {
+  width: 100%; aspect-ratio: 16 / 9.4; object-fit: cover;
+  display: block; border-radius: 3px; background: #101418;
+}
+.pbx-vb-card .mea-date { margin: 14px 0 6px; }
+.pbx-vb-card p {
+  margin: 0;
+  font-size: 16.5px; line-height: 1.5; color: var(--mea-ink); font-weight: 400;
+}
+.pbx-vb-card:hover p { color: var(--mea-link); }
+
+/* ---------- Block 5 mobile ---------- */
+@media (max-width: 1000px) {
+  .pbx-wrap { padding: 24px 18px 22px; margin: 20px auto; }
+  .pbx-grid { grid-template-columns: 1fr; gap: 34px; }
+  .pbx-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  /* serif tabs scroll sideways instead of wrapping messily */
+  .pbx-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pbx-tabs::-webkit-scrollbar { display: none; }
+  .pbx-tab { white-space: nowrap; font-size: 19px; }
+  .pbx-sep { margin: 0 14px; height: 18px; }
+  .pbx-title { font-size: 15px; }
+}
+</style>
+
+<section class="pbx-wrap">
+  <div class="pbx-grid">
+
+    <div class="pbx-left">
+      <div class="pbx-head">
+        <div class="pbx-tabs" id="pbx-tabs"></div>
+        <a class="pbx-viewall-top" id="pbx-viewall-top" href="#">View All</a>
+      </div>
+      <div id="pbx-list"></div>
+      <a class="pbx-viewall-bottom" id="pbx-viewall-bottom" href="#">View All</a>
+    </div>
+
+    <div class="pbx-right">
+      <div class="pbx-head">
+        <h3 class="pbx-vb-title">Video Briefings</h3>
+      </div>
+      <!-- thumbnail links straight to YouTube — no iframe = fast load -->
+      <div id="pbx-vb-list"></div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+(function () {
+  /* ============ EDIT DATA — publications tabs ============
+     thumb  : image shown at left of the row (PDF page-1 image URL).
+              Use thumb: null for rows without a photo (press releases).
+     file   : the PDF download URL.                                  */
+  var PBX_TABS = [
+    {
+      label: "Gagananchal",
+      viewAll: "/publication/gagananchal",
+      items: [
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/gagan-1st.png",
+          date: "04 July, 2026 &nbsp;&middot;&nbsp; Vol. 48 &nbsp;&middot;&nbsp; Hindi",
+          title: "Gagananchal Vol-48 Issue 5-6 (September-December) 2025",
+          file: "https://iccr.gov.in/sites/default/files/2026-07/Gagnanchal-September-December-2025-6-1.pdf", size: "5.64 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/gagan-2nd.png",
+          date: "15 May, 2026 &nbsp;&middot;&nbsp; Vol. 48 &nbsp;&middot;&nbsp; Hindi",
+          title: "Gagananchal Vol-48 Issue 2-4 (March-August) 2025",
+          file: "https://iccr.gov.in/sites/default/files/2026-05/Gagnanchal-March-August-2025-final%20for%20web.pdf", size: "9.99 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/gagan-3rd.png",
+          date: "04 November, 2025 &nbsp;&middot;&nbsp; Vol. 48 &nbsp;&middot;&nbsp; Hindi",
+          title: "Gagananchal Vol-48 Issue 1 (January-February) 2025",
+          file: "https://iccr.gov.in/sites/default/files/2025-12/Gagnanchal-Jan-Feb-2025-5%20for%20dummy.pdf", size: "15.37 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/gagan-4th.png",
+          date: "11 April, 2025 &nbsp;&middot;&nbsp; Vol. 47 &nbsp;&middot;&nbsp; Hindi",
+          title: "Gagananchal Vol-47 Issue 6 (November-December) 2024",
+          file: "https://iccr.gov.in/sites/default/files/2025-04/Gagnanchal-Nov-Dec-2024-10-4-2025%20for%20web.pdf", size: "4.93 MB" }
+      ]
+    },
+    {
+      label: "Annual Report",
+      viewAll: "/annual-reports",
+      items: [
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/annual-1st.png",
+          date: "2024 &nbsp;&middot;&nbsp; English",
+          title: "Annual Report 2024-25",
+          file: "https://iccr.gov.in/sites/default/files/sites/default/files/2024-02/Annual%20Report%202024-25%20%28English%29%20%281%29.pdf", size: "12.73 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/annual-2nd.png",
+          date: "2023 &nbsp;&middot;&nbsp; English",
+          title: "Annual Report 2023-24",
+          file: "https://iccr.gov.in/sites/default/files/sites/default/files/2024-02/Annual%20Report%202023-24%20%28English%29.pdf", size: "13.07 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/annual-3rd.png",
+          date: "2022 &nbsp;&middot;&nbsp; English",
+          title: "Annual Report 2022-23",
+          file: "https://iccr.gov.in/sites/default/files/sites/default/files/2024-02/English%20AR%202022-23-1%20%281%29.pdf", size: "9.93 MB" },
+        { thumb: "https://iccr.gov.in/sites/default/files/2026-07/annual-4th.png",
+          date: "2021 &nbsp;&middot;&nbsp; English",
+          title: "Annual Report 2021-22",
+          file: "https://iccr.gov.in/sites/default/files/2023-02/Annual%20Report%202021-22%20%28English%29%20Final%202nd%20Jan.%202023.pdf", size: "11.71 MB" }
+      ]
+    },
+    {
+      label: "Press Releases",
+      viewAll: "/media/speeches-statement-press-release",
+      items: [
+        { thumb: null,
+          date: "29 May, 2026",
+          title: "ICCR and Government of Karnataka Forge Partnership to Promote Kannada Culture Globally",
+          file: "#", size: null },
+        { thumb: null,
+          date: "12 May, 2026",
+          title: "ICCR announces the 11th India International Dance & Music Festival across five cities", /* DUMMY */
+          file: "#", size: null },
+        { thumb: null,
+          date: "27 April, 2026",
+          title: "Distinguished Visitors Programme welcomes eminent scholars from 12 countries", /* DUMMY */
+          file: "#", size: null }
+      ]
+    }
+  ];
+
+  /* ============ EDIT DATA — video briefings (right column) ============ */
+  var PBX_VIDEOS = [
+    {
+      youtubeId: "Gb-aPJVFuJI",
+      date: "06 July, 2026",
+      title: "DG ICCR Mrs. K. Nandini Singla on Yoga for One Earth, One Health | ANI Interview | IDY 2025"
+    }
+  ];
+
+  var tabsBox = document.getElementById("pbx-tabs");
+  var listBox = document.getElementById("pbx-list");
+  var vaTop = document.getElementById("pbx-viewall-top");
+  var vaBottom = document.getElementById("pbx-viewall-bottom");
+  var vbList = document.getElementById("pbx-vb-list");
+  var tabBtns = [];
+
+  PBX_TABS.forEach(function (t, i) {
+    if (i > 0) {
+      var sep = document.createElement("span");
+      sep.className = "pbx-sep";
+      tabsBox.appendChild(sep);
+    }
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "pbx-tab" + (i === 0 ? " active" : "");
+    b.textContent = t.label;
+    b.addEventListener("click", function () { select(i); });
+    tabsBox.appendChild(b);
+    tabBtns.push(b);
+  });
+
+  function rowHTML(it) {
+    var h = '<div class="pbx-row">';
+    if (it.thumb) {
+      h += '<img class="pbx-thumb" src="' + it.thumb + '" alt="" loading="lazy" decoding="async">';
+    }
+    h += '<div class="pbx-row-body">';
+    h += '<span class="mea-date">' + it.date + '</span>';
+    h += '<p class="pbx-title"><a href="' + it.file + '" target="_blank" rel="noopener">' + it.title + '</a></p>';
+    if (it.size) {
+      h += '<a class="pbx-dl" href="' + it.file + '" target="_blank" rel="noopener">Download (' + it.size + ')</a>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  function select(i) {
+    tabBtns.forEach(function (b, k) { b.classList.toggle("active", k === i); });
+    var t = PBX_TABS[i];
+    listBox.innerHTML = t.items.map(rowHTML).join("");
+    vaTop.href = t.viewAll;
+    vaBottom.href = t.viewAll;
+  }
+
+  function vbCardHTML(v) {
+    return '<a class="pbx-vb-card" href="https://www.youtube.com/watch?v=' + v.youtubeId + '" target="_blank" rel="noopener">' +
+      '<img src="https://i.ytimg.com/vi/' + v.youtubeId + '/hqdefault.jpg" alt="Video briefing" loading="lazy" decoding="async">' +
+      '<span class="mea-date">' + v.date + '</span>' +
+      '<p>' + v.title + '</p>' +
+      '</a>';
+  }
+
+  vbList.innerHTML = PBX_VIDEOS.map(vbCardHTML).join("");
+
+  select(0);
+})();
+</script>
+
+
+
+<!-- ================================================================
+  ██ BLOCK 6 — CULTURAL DELEGATIONS (cdx-) ██
+  Incoming / Outgoing Delegations | Visitors Programme | Exhibitions
+  Panel colour #E8EEFC. Mobile: serif tabs scroll horizontally.
+================================================================= -->
+<style>
+.cdx-wrap {
+  --mea-panel: #E8EEFC;
+  --mea-ink: #202124;
+  --mea-gray: #5F6368;
+  --mea-inactive: #9AA0A6;
+  --mea-link: #1A73E8;
+  --mea-line: rgba(32,33,36,0.14);
+  --mea-serif: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --mea-sans: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--mea-sans);
+  box-sizing: border-box;
+}
+.cdx-wrap *, .cdx-wrap *::before, .cdx-wrap *::after { box-sizing: border-box; }
+
+.cdx-wrap .mea-date {
+  font-family: var(--mea-sans);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: var(--mea-gray);
+  display: block;
+}
+
+.cdx-wrap {
+  max-width: 1500px;
+  margin: 34px auto;
+  padding: 34px 44px 30px;
+  background: var(--mea-panel);
+  border-radius: 6px;
+  content-visibility: auto;
+  contain-intrinsic-size: 420px;
+}
+.cdx-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 18px; margin-bottom: 22px; flex-wrap: wrap;
+}
+.cdx-tabs { display: flex; align-items: baseline; flex-wrap: wrap; row-gap: 8px; }
+.cdx-tab {
+  font-family: var(--mea-serif);
+  font-size: clamp(18px, 1.55vw, 25px);
+  font-weight: 500;
+  color: var(--mea-inactive);
+  background: none; border: none; padding: 0; cursor: pointer;
+  transition: color 0.25s ease; line-height: 1.3;
+}
+.cdx-tab:hover, .cdx-tab.active { color: var(--mea-ink); }
+.cdx-sep { width: 1px; height: 20px; background: var(--mea-line); margin: 0 16px; align-self: center; flex: none; }
+.cdx-viewall {
+  font-size: 13.5px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important; white-space: nowrap;
+}
+.cdx-viewall:hover { text-decoration: underline !important; }
+
+.cdx-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 64px;
+  row-gap: 26px;
+}
+.cdx-item {
+  display: flex; gap: 20px; align-items: flex-start;
+  text-decoration: none !important;
+}
+.cdx-item img {
+  width: 132px; height: 88px;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid var(--mea-line);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.cdx-item-body { min-width: 0; }
+.cdx-item .mea-date { margin-bottom: 6px; }
+.cdx-item p {
+  margin: 0;
+  font-size: 16px; line-height: 1.5; font-weight: 400;
+  color: var(--mea-ink);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cdx-item:hover p { color: var(--mea-link); }
+.cdx-bottom-viewall {
+  display: inline-block; margin-top: 22px;
+  font-size: 13.5px; font-weight: 500; color: var(--mea-link);
+  text-decoration: none !important;
+}
+.cdx-bottom-viewall:hover { text-decoration: underline !important; }
+
+/* ---------- Block 6 mobile ---------- */
+@media (max-width: 900px) {
+  .cdx-wrap { padding: 24px 18px 22px; margin: 20px auto; }
+  .cdx-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  /* the 4 long serif tabs scroll sideways — much cleaner than wrapping */
+  .cdx-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .cdx-tabs::-webkit-scrollbar { display: none; }
+  .cdx-tab { white-space: nowrap; font-size: 17px; }
+  .cdx-sep { margin: 0 12px; height: 16px; }
+  .cdx-grid { grid-template-columns: 1fr; row-gap: 20px; }
+  .cdx-item img { width: 104px; height: 72px; }
+  .cdx-item p { font-size: 14.5px; }
+}
+</style>
+
+<section class="cdx-wrap">
+  <div class="cdx-head">
+    <div class="cdx-tabs" id="cdx-tabs"></div>
+    <a class="cdx-viewall" id="cdx-viewall" href="#">View All</a>
+  </div>
+  <div class="cdx-grid" id="cdx-grid"></div>
+  <a class="cdx-bottom-viewall" id="cdx-bottom-viewall" href="#">View All</a>
+</section>
+
+<script>
+(function () {
+  /* ============ EDIT DATA — delegations tabs (DUMMY data,
+     replace thumb / date / title / link with real content) ============ */
+  var CDX_PLACEHOLDER = "https://iccr.gov.in/sites/default/files/2026-07/award.png"; /* REPLACE per item */
+
+  var CDX_TABS = [
+    {
+      label: "Incoming Cultural Delegations",
+      viewAll: "#",
+      items: [
+        { thumb: CDX_PLACEHOLDER, date: "2025-26",
+          title: "Cultural troupe from Sri Lanka performed at Azad Bhavan under the Cultural Exchange Programme", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2025-26",
+          title: "Folk dance ensemble from Kazakhstan toured New Delhi, Jaipur and Agra", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2024-25",
+          title: "Traditional music group from Vietnam performed during the India International Folk Festival", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2024-25",
+          title: "Ballet company from Russia presented performances in Mumbai and Bengaluru", link: "#" }
+      ]
+    },
+    {
+      label: "Outgoing Cultural Delegations",
+      viewAll: "#",
+      items: [
+        { thumb: CDX_PLACEHOLDER, date: "2025-26",
+          title: "Kathak ensemble toured Indonesia, Australia and New Zealand under the Cultural Exchange Programme", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2025-26",
+          title: "Folk artists from Rajasthan performed at the Festival of India in Paris", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2024-25",
+          title: "Carnatic music group presented concerts across the Gulf region", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2024-25",
+          title: "Contemporary dance troupe showcased Indian choreography in Japan and South Korea", link: "#" }
+      ]
+    },
+    {
+      label: "Visitors Programme",
+      viewAll: "#",
+      items: [
+        { thumb: CDX_PLACEHOLDER, date: "Distinguished Visitors Programme",
+          title: "Eminent personalities from abroad hosted for lectures, round-tables and cultural visits", link: "/cultural/foreign-visitors-programme/list-of-dvp" },
+        { thumb: CDX_PLACEHOLDER, date: "Academic Visitors Programme",
+          title: "Vice Chancellors, professors and think-tank leaders invited to interact with Indian institutions", link: "/cultural/foreign-visitors-programme/list-of-avp" },
+        { thumb: CDX_PLACEHOLDER, date: "Gen-Next Democracy Network",
+          title: "Young emerging leaders of 75 democracies visit India under Azadi Ka Amrit Mahotsav", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "2025-26",
+          title: "Delegation of cultural administrators from ASEAN nations visited ICCR Regional Offices", link: "#" }
+      ]
+    },
+    {
+      label: "Exhibitions",
+      viewAll: "#",
+      items: [
+        { thumb: CDX_PLACEHOLDER, date: "25 June, 2026",
+          title: "\"Mythologies of India: Born from the Brush\" — traditional masks, sculptures and miniature paintings at Gaya Theme Park, South Korea", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "12 May, 2026",
+          title: "Travelling exhibition on Maharishi Sushruta, the Father of Surgery, opens in Edinburgh", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "03 March, 2026",
+          title: "Photo exhibition on 75 years of India's cultural diplomacy at Azad Bhavan", link: "#" },
+        { thumb: CDX_PLACEHOLDER, date: "18 January, 2026",
+          title: "Contemporary Indian art exhibition inaugurated at the Indian Cultural Centre, Cairo", link: "#" }
+      ]
+    }
+  ];
+
+  var tabsBox = document.getElementById("cdx-tabs");
+  var grid = document.getElementById("cdx-grid");
+  var va = document.getElementById("cdx-viewall");
+  var vaBottom = document.getElementById("cdx-bottom-viewall");
+  var tabBtns = [];
+
+  CDX_TABS.forEach(function (t, i) {
+    if (i > 0) {
+      var sep = document.createElement("span");
+      sep.className = "cdx-sep";
+      tabsBox.appendChild(sep);
+    }
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "cdx-tab" + (i === 0 ? " active" : "");
+    b.textContent = t.label;
+    b.addEventListener("click", function () { select(i); });
+    tabsBox.appendChild(b);
+    tabBtns.push(b);
+  });
+
+  function itemHTML(it) {
+    return '<a class="cdx-item" href="' + it.link + '">' +
+      '<img src="' + it.thumb + '" alt="" loading="lazy" decoding="async">' +
+      '<span class="cdx-item-body">' +
+      '<span class="mea-date">' + it.date + '</span>' +
+      '<p>' + it.title + '</p>' +
+      '</span></a>';
+  }
+
+  function select(i) {
+    tabBtns.forEach(function (b, k) { b.classList.toggle("active", k === i); });
+    var t = CDX_TABS[i];
+    grid.innerHTML = t.items.map(itemHTML).join("");
+    va.href = t.viewAll;
+    vaBottom.href = t.viewAll;
+  }
+
+  select(0);
+})();
+</script>
+
+
+
+<!-- ================================================================
+  ██ BLOCK 7 — CENTERS MAP + FOLLOW ICCR (ihx-) ██
+  Map slideshow + FB/IG/YT social wall. Behaviour unchanged;
+  [hidden] guard scoped so it can't leak into other blocks.
+================================================================= -->
+<style>
+.ihx-section {
+  --ihx-sky: #0EA5E9;
+  --ihx-sky-light: #38BDF8;
+  --ihx-sky-pale: #E8F5FC;
+  --ihx-sky-mist: #F3FAFE;
+  --ihx-ink: #0F2A3D;
+  --ihx-muted: #5A7A8C;
+  --ihx-radius: 20px;
+  --ihx-shadow: 0 10px 36px rgba(14, 116, 168, 0.12);
+  --ihx-shadow-hover: 0 16px 44px rgba(14, 116, 168, 0.18);
+  --ihx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ihx-block-h: 628px;
+
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  align-items: stretch;
+  padding: 0;
+  margin: 40px auto;
+  max-width: 1500px;
+  box-sizing: border-box;
+  font-family: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background:
+    radial-gradient(900px 420px at 8% 0%, rgba(56, 189, 248, 0.10), transparent 60%),
+    radial-gradient(900px 420px at 92% 100%, rgba(14, 165, 233, 0.08), transparent 60%);
+}
+
+.ihx-section *,
+.ihx-section *::before,
+.ihx-section *::after { box-sizing: border-box; }
+
+/* scoped — previously this was a global [hidden] rule */
+.ihx-section [hidden] { display: none !important; }
+
+.ihx-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  border-radius: var(--ihx-radius);
+  box-shadow: var(--ihx-shadow);
+  height: var(--ihx-block-h);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.4s var(--ihx-ease), transform 0.4s var(--ihx-ease);
+}
+
+.ihx-card:hover {
+  box-shadow: var(--ihx-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.ihx-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--ihx-sky-light), var(--ihx-sky), #87CEEB);
+  z-index: 3;
+}
+
+.ihx-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ihx-sky);
+  margin: 0 0 8px;
+}
+
+.ihx-eyebrow::before {
+  content: "";
+  width: 24px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ihx-sky-light), var(--ihx-sky));
+}
+
+.ihx-map-card {
+  width: 45%;
+  padding: 26px 26px 22px;
+}
+
+#ihx-heading {
+  font-size: clamp(20px, 1.8vw, 26px);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--ihx-ink) !important;
+  margin: 0 0 16px;
+}
+
+.ihx-slideshow {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ihx-sky-mist), #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.14);
+}
+
+.ihx-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s var(--ihx-ease);
+  pointer-events: none;
+}
+
+.ihx-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ihx-slide a { display: block; width: 100%; height: 100%; }
+
+.ihx-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 10px;
+}
+
+.ihx-map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 18px;
+}
+
+.ihx-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ihx-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(14, 165, 233, 0.25);
+  transition: all 0.35s var(--ihx-ease);
+}
+
+.ihx-dot.active {
+  width: 26px;
+  background: linear-gradient(90deg, var(--ihx-sky-light), var(--ihx-sky));
+}
+
+.ihx-explore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: linear-gradient(135deg, var(--ihx-sky-light), var(--ihx-sky));
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+  transition: transform 0.3s var(--ihx-ease), box-shadow 0.3s var(--ihx-ease);
+}
+
+.ihx-explore-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(14, 165, 233, 0.45);
+}
+
+.ihx-explore-btn .ihx-arrow {
+  display: inline-block;
+  transition: transform 0.3s var(--ihx-ease);
+}
+
+.ihx-explore-btn:hover .ihx-arrow { transform: translateX(4px); }
+
+.ihx-social-card {
+  width: 55%;
+  padding: 26px 26px 20px;
+}
+
+.ihx-social-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.ihx-social-title {
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 700;
+  color: var(--ihx-ink) !important;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ihx-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--ihx-sky-pale);
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  border-radius: 16px;
+  padding: 6px;
+  margin-bottom: 16px;
+}
+
+.ihx-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  padding: 10px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ihx-muted);
+  transition: all 0.3s var(--ihx-ease);
+}
+
+.ihx-tab img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+  filter: grayscale(1) opacity(0.65);
+  transition: filter 0.3s var(--ihx-ease);
+}
+
+.ihx-tab:hover {
+  color: var(--ihx-sky);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.ihx-tab:hover img { filter: none; }
+
+.ihx-tab.active {
+  background: linear-gradient(135deg, var(--ihx-sky-light), var(--ihx-sky));
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.38);
+}
+
+.ihx-tab.active img {
+  filter: brightness(0) invert(1);
+}
+
+.ihx-panels {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.ihx-panel {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  border-radius: 14px;
+  background: var(--ihx-sky-mist);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.10);
+  padding: 14px;
+  animation: ihxFadeIn 0.4s var(--ihx-ease);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 165, 233, 0.4) transparent;
+}
+
+.ihx-panel::-webkit-scrollbar { width: 6px; }
+.ihx-panel::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.35);
+  border-radius: 999px;
+}
+
+@keyframes ihxFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ihx-yt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  align-content: start;
+}
+
+.ihx-yt-grid iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 12px;
+  display: block;
+  background: #000;
+  box-shadow: 0 4px 14px rgba(14, 116, 168, 0.14);
+}
+
+.ihx-panel .instagram-media {
+  margin: 0 auto !important;
+  border-radius: 12px !important;
+}
+.ihx-panel .fb-page,
+.ihx-panel .fb-page iframe {
+  width: 100% !important;
+  align-self: stretch;
+}
+
+#ihx-panel-fb {
+  align-items: stretch;
+}
+
+#ihx-x-embed {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+#ihx-x-embed iframe {
+  max-width: 100% !important;
+}
+
+/* ---------- Block 7 mobile ---------- */
+@media screen and (max-width: 900px) {
+  .ihx-section {
+    flex-direction: column;
+    padding: 20px 14px;
+    gap: 18px;
+  }
+
+  .ihx-map-card,
+  .ihx-social-card {
+    width: 100%;
+  }
+
+  .ihx-map-card {
+    height: auto;
+    padding: 20px;
+  }
+
+  .ihx-slideshow {
+    flex: none;
+    height: 240px;
+  }
+
+  .ihx-social-card {
+    height: 600px;
+    padding: 20px 16px 16px;
+  }
+
+  .ihx-map-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .ihx-dots { justify-content: center; }
+
+  .ihx-explore-btn { justify-content: center; }
+
+  .ihx-tab span { display: none; }
+  .ihx-tab img { width: 20px; height: 20px; }
+  .ihx-tab { padding: 11px 6px; }
+
+  .ihx-yt-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<section class="ihx-section">
+
+  <!-- ============ LEFT: Centers Abroad ============ -->
+  <div class="ihx-card ihx-map-card">
+    <span class="ihx-eyebrow">ICCR Global Network</span>
+    <h2 id="ihx-heading">Indian Cultural Centers Abroad</h2>
+
+    <div class="ihx-slideshow" id="ihx-slideshow">
+      <div class="ihx-slide active">
+        <a href="/indian-cultural-center-abroad">
+          <img src="https://iccr.gov.in/profiles/custom/iccr/themes/custom/iccr_theme/images/map-new3.jpg" alt="Indian Cultural Centers Abroad">
+        </a>
+      </div>
+      <div class="ihx-slide">
+        <a href="/zonal-and-sub-zonal-info">
+          <img src="https://iccr.gov.in/profiles/custom/iccr/themes/custom/iccr_theme/images/zonal.jpg" alt="Zonal and Sub-zonal Centers">
+        </a>
+      </div>
+    </div>
+
+    <div class="ihx-map-footer">
+      <div class="ihx-dots" id="ihx-dots">
+        <button class="ihx-dot active" aria-label="Slide 1"></button>
+        <button class="ihx-dot" aria-label="Slide 2"></button>
+      </div>
+      <button class="ihx-explore-btn" onclick="ihxExploreCenters()">
+        Explore Centers <span class="ihx-arrow">&#8594;</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: Tabbed Social Wall ============ -->
+  <div class="ihx-card ihx-social-card">
+    <div class="ihx-social-head">
+      <div>
+        <span class="ihx-eyebrow">Stay Connected</span>
+        <h2 class="ihx-social-title">Follow ICCR</h2>
+      </div>
+    </div>
+
+    <div class="ihx-tabs" id="ihx-tabs" role="tablist">
+      <button class="ihx-tab active" data-panel="ihx-panel-fb" role="tab">
+        <img src="https://iccr.gov.in/sites/default/files/2024-02/facebook.png" alt=""><span>Facebook</span>
+      </button>
+      <button class="ihx-tab" data-panel="ihx-panel-ig" role="tab">
+        <img src="https://iccr.gov.in/sites/default/files/2024-02/instagram.png" alt=""><span>Instagram</span>
+      </button>
+      <button class="ihx-tab" data-panel="ihx-panel-yt" role="tab">
+        <img src="https://iccr.gov.in/sites/default/files/2024-05/youtub.png" alt=""><span>YouTube</span>
+      </button>
+    </div>
+
+    <div class="ihx-panels">
+
+      <!-- Facebook (default active) -->
+<div class="ihx-panel" id="ihx-panel-fb" role="tabpanel">
+  <div id="fb-root"></div>
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_GB/sdk.js#xfbml=1&version=v19.0" nonce="P5LkI3Ac"></script>
+  <div class="fb-page" data-href="https://www.facebook.com/ICCROfficial" data-tabs="timeline" data-width="1000" data-height="440" data-small-header="false" data-adapt-container-width="true" data-hide-cover="true" data-show-facepile="true" style="width:100%;">
+    <blockquote cite="https://www.facebook.com/ICCROfficial" class="fb-xfbml-parse-ignore">
+      <a href="https://www.facebook.com/ICCROfficial">Indian Council For Cultural Relations</a>
+    </blockquote>
+  </div>
+</div>
+
+      <!-- Instagram -->
+      <div class="ihx-panel" id="ihx-panel-ig" role="tabpanel" hidden>
+        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/iccr_delhi/" data-instgrm-version="12" style="background:#FFF; border:0; box-shadow:none; margin:0 auto; max-width:540px; min-width:280px; padding:0; width:99%;">
+          <div style="padding:16px;">
+            <a href="https://www.instagram.com/iccr_delhi" style="background:#FFFFFF; line-height:0; padding:0; text-align:center; text-decoration:none; width:100%;" target="_blank" rel="noopener">
+              <div style="display:flex; flex-direction:row; align-items:center;">
+                <div style="background-color:#F4F4F4; border-radius:50%; flex-grow:0; height:40px; margin-right:14px; width:40px;"></div>
+                <div style="display:flex; flex-direction:column; flex-grow:1; justify-content:center;">
+                  <div style="background-color:#F4F4F4; border-radius:4px; height:14px; margin-bottom:6px; width:100px;"></div>
+                  <div style="background-color:#F4F4F4; border-radius:4px; height:14px; width:60px;"></div>
+                </div>
+              </div>
+              <div style="padding:19% 0;"></div>
+              <div style="padding-top:8px;">
+                <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-weight:550; line-height:18px;">View this profile on Instagram</div>
+              </div>
+              <div style="padding:12.5% 0;"></div>
+            </a>
+            <p style="color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin:8px 0 0; text-align:center;">
+              <a href="https://www.instagram.com/iccr_delhi" style="color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; text-decoration:none;" target="_blank" rel="noopener">@iccr_delhi</a>
+            </p>
+          </div>
+        </blockquote>
+        <script async src="https://www.instagram.com/embed.js"></script>
+      </div>
+
+      <!-- YouTube -->
+      <div class="ihx-panel" id="ihx-panel-yt" role="tabpanel" hidden>
+        <div class="ihx-yt-grid">
+          <iframe loading="lazy" src="https://www.youtube.com/embed/G_XOuWQKh5s" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          <iframe loading="lazy" src="https://www.youtube.com/embed/mFtFRPEH5Ao" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          <iframe loading="lazy" src="https://www.youtube.com/embed/ha3dS4vLiNc" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          <iframe loading="lazy" src="https://www.youtube.com/embed/2b-LTR2hZuY" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  /* ---------- Map slideshow ---------- */
+  const ihxSlides = document.querySelectorAll("#ihx-slideshow .ihx-slide");
+  const ihxDots = document.querySelectorAll("#ihx-dots .ihx-dot");
+  const ihxHeading = document.getElementById("ihx-heading");
+  const ihxShow = document.getElementById("ihx-slideshow");
+
+  const ihxData = [
+    { title: "Indian Cultural Centers Abroad", link: "/indian-cultural-center-abroad" },
+    { title: "Zonal and Sub-zonal Centers", link: "/zonal-and-sub-zonal-info" }
+  ];
+
+  let ihxIndex = 0;
+  let ihxTimer = null;
+
+  function ihxGoTo(i) {
+    ihxIndex = (i + ihxSlides.length) % ihxSlides.length;
+    ihxSlides.forEach(function (s, n) { s.classList.toggle("active", n === ihxIndex); });
+    ihxDots.forEach(function (d, n) { d.classList.toggle("active", n === ihxIndex); });
+    if (ihxHeading) ihxHeading.textContent = ihxData[ihxIndex].title;
+  }
+
+  function ihxStart() {
+    if (ihxTimer) return;
+    ihxTimer = setInterval(function () { ihxGoTo(ihxIndex + 1); }, 4000);
+  }
+
+  function ihxStop() {
+    clearInterval(ihxTimer);
+    ihxTimer = null;
+  }
+
+  ihxDots.forEach(function (dot, n) {
+    dot.addEventListener("click", function () {
+      ihxGoTo(n);
+      ihxStop();
+      ihxStart();
+    });
+  });
+
+  if (ihxShow) {
+    ihxShow.addEventListener("mouseenter", ihxStop);
+    ihxShow.addEventListener("mouseleave", ihxStart);
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) ihxStop(); else ihxStart();
+  });
+
+  window.ihxExploreCenters = function () {
+    window.location.href = ihxData[ihxIndex].link;
+  };
+
+  ihxGoTo(0);
+  ihxStart();
+
+  /* ---------- Social tabs ---------- */
+  const ihxTabs = document.querySelectorAll("#ihx-tabs .ihx-tab");
+  const ihxPanels = document.querySelectorAll(".ihx-panels .ihx-panel");
+  const ihxInited = {};
+
+  function ihxInitPanel(panel) {
+    const id = panel.id;
+    if (ihxInited[id]) return;
+    ihxInited[id] = true;
+
+    try {
+      if (id === "ihx-panel-fb" && window.FB && window.FB.XFBML) {
+        window.FB.XFBML.parse(panel);
+      }
+      if (id === "ihx-panel-ig" && window.instgrm && window.instgrm.Embeds) {
+        window.instgrm.Embeds.process();
+      }
+    } catch (e) { /* embed SDK not ready yet — it will render on its own */ }
+  }
+
+  ihxTabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      const target = tab.getAttribute("data-panel");
+
+      ihxTabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
+      ihxPanels.forEach(function (p) {
+        const isActive = p.id === target;
+        p.hidden = !isActive;
+        if (isActive) ihxInitPanel(p);
+      });
+
+      window.dispatchEvent(new Event("resize"));
+    });
+  });
+
+  const ihxDefaultPanel = document.querySelector(".ihx-panels .ihx-panel:not([hidden])");
+  if (ihxDefaultPanel) ihxInitPanel(ihxDefaultPanel);
+})();
+</script>
+
+
+<!-- ================================================================
+  ██ BLOCK 8 — TESTIMONIALS CAROUSEL ██
+  Flickr video thumbnails, 3-up desktop / 1-up mobile.
+================================================================= -->
+<div class="flickr-carousel9">
+    <div style="text-align: center; margin-bottom: 15px;">
+      <h1 style="font-family: 'Noto Serif', Georgia, serif; font-weight: 600; font-size: 2em; color: #202124; margin: 0; display: inline-block; position: relative;">
+        Testimonials
+        <span style="position: absolute; left: 50%; transform: translateX(-50%); bottom: -6px; width: 170px; height: 3px; background-color: #1A73E8; border-radius: 2px;"></span>
+      </h1>
+    </div>
+    <div class="carousel9-container" id="carousel9">
+      <button id="prev9" class="carousel9-button">❮</button>
+      <div class="carousel9-track9" id="track9"></div>
+      <button id="next9" class="carousel9-button">❯</button>
+    </div>
+   <div>
+      <div class="view-all-container7">
+        <a href="https://www.flickr.com/photos/202418583@N08/albums/72177720326549275/" class="view-all7" id="viewAllBtn">View All</a>
+      </div>
+   </div>
+</div>
+<style>
+.view-all-container7 {
+    text-align: center;
+    margin-top: 0px;
+    margin-right: 30px;
+}
+.view-all7 {
+    display: inline-block;
+    padding: 12px 20px !important;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    text-decoration: none !important;
+    border-radius: 6px;
+    background: linear-gradient(to right, #1E3C8C, #6A91F2);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease !important;
+    text-align: center;
+    margin-top: 10px !important;
+}
+.view-all7:hover {
+    background: linear-gradient(to right, #1A326E, #5F82D4) !important;
+}
+.flickr-carousel9 * {
+    box-sizing: border-box; margin: 0; padding: 0;
+}
+.flickr-carousel9 {
+    font-family: 'Roboto', Arial, sans-serif; padding: 20px;
+}
+.flickr-carousel9 .carousel9-container {
+    position: relative; width: 100%; overflow: hidden;
+}
+.flickr-carousel9 .carousel9-track9 {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+    will-change: transform;
+}
+.flickr-carousel9 .carousel9-item {
+    flex: 0 0 33.333%;
+    padding: 0 10px;
+    position: relative;
+}
+.flickr-carousel9 .carousel9-item img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+}
+.flickr-carousel9 .play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    pointer-events: none;
+}
+.flickr-carousel9 .play-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: white;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    padding: 10px;
+}
+.flickr-carousel9 .carousel9-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 60%;
+    z-index: 1;
+    width: 40px;
+    height: 40px;
+}
+.flickr-carousel9 #prev9 { left: 0px; }
+.flickr-carousel9 #next9 { right: 0px; }
+
+@media (max-width: 767px) {
+    .flickr-carousel9 { padding: 14px 8px; }
+    .flickr-carousel9 .carousel9-item {
+    flex: 0 0 100% !important;
+    padding: 0 34px;
+    }
+}
+</style>
+<script>
+    const items9 = [
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562511760/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/1.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562364309/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/2.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562182566/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/3.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562182826/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/4.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562182066/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/5.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562180336/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/6.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562181576/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/7.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562179561/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/8.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54561302077/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/9.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562417143/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/10.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54561298627/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/11.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562414893/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/12.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562175631/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/13.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562413323/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/14.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562414143/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/15.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562415863/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/16.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562501145/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/17.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562412373/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/18.jpg' },
+      { url: 'https://www.flickr.com/photos/202418583@N08/54562411603/in/photostream/lightbox/', thumb: 'https://iccr.gov.in/sites/default/files/2025-06/19.jpg' }
+    ];
+
+    const extended9 = items9.concat(items9.slice(0, 2));
+    const track9 = document.getElementById('track9');
+    let currentIndex9 = 0;
+
+    function getItems9PerSlide() {
+      return window.innerWidth < 768 ? 1 : 3;
+    }
+
+    let items9PerSlide = getItems9PerSlide();
+    let totalSlides9 = Math.ceil(extended9.length / items9PerSlide);
+
+    extended9.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'carousel9-item';
+      div.innerHTML = `
+        <a href="${item.url}" target="_blank">
+          <img src="${item.thumb}" alt="Flickr Thumbnail" loading="lazy" decoding="async">
+          <div class="play-icon">
+            <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="24,16 24,48 48,32"/>
+            </svg>
+          </div>
+        </a>`;
+      track9.appendChild(div);
+    });
+
+  function update9() {
+    const firstItem = track9.querySelector('.carousel9-item');
+    const itemWidth = firstItem ? firstItem.getBoundingClientRect().width : 0;
+    const pageWidth = itemWidth * items9PerSlide;
+    const shiftPx = currentIndex9 * pageWidth;
+    track9.style.transform = `translateX(-${shiftPx}px)`;
+  }
+
+    function goNext9() {
+      currentIndex9 = (currentIndex9 + 1) % totalSlides9;
+      update9();
+    }
+
+    function goPrev9() {
+      currentIndex9 = (currentIndex9 - 1 + totalSlides9) % totalSlides9;
+      update9();
+    }
+
+    document.getElementById('next9').addEventListener('click', goNext9);
+    document.getElementById('prev9').addEventListener('click', goPrev9);
+    setInterval(goNext9, 3000);
+
+  window.addEventListener('resize', () => {
+    const newCount = getItems9PerSlide();
+    if (newCount !== items9PerSlide) {
+      items9PerSlide = newCount;
+      totalSlides9 = Math.ceil(extended9.length / items9PerSlide);
+      currentIndex9 = 0;
+      update9();
+    }
+  });
+
+    update9();
+</script>
+
+
+<!-- ================================================================
+  ██ BLOCK 9 — IMAGE & VIDEO GALLERY ██
+  Two white cards side by side, stacked on mobile.
+================================================================= -->
+<div class="container5">
+    <div class="galleries2">
+
+      <!-- IMAGE GALLERY -->
+      <div class="gallery-box2">
+        <div class="gallery-header2">
+          <h2 class="galleryhead">Image Gallery</h2>
+          <a style="margin-right: 10px; color: darkblue !important; text-decoration: none;" href="/digital-photo-gallery">View All &raquo;</a>
+        </div>
+        <div class="gallery-content2">
+
+
+<!-- Card5 1 -->
+<div class="card5">
+  <div class="card5-media">
+    <a style="text-decoration: none;" href="https://flic.kr/s/aHBqjCHafq" target="_blank">
+      <img
+        src="https://live.staticflickr.com/65535/55051691769_c9a5de9b10_c.jpg"
+        alt="11th India International Dance & Music Festival" loading="lazy" decoding="async" />
+  </div>
+  <div class="card5-content">
+    <p class="gallerynew">16 January | 11th India International Dance & Music Festival commenced with the ceremonial...</p>
+  </div>
+  </a>
+</div>
+
+
+<!-- Card5 2 -->
+<div class="card5">
+  <div class="card5-media">
+    <a style="text-decoration: none;" href="https://flic.kr/s/aHBqjCHahK" target="_blank">
+      <img
+        src="https://live.staticflickr.com/65535/55051703234_f9490c9ed8_z.jpg"
+        alt="11th India International Dance & Music Festival Day 2" loading="lazy" decoding="async" />
+  </div>
+  <div class="card5-content">
+    <p class="gallerynew">Day 2 | 11th India International Dance & Music Festival. The second day of the festival...</p>
+  </div>
+  </a>
+</div>
+
+
+</div>
+</div>
+
+      <!-- VIDEO GALLERY -->
+      <div class="gallery-box2">
+        <div class="gallery-header2">
+          <h2 class="galleryhead">Video Gallery</h2>
+          <a style="margin-right: 10px; color: darkblue !important; text-decoration: none;" href="https://iccr.gov.in/media/video-gallery">View All &raquo;</a>
+        </div>
+        <div class="gallery-content2">
+
+
+<!-- Card5 1 (Iframe Video) -->
+<div class="card5">
+  <div class="card5-media" style="position: relative;">
+    <iframe
+      width="100%"
+      height="315"
+      src="https://www.youtube.com/embed/0QtzP7_dO6Y"
+      title="11th India International Dance & Music Festival | Live from Baansera Park | 16 Jan 2026"
+      loading="lazy"
+      frameborder="0"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+      style="border-radius: 8px;">
+    </iframe>
+  </div>
+  <div class="card5-content">
+    <p class="gallerynew">
+      11th India International Dance & Music Festival | Live from Baansera Park | 16 Jan 2026
+    </p>
+  </div>
+</div>
+
+
+<!-- Card5 2 (Iframe Video) -->
+<div class="card5">
+  <div class="card5-media" style="position: relative;">
+    <iframe
+      width="100%"
+      height="315"
+      src="https://www.youtube.com/embed/u_FkrLV5wXY"
+      title="A Japanese Scholar of Hindi: In Conversation with Padma Shri Tomio Mizokami"
+      loading="lazy"
+      frameborder="0"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+      style="border-radius: 8px;">
+    </iframe>
+  </div>
+  <div class="card5-content">
+    <p class="gallerynew">
+      A Japanese Scholar of Hindi: In Conversation with Padma Shri Tomio Mizokami
+    </p>
+  </div>
+</div>
+
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <style>
+    .container5 {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 0 50px;
+      font-family: 'Roboto', Arial, Helvetica, sans-serif;
+      margin-left: 10px
+    }
+
+    .galleries2 {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 992px) {
+      .galleries2 {
+        flex-direction: column;
+        gap: 1.2rem;
+      }
+      .container5 {
+        padding: 0 10px;
+        margin-left: 0;
+      }
+    }
+    .gallery-box2 {
+      flex: 1;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0px -4px 6px rgba(0, 0, 0, 0.15),
+            0px 4px 6px rgba(0, 0, 0, 0.1),
+            4px 0px 6px rgba(0, 0, 0, 0.1),
+           -4px 0px 6px rgba(0, 0, 0, 0.1);
+      padding: 0rem;
+    }
+
+    .gallery-header2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+    }
+    .gallery-header2 h2 {
+      font-size: 1.5rem;
+      color: #2c3e50;
+      padding: 15px 0 0 15px;
+    }
+    .gallery-header2 a {
+      font-size: 0.95rem;
+      text-decoration: none;
+      color: #007bff;
+      transition: color 0.3s;
+      padding: 15px 0 0 15px;
+    }
+    .gallery-header2 a:hover {
+      color: #0056b3;
+    }
+
+    .gallery-content2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      padding: 0 10px 10px;
+    }
+    @media (max-width: 576px) {
+      .gallery-content2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card5 {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+      background-color: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card5-media {
+      width: 100%;
+      height: 235px;
+      position: relative;
+      background-color: #ccc;
+    }
+    .card5-media img {
+      width: 100%;
+      height: 235px;
+      object-fit: cover;
+      display: block;
+    }
+    .card5-media iframe {
+      width: 100%;
+      height: 235px;
+      display: block;
+      border: none;
+    }
+
+    .card5-content {
+      padding: 0.75rem 1rem;
+      min-height: 70px;
+    }
+    .card5-content p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+  </style>
+
+
+<!-- ================================================================
+  ██ BLOCK 10 — GOVERNMENT LINKS LOGO CAROUSEL ██
+  Infinite auto-scrolling strip: 5 logos desktop / 1 mobile.
+================================================================= -->
+    <style>
+      .carouselbody4 {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        border: 1px solid transparent;
+      }
+
+      .carousel-container4 {
+        width: 100%;
+        max-width: 1580px;
+        margin: 50px auto;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .carousel-button4.prev {
+        left: 10px;
+        font-size: 30px;
+      }
+
+      .carousel-button4.next {
+        right: 10px;
+        font-size: 30px;
+      }
+
+      .carousel-track4 {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+      }
+
+      .carousel-item4 {
+        min-width: 20%;
+        flex-shrink: 0;
+        text-align: center;
+      }
+
+      .carousel-item4 img {
+        max-width: 100%;
+        max-height: 150px;
+        object-fit: contain;
+      }
+
+      .carousel-button4 {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 10;
+      }
+
+      @media (max-width: 768px) {
+        .carousel-container4 { margin: 28px auto; }
+        .carousel-item4 {
+          min-width: 100%;
+        }
+        .carousel-item4 img { max-height: 110px; }
+      }
+    </style>
+
+    <div class="carouselbody4">
+      <div class="carousel-container4">
+        <button class="carousel-button4 prev" id="prevBtn4">&#8249;</button>
+        <div class="carousel-track4" id="carouselTrack4">
+          <!-- Images -->
+          <div class="carousel-item4"><a href="https://ncaa.gov.in/repository/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/ncaa_0.png" alt="Logo 3" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.digitalindiaportal.co.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/digital-india_0.png" alt="Logo 4" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.mygov.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/mygov.png" alt="Logo 5" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.india.gov.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/india-gov.png" alt="Logo 6" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.data.gov.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/data-gov.png" alt="Logo 7" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.incredibleindia.gov.in/en"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/incredible-india_0.png" alt="Logo 8" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://pmnrf.gov.in/en/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/pmnrf_1.png" alt="Logo 9" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://igod.gov.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/goi-web-directory.png" alt="Logo 10" loading="lazy" decoding="async"></a></div>
+          <div class="carousel-item4"><a href="https://www.mea.gov.in/"><img src="https://iccr.gov.in/sites/default/files/styles/footer_/public/2021-02/mea.png" alt="Logo 11" loading="lazy" decoding="async"></a></div>
+        </div>
+        <button class="carousel-button4 next" id="nextBtn4">&#8250;</button>
+      </div>
+    </div>
+
+    <script>
+      const carouselTrack4 = document.getElementById('carouselTrack4');
+      const items = Array.from(document.querySelectorAll('.carousel-item4'));
+      const prevBtn4 = document.getElementById('prevBtn4');
+      const nextBtn4 = document.getElementById('nextBtn4');
+      const totalItems = items.length;
+
+      let cloneCount = 0;
+      let currentPosition = 0;
+      let itemWidth = 0;
+      let autoScroll;
+      let isTransitioning = false;
+
+      function cloneItems(itemsVisible) {
+        const clones = carouselTrack4.querySelectorAll('.clone');
+        clones.forEach(clone => clone.remove());
+
+        const firstClones = items.slice(0, itemsVisible).map(item => {
+          const clone = item.cloneNode(true);
+          clone.classList.add('clone');
+          return clone;
+        });
+
+        const lastClones = items.slice(-itemsVisible).map(item => {
+          const clone = item.cloneNode(true);
+          clone.classList.add('clone');
+          return clone;
+        });
+
+        firstClones.forEach(clone => carouselTrack4.appendChild(clone));
+        lastClones.reverse().forEach(clone => carouselTrack4.insertBefore(clone, carouselTrack4.firstChild));
+
+        cloneCount = itemsVisible;
+      }
+
+      function setDynamicWidths() {
+        const itemsVisible = window.innerWidth <= 768 ? 1 : 5;
+
+        cloneItems(itemsVisible);
+
+        itemWidth = 100 / itemsVisible;
+
+        const allItems = carouselTrack4.querySelectorAll('.carousel-item4');
+        allItems.forEach(item => {
+          item.style.minWidth = `${itemWidth}%`;
+        });
+
+        carouselTrack4.style.transition = 'none';
+        currentPosition = cloneCount;
+        carouselTrack4.style.transform = `translateX(-${currentPosition * itemWidth}%)`;
+
+        requestAnimationFrame(() => {
+          carouselTrack4.style.transition = 'transform 0.5s ease-in-out';
+        });
+      }
+
+      function updateTrackPosition() {
+        if (isTransitioning) return;
+        isTransitioning = true;
+        carouselTrack4.style.transform = `translateX(-${currentPosition * itemWidth}%)`;
+      }
+
+      function handleInfiniteScroll() {
+        const allItems = carouselTrack4.querySelectorAll('.carousel-item4');
+        if (currentPosition >= allItems.length - cloneCount) {
+          carouselTrack4.style.transition = 'none';
+          currentPosition = cloneCount;
+          carouselTrack4.style.transform = `translateX(-${currentPosition * itemWidth}%)`;
+          carouselTrack4.offsetHeight;
+          carouselTrack4.style.transition = 'transform 0.5s ease-in-out';
+        }
+
+        if (currentPosition < cloneCount) {
+          carouselTrack4.style.transition = 'none';
+          currentPosition = allItems.length - cloneCount * 2;
+          carouselTrack4.style.transform = `translateX(-${currentPosition * itemWidth}%)`;
+          carouselTrack4.offsetHeight;
+          carouselTrack4.style.transition = 'transform 0.5s ease-in-out';
+        }
+        isTransitioning = false;
+      }
+
+      function startAutoScroll() {
+        autoScroll = setInterval(() => {
+          moveToNext();
+        }, 3000);
+      }
+
+      function stopAutoScroll() {
+        clearInterval(autoScroll);
+      }
+
+      function moveToNext() {
+        if (isTransitioning) return;
+        currentPosition++;
+        updateTrackPosition();
+      }
+
+      function moveToPrev() {
+        if (isTransitioning) return;
+        currentPosition--;
+        updateTrackPosition();
+      }
+
+      nextBtn4.addEventListener('click', () => {
+        stopAutoScroll();
+        moveToNext();
+        startAutoScroll();
+      });
+
+      prevBtn4.addEventListener('click', () => {
+        stopAutoScroll();
+        moveToPrev();
+        startAutoScroll();
+      });
+
+      carouselTrack4.addEventListener('transitionend', handleInfiniteScroll);
+
+      carouselTrack4.addEventListener('mouseenter', stopAutoScroll);
+      carouselTrack4.addEventListener('mouseleave', startAutoScroll);
+
+      window.addEventListener('resize', () => {
+        clearTimeout(window.resizeTimeout);
+        window.resizeTimeout = setTimeout(() => {
+          setDynamicWidths();
+        }, 250);
+      });
+
+      function initCarousel() {
+        setDynamicWidths();
+        startAutoScroll();
+      }
+
+      initCarousel();
+    </script>

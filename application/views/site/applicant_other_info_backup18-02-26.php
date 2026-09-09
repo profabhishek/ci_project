@@ -806,7 +806,7 @@
                      }
                      
                      ?>
-                  <!------<a href="<?php echo site_url();?>applicant/applicant_education_info?appno=<?php //echo $_GET['appno']; ?>" class="form-control sbmt">
+                  <!------<a href="<?php echo site_url();?>applicant/applicant_education_info?appno=<?php //echo html_escape($_GET['appno']); ?>" class="form-control sbmt">
                      <span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>------>
                   <button type="submit" class="form-control sbmt">Next &nbsp;&nbsp;<span class="glyphicon glyphicon-forward"></span></button>
                </div>

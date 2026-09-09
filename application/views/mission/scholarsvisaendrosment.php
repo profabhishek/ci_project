@@ -58,6 +58,7 @@ input,select,label{font-size:14px !important;}
 					      	
 					      	<?php 
 					      	$course =$applicaitonStepOne[0]['programme'];
+					      	$counter = isset($counter) ? $counter : 0;
 					      	if($counter == 3 || $counter == 4)
 					      	{
 							?>

@@ -167,11 +167,12 @@ marquee{
 		
 		</span>	
 	
-<!--<script src='https://maps.googleapis.com/maps/api/js?v=3.exp'></script>--><!--<div style='overflow:hidden;height:200px;width:100%;border:2px solid #f18f2e;padding: 5px;'><div id='gmap_canvas' style='height:200px;width:100%;'></div><div><small><a href=""></a></small></div><style>#gmap_canvas img{max-width:none!important;background:none!important}</style></div>-->
+<!-- Google Map script removed: the map div and the Maps API <script> tag
+     it depends on were both already commented out, and nothing ever called
+     init_map(), so this was 100% dead code -- it only ran on every page
+     load to throw undefined-variable warnings for $latitude/$longitude/
+     $misionData, none of which this controller action populates. -->
 
-<script type='text/javascript'>function init_map(){var myOptions = {zoom:7,center:new google.maps.LatLng('<?php echo $latitude;?>','<?php echo $longitude;?>'),mapTypeId: google.maps.MapTypeId.ROADMAP};map = new google.maps.Map(document.getElementById('gmap_canvas'), myOptions);marker = new google.maps.Marker({map: map,position: new google.maps.LatLng('<?php echo $latitude;?>','<?php echo $longitude;?>')});infowindow = new google.maps.InfoWindow({content:'<?php echo $misionData[0]['university_type'];?> : <?php echo $misionData[0]["university_name"];?><br>'});google.maps.event.addListener(marker, 'click', function(){infowindow.open(map,marker);});infowindow.open(map,marker);}//google.maps.event.addDomListener(window, 'load', init_map);
-</script>
-		
 		<iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d56035.78163841422!2d77.2310811!3d28.6226776!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0xcf6a7c9b6a4be178!2sI.+C.+C.+R.+Azad+Bhavan!5e0!3m2!1sen!2sin!4v1494568307997" style="height:212px;width:100%;border:1px solid orange;padding:5px;" frameborder="0" allowfullscreen></iframe>
       </div>
 	
@@ -217,154 +218,13 @@ marquee{
 	
 	
 	
-	<!--
-		<div class="row">
-        <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $newApplication;?></h3>
-              <p>Applications Received</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/new_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-            <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $pending_application;?></h3>
-              <p>Pending Applications</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/pending_application" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-           <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $resubmitapplication;?></h3>
-              <p>Cases of Re-Subuniversity</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/resubmitapplication" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-          <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">            
-              <h3><?php echo $holdapplications;?></h3>
-              <p>Applications on Hold</p>              
-            </div>
-            <div class="icon">
-              <i class="ion ion-bag"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/hold_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-        
-        <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $approvedApplication;?></h3>
-              <p>Recommended Candidates</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/approved_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div> 
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $rejectedApplication;?></h3>
-              <p>Rejected Candidates</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/rejected_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div> 
-             <!-- <div class="col-xs-3 col-xs-6">
-         
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $results;?></h3>
-              <p>Results of English Proficiency Test</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/results" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>--
-        
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $confirmationForwardtouniversitybyHqrs;?></h3>
-              <p>Receives Confirmation from Hqrs</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/confirmaitonreceivesformhqrs" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-         <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $listofacceptance;?></h3>
-              <p>Acceptance/Decline</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/listofacceptance" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-           <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $visaendrosment;?></h3>
-              <p>Student/Research VISA Endorsement</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/visaendrosment" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
-          <div class="col-xs-3 col-xs-6">
-          
-          <div class="small-box bg-custom">
-            <div class="inner">
-            <h3><?php echo $travel;?></h3>
-              <p>Travel Plan</p>
-            </div>
-            <div class="icon">
-              <i class="ion ion-stats-bars"></i>
-            </div>
-            <a href="<?php echo site_url(); ?>university/travel_applications" class="small-box-footer bg-custom-link">More info <i class="fa fa-arrow-circle-right"></i></a>
-          </div>
-        </div>      
-      </div>-->
+	<!-- Stat-cards block removed: was wrapped in an HTML comment (never
+	     rendered) but the PHP inside still executed on every load, referencing
+	     $newApplication, $pending_application, $resubmitapplication,
+	     $holdapplications, $approvedApplication, $rejectedApplication,
+	     $results, $confirmationForwardtouniversitybyHqrs, $listofacceptance,
+	     $visaendrosment, $travel -- none of which this controller action
+	     populates, throwing undefined-variable warnings on every load. -->
 	  	<!-- Modal -->
             <div class="modal fade" id="missionAlertModal" role="dialog">
                 <div class="modal-dialog">

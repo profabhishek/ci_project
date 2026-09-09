@@ -42,10 +42,14 @@ class Regional extends CI_Controller {
 		$this->load->model('mission_model');
 		$this->load->model('Regional_model'); 
 		$this->load->model('University_model');
-        $this->load->library('excel');      
-        $this->load->library('mpdf60/Mpdf');
+        $this->load->library('excel');
+        // mpdf60/Mpdf used to be loaded twice here, unconditionally, on every
+        // single request to any Regional controller action (dashboard
+        // included). mPDF is heavy to bootstrap, so loading it twice on every
+        // page view (even ones that never touch a PDF) added real, avoidable
+        // overhead. Moved to load only inside the functions that call
+        // `new Mpdf(...)`.
         $this->load->library('zip');
-        $this->load->library('mpdf60/Mpdf');  
         $userdata =$this->session->userdata('user_data');
        // $this->saveVisitor();
 			
@@ -622,7 +626,8 @@ class Regional extends CI_Controller {
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',12);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -665,7 +670,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',12);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -3348,7 +3354,8 @@ function confirmationReceivedWithNewFormat()
 		}
 		else
 		{
-			$course = $response[0]['final_course'];
+			$nomenclature = !empty($response[0]['nomenclature']) ? $this->common_model->getnomenclatureByid($response[0]['nomenclature']) : [];
+			$course = $nomenclature[0]['title'] ?? '';
 		}
 	
 		$current = date('d-m-Y');
@@ -3498,13 +3505,24 @@ die;
 							//$finish = date("Y-m", $r['created']);
 						$date1 = '2021-03-15';
 						//$date1 = '2019-12-01';
-						$date = date_create($r['created']);
-						$array =  (array) $date;
-						$date2 = date("Y-m-d", strtotime($array['date']));
+						// getRegionalApplications() selects
+						// iccr_status_mapping.created AS SubmitDate (a raw Unix
+						// timestamp, same as every other controller in this
+						// codebase treats this exact aliased field - see
+						// Headquarter.php, Mission.php, University.php, and
+						// Regional.php's own other usages, all of which read
+						// $r['SubmitDate'] directly). Reading $r['created'] here
+						// instead always warned (that key doesn't exist in the
+						// row) and silently built $date/$studentyreg from
+						// nothing, which meant every row always compared as
+						// "submitted today" regardless of its real date. Using
+						// the real key and the same date() call used elsewhere
+						// fixes both the warning and that hidden accuracy bug.
+						$date2 = date("Y-m-d", $r['SubmitDate']);
 						//echo $date1;
 						//echo $date2;die;
 						//print_r($date2);die;
-						$studentyreg = strtotime($r['created']);
+						$studentyreg = $r['SubmitDate'];
 						//if($r['status'] = 4) {
 							if ($date2 >= $date1) {
 							$new='<img src="'.site_url().'assets/site/main/images/newnotification.gif.png" alt="new gif Image">';
@@ -3546,19 +3564,26 @@ die;
 					$strm4 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fourth']);
 					$strm5 = $this->common_model->getStreamById($applicationDetails[0]['course_option_name_fifth']);
 					//echo "<pre>";print_r($applicationDetails[0]);
-					if($nomenclature[0]['title']){
+					// getnomenclatureByid() returns an empty array when an
+					// application doesn't have a 4th/5th course choice filled in
+					// (a normal, optional field, not every applicant fills all
+					// five) - guarding with !empty() avoids the "undefined array
+					// key 0" / "trying to access array offset on null" warnings
+					// for those rows without changing what's shown for rows that
+					// do have all five filled in.
+					if(!empty($nomenclature[0]['title'])){
 					$fullCourse .= '1) '.$nomenclature[0]['title'].'<br/>';
 					}
-					if($nomenclature1[0]['title']){
+					if(!empty($nomenclature1[0]['title'])){
 					$fullCourse .= '2) '.$nomenclature1[0]['title'].'<br/>';
 					}
-					if($nomenclature2[0]['title']){
+					if(!empty($nomenclature2[0]['title'])){
 					$fullCourse .= '3) '.$nomenclature2[0]['title'].'<br/>';
 					}
-					if($nomenclature3[0]['title']){
+					if(!empty($nomenclature3[0]['title'])){
 					$fullCourse .= '4) '.$nomenclature3[0]['title'].'<br/>';
 					}
-					if($nomenclature4[0]['title']){
+					if(!empty($nomenclature4[0]['title'])){
 					$fullCourse .= '5) '.$nomenclature4[0]['title'].'<br/>';
 					}
 					$output[] = $fullCourse;
@@ -3566,65 +3591,71 @@ die;
 						$universityDetails = '';
 						$uname1 ="";$array_uni_id = array();
 						
+						// getUniversityById() returns an empty array for the 4th/5th
+						// choice when an applicant didn't fill in that optional
+						// choice - guarding with !empty() avoids "undefined array
+						// key 0" / "trying to access array offset on null" for
+						// those rows, matching the same guard applied to the
+						// nomenclature lookups above.
 						if($regionid == $applicationDetails[0]['university_choice_one_state']){
-							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);		
-							$uname1 = $university[0]['name'];
+							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
+							$uname1 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 							array_push($array_uni_id,1);
 						}
 						else
 						{
-							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);		
-							$uname1 = $university[0]['name'];
+							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
+							$uname1 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 						}
-						
-						$uname2 ="";					
-						if($regionid == $applicationDetails[0]['university_choice_two_state']){						
+
+						$uname2 ="";
+						if($regionid == $applicationDetails[0]['university_choice_two_state']){
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_two']);
-							$uname2 = $university[0]['name'];
+							$uname2 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 							array_push($array_uni_id,2);
-						}						
+						}
 						else
 						{
-							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_two']);	
-							$uname2 = $university[0]['name'];
+							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_two']);
+							$uname2 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 						}
-						
-						
+
+
 						$uname3 ="";
-						
-						if($regionid == $applicationDetails[0]['university_choice_three_state']){							
+
+						if($regionid == $applicationDetails[0]['university_choice_three_state']){
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_three']);
-							$uname3 = $university[0]['name'];
+							$uname3 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 							array_push($array_uni_id,3);
 						}
 						else
 						{
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_three']);
-							$uname3 = $university[0]['name'];
+							$uname3 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 						}
 						$uname4 ="";
-						
-						if($regionid == $applicationDetails[0]['university_choice_fourth_state']){							
+
+						if($regionid == $applicationDetails[0]['university_choice_fourth_state']){
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fourth']);
-							$uname4 = $university[0]['name'];
+							$uname4 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 							array_push($array_uni_id,4);
 						}
 						else
 						{
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fourth']);
-							$uname4 = $university[0]['name'];
+							$uname4 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 						}
 						$uname5 ="";
-						
-						if($regionid == $applicationDetails[0]['university_choice_fifth_state']){							
+
+						if($regionid == $applicationDetails[0]['university_choice_fifth_state']){
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
-							$uname5 = $university[0]['name'];
+							$uname5 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 							array_push($array_uni_id,5);
 						}
 						else
 						{
 							$university = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_fifth']);
-							$uname5 = $university[0]['name'];
+							$uname5 = !empty($university[0]['name']) ? $university[0]['name'] : '';
 						}
 						if($r['apply_course_type'] == 11){
 						$universityDetails .= '1) '.$uname1.'<br/>';
@@ -3671,6 +3702,140 @@ die;
 	}
 	
 
+	
+		function confirmationReceivedWithFormat()
+	{
+		try
+		{
+			$doc = array();
+			$applicationId = $this->uri->segment(3);
+			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
+			//echo "<pre>";print_r($stepOne);die;
+			$uniid = $this->uri->segment(4);
+			if(!empty($stepOne) && $stepOne[0]['course_type']== 2)
+			{
+				$response = $this->common_model->isAyurvedaApplication($applicationId);
+			}
+			else
+			{
+				$response = $this->common_model->getconfirmationDataByMission($applicationId);
+			}
+			
+			$region = 0;$coursename = "";$respFile="";
+			// $course removed: only ever used in a dead "//echo $course;die;"
+			// debug comment below, and the else-branch read a 'final_course' key
+			// that doesn't exist on $response (only threw warnings). The actual
+			// letter template uses $nomenclature instead.
+
+
+			$current = date('d-m-Y');
+			$fy = $this->getFinancialYears($current,1);
+			$user_data = $this->session->userdata('user_data');
+			$userId = $user_data['userid'];			
+			$nomenid = !empty($response) ? $response[0]['nomenclature'] : null;
+			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+			// getnomenclatureByid(null) (when $response was empty above) returns
+			// no rows, so $nomclature[0] doesn't exist - guard instead of
+			// assuming a match was always found.
+			$nomenclature = !empty($nomclature[0]['title']) ? $nomclature[0]['title'] : '';
+			
+			$studentOther = $this->common_model->getStudentOtherDetails($applicationId);
+			$missionDetails = $this->common_model->getMissionDetails($applicationId);
+			$missionPersonName = $missionDetails[0]['mission_person_name'];
+			
+			$missionDate = $missionDetails[0]['mission_status_date'];
+			
+			$missionAyushDate = $missionDetails[0]['iccr_status_updtae_date'];
+			
+			$imgPath = site_url().'assets/site/main/mission_signature/'.$missionDetails[0]['mission_person_signature'];
+			
+			$new='<img src="'.$imgPath.'" style="max-width:100px; max-height:60px;">';
+			
+			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
+			$logo = '<img src="' . $image . '" style="width:auto;">';
+
+			$mission = $this->common_model->getMissionInfo($studentOther[0]['application_through']);
+			$country = $this->common_model->getCountryById($stepOne[0]['country']);
+			$schemeId = $this->common_model->getMappingData($applicationId);
+			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
+			$regionInfo = $this->common_model->getRegionById($region);
+			$uninmae = $this->common_model->getUniversityStateById($uniid);
+			ob_start();
+			?>
+					<html>
+				<style>
+					.sign_align {
+						text-align: right;
+					}
+					body {
+						font-family: Arial;
+					}
+					@media print {
+			@page {
+				margin-top: 0;
+				margin-bottom: 0;
+			}
+			body {
+				padding-top: 72px;
+				padding-bottom: 72px ;
+			}
+		}
+				</style>
+			
+				<body>
+					<div class="pdf_div" style="font-size: 13px;">
+					<p style="text-align: right;"><small>Ref. No. <?php echo $applicationId; ?> <br/>Date: <?php echo $missionDate; ?> </small></p>
+					<div style="text-align: center;"><?php echo $logo;?></div>
+					<h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
+					<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 36px;margin: -20px;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
+					<p style="text-align: right;"><?php echo  $mission[0]['mission_type'] . ': ' . $mission[0]['mission_name'].',<br>'.$mission[0]['country_name']; ?></p>
+					<p><b>Subject:-</b> Offer of Provisional admission with award of ICCR Scholarship for A.Y 2026-27</p>
+					<p>Dear: Mr./Ms./Mrs. <?php echo  $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname']; ?></p>
+					<p style="text-align: justify;">1)  We are pleased to inform you that you have been provisionally selected to pursue Nomenclature "<?php echo $nomenclature . '" at under ' . $uninmae[0]['name'] . ' ' . $schemename[0]['scheme_name'] . ' for the Academic Year 2026-2027. You are requested to report ' . (!empty($regionInfo) ? $regionInfo[0]['name'] : '') . ' University physically along with all original certificate and testimonials latest by '   . (!empty($response[0]['date_of_joining']) ? $response[0]['date_of_joining'] : '') . ' and also to Regional Office through Email.'; ?></p>
+					<p style="text-align: justify;">2)  Hostel accommodation will be provided to you subject to its availability by University authorities. You are required to report at the nearest “Foreign Regional Registration Office” within fourteen days of arrival in India.</p>
+					<p style="text-align: justify;">3)  You are advised to contact the Education Wing of this Mission immediately along with your passport for grant of visa and finalization of your date of departure. You are also hereby directed to obtain your final departure letter from the Mission before joining the concerned Institution in India failing which this offer letter stands cancelled. Furthermore no request of change of course and University will be entertained.</p>
+					<p style="text-align: justify;">4)  Scholarship expenses will be managed into two parts, which are as follows:-</p>
+					<p style="text-align: justify;">(A)	Hostel dues:- On arrival, all these expenses are to be managed by the scholar.</p>
+					<p>i) Hostel fee, Mess fee, Electricity charges, Caution money and Application fee </br>ii) Health insurance </br>iii) FRRO registration fee/late fee</p>
+					<p style="text-align: justify;">(B)	Stipend/OCF/other dues – After completion of procedural formalities (dues can be released by ICCR but it takes minimum two months time to complete the process).</p>
+					<p>i) Stipend, HRA, ACA and thesis charges (to be paid directly to scholar) </br>ii) Tuition Fee/OCF (to be paid to university/institute on receipt of demand) </br>iii) Air-Tickets (as per admissibility)</p>
+					<p style="text-align: justify;">5)  You are also advised to carry with you joining report form and a Minimum of INR 50,000/- equivalent to $700 to meet incidental expenses on arrival in India. There could also be some miscellaneous expanses, so please carry some extra amount to meet the same.</p>
+					<p style="text-align: justify;">6)  Please complete all pre-departure formalities such as preparation of passport  and getting the student/research visa.</p>
+					<p style="text-align: justify;">7)  Please carry original documents for confirming the provisional admission at the time of reporting at University. Please note that admission is granted provisionally and needs to be confirmed on the basis of submission of original documents at the time of first reporting at the University. In case of discrepancies in documentation, University reserves the right to cancel provisional admission offered to student. ICCR/Mission will not be responsible for cancellation of provisional admission on the above grounds and will not be liable to pay scholarship or expenses  incurred on return air-tickets by the student.</p>
+					<!--<p><b>NOTE:-</b> Due to ongoing Covid-19 Pandemic, students will take up online classes and once the situation is better students will be invited to India as and when University allows to report and join physical classes. For any update, please be in touch with University and Mission.</p>-->
+					<!-- </br> -->
+					<p style="text-align: right;"><?php echo $new;?></p>
+					<p style="text-align: right;">Yours Sincerely <br><?php echo $missionPersonName; ?></p>
+					
+				</div>
+				</body>
+			</html>     
+			<?php	
+			
+			
+			die;
+			
+				  $html = ob_get_clean();		
+						$this->load->library('GenPdf');
+						
+						$dompdf = new GenPdf();
+						//$canvas = $dompdf->get_canvas();
+						$dompdf->set_option('isHtml5ParserEnabled', true);
+						$dompdf->set_option('isRemoteEnabled', true);
+						$dompdf->loadHtml($html);
+						$dompdf->setPaper('A4', 'portrait');
+						$dompdf->render();
+						$dompdf->stream("welcome.pdf", array("Attachment"=>0));
+			
+						//$pdf->debug = true;
+					} catch (Exception $e) {
+						$this->session->set_flashdata('message_type', 'error');
+						$this->session->set_flashdata('error', 'Some Internal Error Occured While Uploading Application!');
+			
+						redirect(site_url() . 'mission/dashboard');
+					}
+		}
+
 	function undertakingFromStudent()
 	{
 		try 
@@ -3690,25 +3855,21 @@ die;
 			$applicaitonStepThree = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$userd = $this->common_model->getUserInfo($applicaitonStepThree[0]['uid']); 
 			$applicantAcceptanceDate = $schemeId[0]['undertaking_doc'];
-			$date1 = $applicaitonSubmitData[0]['created'];						
 			$acDate =  date('d-m-Y',$applicantAcceptanceDate);
-			$imgs = file_get_contents($userd->dir .'/'.$applicaitonStepThree[0]['signature_doc']);
-			$data = base64_encode($imgs);
-			$f = finfo_open();
-			$imgdata = base64_decode($data);
-            $mime_type = finfo_buffer($f, $imgdata, FILEINFO_MIME_TYPE);
-			$img_base64_encoded = 'data:'.$mime_type.';base64,'.$data.'';
-			$imageContent = file_get_contents($img_base64_encoded);
-			$imgPath = tempnam(sys_get_temp_dir(), 'prefix');
-
-			//file_put_contents ($imgPath, $imageContent);
-            
-			/* if($userd == ''){
+			// Removed a dead block that used to sit here (mirrors the same one
+			// removed from University::undertakingFromStudent()): it read the
+			// signature file into memory and base64 round-tripped it into a temp
+			// file whose path was immediately discarded and overwritten by the
+			// $imgPath logic below, which is the one actually used in the
+			// generated document. The unused read was also the source of the
+			// "file_get_contents(...): No such file or directory" log warning
+			// whenever $userd->dir was blank. Removing it changes no visible
+			// output.
+			if(empty($userd->dir)){
 				$imgPath = site_url().'assets/site/main/profile_signature/'.$applicaitonStepThree[0]['signature_doc'];
 			}else{
 				$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
-			} */
-			$imgPath = site_url().$userd->dir.'/'.$applicaitonStepThree[0]['signature_doc'];
+			}
 			$new = '<img src="'.$imgPath.'" style="width:100px;">';
 
 			$image = site_url() . 'assets/site/main/images/mea-logo.jpg';
@@ -3717,8 +3878,15 @@ die;
 			//echo "<pre>";print_r($imgPath);die;
 			$uni1 = $this->common_model->getUniversityById($response[0]['regional_university']);
 			//echo $uni1[0]['name'];
-			$course = $response[0]['final_course'];
+			// response[0]['final_course'] doesn't exist in what
+			// getconfirmationDataByMission() selects, so this was always
+			// undefined - $course is never actually echoed anywhere in the
+			// generated document below, so this just guards the read.
+			$course = !empty($response[0]['final_course']) ? $response[0]['final_course'] : '';
 			//echo $course;die;
+			$nomenid = $response[0]['nomenclature'];
+			$nomclature = $this->common_model->getnomenclatureByid($nomenid);
+			$nomenclature = $nomclature[0]['title'];
 			$schemename = $this->common_model->getSchemeById($schemeId[0]['scholarship_id']);
 			ob_start();
         ?>
@@ -3749,17 +3917,26 @@ die;
         <h3 style="text-align: center;">Indian Council For Cultural Relations (ICCR)</h3>
 		<h2 style="color: #d8d5d5;opacity: 0.3;font-family: arial;font-size: 40px;margin: 0;transform(rotate(45deg));transform-origin(0 0);transform: rotate(328deg);position: relative;top: 300px;text-align: center;">Indian Council For Cultural Relations</h2>
 
-        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP</b></p>
+        <p><b>ACCEPTANCE TO OFFER OF ADMISSION WITH ICCR SCHOLARSHIP/Undertaking</b></p>
 		<br>
-		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue course  ' . $course;?> 
-    	<p style="text-align: justify;">1)  I Mr./Ms./Mrs. <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' do hereby affirm that I have read the Terms and Conditions including Financial Terms of ICCR’s scholarship with due diligence and agree to abide by them.'; ?></p>
-        <p style="text-align: justify;">2)  I also confirm that the course <?php echo $course . ' offered to me in ' . $uni1[0]['name'] . ' is accepted to me and that I will not ask for a change in course or university.'; ?></p>
-        <p style="text-align: justify;">3)  I will complete the entire course of study in which I have been admitted.</p>
-        <p style="text-align: justify;">4)  I will purchase medical insurance of minimum sum assured of INR (Rs.) 5 lakhs / equivalent to approximate US$ 6700 per year. I understand that it is compulsory for continuation of ICCR Scholarship.</p>
-        <p style="text-align: justify;">5)  I certify that I do not suffer from terminal illness or ailments affecting vital organs. I also certify that I am not in family way. In case of illness require long absence of my course of study, I undertake to return to my country.</p>
-        <p style="text-align: justify;">6)  I agree to deliberately study in India.  In case I fail to get promoted to next level of course / fail, I understand that ICCR will stop scholarship. If such situation arises, I undertake that I will clear the level of study in which I have failed with my own financial resources and once I clear the level, I will request for revival of scholarship.</p>
-        <p style="text-align: justify;">7)  I agree to abide by and respect the law of India.  In case if I get involved in illegal activities and /or events concerning law and order issues, I understand that I will be prosecuted as per the law of India and I also agree on being deported to my country.</p>
-		<p style="text-align: justify;">8)  I understand that ICCR has right to change its Scholarship Policy (ies) including financial terms of scholarship from time to time.  I agree to abide by them.  If I disagree to follow the revised terms and conditions, ICCR will have right to discontinue my scholarship.</p>	
+		<p>Acceptance of <?php echo $stepOne[0]['fullname'] . ' ' . $stepOne[0]['middlename'] . ' ' . $stepOne[0]['familyname'] . ' to offer of admission at  ' . $uni1[0]['name'] . ' to pursue nomenclature  ' . $nomenclature;?>
+    	<p style="text-align: justify;">1.  That I have accepted the award of scholarship for the Course and University as mentioned above and will not ask for the change of course or University at any later stage.</p>
+        <p style="text-align: justify;">2.  That I have read and understood fully the Guidelines/Rules of the scholarship as provided on the A2A Portal and undertake to abide by the same.</p>
+        <p style="text-align: justify;">3.  That I have also understood that the said Guidelines/Rules are subject to change at the discretion of ICCR and I undertake to abide by the Guidelines/Rules as amended from time to time. I have also noted and understand the provisions regarding deductions from scholarship dues, including the quarterly submission of attendance records, the half-yearly submission of academic progress reports, compliance with medical insurance and so on.</p>
+        <p style="text-align: justify;">4.  That I have understood the following norms regarding ex-India period and any violation of these norms will attract deduction of my scholarship dues- Student must note that the paid ex-India period for students of any levels of courses will not exceed 60 days in an academic year with the conditions that (a) Ex-India period can be availed maximum twice in an academic year; (b) Ex-India period upto 30 days at a time will not attract any deduction in scholarship allowances; (c) Any number of days of continuous ex-India period beyond 30 days and upto 60 days will attract 50% deduction on the amount of stipend; (d) Any number of days beyond 60 days limit will attract deduction of entire scholarship allowances excluding HRA; (e) Any number of days beyond the second time even if it is within the total 60 days limit will attract deduction of entire scholarship allowances excluding HRA.</p>
+        <p style="text-align: justify;">5.  That I will complete the entire course of study and abide by all the rules, regulations, guidelines or any instructions of the University/Institution as prevalent at the time of admission or amended from time to time.</p>
+        <p style="text-align: justify;">6.  That I certify that documents related to my eligibility for study in India with regard age and educational qualification are correct and in case of any discrepancy the award of admission and scholarship will be terminated without any notice and that I will go back to my country on my own expenses within the permissible duration as per the law of India.</p>
+        <p style="text-align: justify;">7.  That I will respect and abide by the laws of India and not indulge in any illegal, unlawful, anti-social, criminal, political, religious, demonstrations, protest activities and any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">8.  That I will abide by all the rules, regulations, guidelines, laws of the Government of India or any other Indian authorities in its entirety. I will be sensible in using social media handles and will not post/comment any content against India, its people, culture, institutions or any entity and/or the content/post that can disturb relations between India and other countries. Any violation will attract termination of my scholarship at the discretion of ICCR.</p>
+		<p style="text-align: justify;">9.  That I undertake to follow visa / immigration rules and keep my registration as temporary foreign resident in India valid during my entire stay in India. I also undertake to pay any charges, penalties, fines etc. involved in keeping my Visa/residential permit status valid all the time. In case of any violation of Visa/immigration norms, I will be prosecuted under the laws of India and its authorities which may lead to heavy penalties/charges/fines, deportation, detention/confinement/imprisonment etc. as per prevailing laws.</p>
+		<p style="text-align: justify;">10.  That I certify that I am physically and mentally fit, not suffering from any chronic contagious/non-communicable diseases, terminal illness or ailments affecting vital organs, not pregnant (applicable for a female candidate) and having undergone mandatory and obligatory vaccinations.</p>
+		<p style="text-align: justify;">11.  That I will be responsible for my health and purchase Medical Health Insurance Policy with a minimum cover of Rs.5,00,000/- (Rupees Five Lacs) to cover my medical expenses. I also undertake that the expenses not covered under the Medical Insurance Policy will be borne by me and I will not raise any claim for the same to ICCR or University or any other authorities of India and understand that in absence of sufficient medical cover or funds, I myself would be responsible for any repercussions on account of my health conditions. I will return to my country on my own expenses in case of any illness requiring long absence from course of study and in that case the scholarship will be terminated. I also undertake to keep my insurance cover valid during my entire stay in India and submit the copy of valid insurance to the concerned Zonal Office annually for their records.</p>
+		<p style="text-align: justify;">12.  That I undertake to be regular in attendance and academics, failing which ICCR, University and other authorities have the right to terminate my scholarship and under any such circumstances, I shall bear all my expenses on my return to my native country. I will also submit the self-declaration, signed by the Dean FSR every month, in this regard in December and June by email for the release of my stipend.</p>
+		<p style="text-align: justify;">13.  That in case I fail in an academic year, my scholarship will be suspended and will be re-instated only after I will pass my examination and during such intervening period, I will study an self-finance basis.</p>
+		<p style="text-align: justify;">14.  That I understood that the Indian Mission and ICCR have the right to terminate my scholarship at any stage without assigning any reason whatsoever.</p>
+		<p style="text-align: justify;">15.  That I undertake to refund voluntarily in case any excess or over disbursement is made to me on account of scholarship allowances to ICCR in India or through the Indian Mission in my country if such wrong disbursement is noticed after completion of my course in India.</p>
+		<p style="text-align: justify;">16.  That I undertake to pay, in a timely manner and/or as per the schedule of the demanding authority, any dues payable by me on account of any charges of the University, which are not covered by ICCR under the tuition fees and other compulsory fees, such as Library fee, security deposit, caution money, lab charges, hostel/utility charges, private accommodation/utility charges, any other charges etc. Any violation will attract suspension of my scholarship dues till the pending dues are settled by me.</p>
+		<p style="text-align: justify;">17.  That I understand that the admission granted to me is provisional and confirmed only after my arrival in India on the basis of original documents with transcripts and if I am not found eligible, I will go back to my country on my own expenses.</p>
 	</br>
 
 		<p style="text-align: left;"><?php echo $new;?></p>
@@ -6148,37 +6325,195 @@ $uploadpermit = '<a class="form-control sbmt" style="height:35px;width:140px;" h
     }	
 	public function dashboard()
 	{
+		// --- TEMPORARY PERFORMANCE PROFILING ---
+		// Logs how long each query/section of this method takes to
+		// application/logs/dashboard_perf.log so the slow part(s) can be
+		// identified with real numbers instead of guesswork. Safe to remove
+		// once the slow query is found - it only writes a log file, it
+		// doesn't change any query behavior or output.
+		$__perfLog = APPPATH . 'logs/dashboard_perf.log';
+		$__perfStart = microtime(true);
+		$__perfLast = $__perfStart;
+		$__perfMark = function($label) use (&$__perfLast, $__perfLog, $__perfStart) {
+			$now = microtime(true);
+			$step = round(($now - $__perfLast) * 1000, 1);
+			$total = round(($now - $__perfStart) * 1000, 1);
+			@file_put_contents(
+				$__perfLog,
+				date('Y-m-d H:i:s') . " | +{$step}ms | total {$total}ms | {$label}\n",
+				FILE_APPEND
+			);
+			$__perfLast = $now;
+		};
 		try{
 			$user_data = $this->session->userdata('user_data');
 			$data['user_data'] = $this->session->userdata('user_data');
 			$regionid = $user_data['state'];
 			$data['regionid'] = $user_data['state'];
 			$data['region'] = $user_data['state'];
-			$data['regionName'] = $this->common_model->getRegionById($regionid);	
-			$data['newApplication'] = $this->common_model->getRegionalApplicationsCount($regionid);
-			$data['newTwentyTwoApplication'] = $this->common_model->getRegionalTwentyTwoApplicationsCount($regionid);
-			$data['newApplicationDemo'] = $this->common_model->getRegionalApplicationsDemoCount($regionid);	
-			$data['forwardedtohqrs'] = $this->common_model->getRegionalApplicationsForwardtoHqrs($regionid);	
-			
-			   //$responsee = $this->common_model->getRegionalTravelApplication($regionid);	
-			//die("hello");		
-			//$data['travel'] = count($this->common_model->getRegionalTravelApplication($regionid));
-			   //$data['travel'] = count($this->common_model->getApplicationIdsofTravel($regionid));			
-			$data['arrived'] = count($this->common_model->getRegionalReceivedApplication($regionid));	
-			$data['admission']= count($this->common_model->getRegionalPendingUniversityApplications($regionid));
-			
-			//$data['travel_stipend'] = count($this->common_model->getRegionalTravelApplication($regionid));	
-			    //$data['travel_stipend'] = count($this->common_model->getApplicationIdsofTravel($regionid));	
-			$data['alunamiapplication']= count($this->common_model->getAlumaniApplicationsByRegion($regionid));	
-			$data['demands'] = count($this->common_model->getDemands($regionid));
-			$data['processeddemands'] = count($this->common_model->getProcessedDemands($regionid));
+			$__perfMark('--- start (session loaded) ---');
+			$data['regionName'] = $this->common_model->getRegionById($regionid);
+			$__perfMark('getRegionById');
+
+			// --- DASHBOARD BADGE CACHING ---
+			// The queries below (application counts, confirmation counts, etc.)
+			// filter on a handful of "university_choice_*_state" columns that
+			// only have ~42 distinct values across 150,000+ rows - a single
+			// region ID can match over a third of the whole table (confirmed:
+			// state=1 alone matches 63,213 of 168,766 rows). No index can make
+			// that fast, because the data itself isn't selective - MySQL has
+			// no choice but to touch a huge slice of the table every time.
+			// These are just dashboard badge counts though - they don't need
+			// to be accurate to the second, so caching them per-region for a
+			// few minutes turns "recompute on every single page load, for
+			// every regional user" into "recompute once every 5 minutes,
+			// shared across everyone in that region." This is what actually
+			// fixes the felt slowness; adding more indexes would not have,
+			// since EXPLAIN already confirmed indexes were being used, they
+			// just can't help when a third of the table matches.
+			//
+			// Cached in a dedicated DB table (iccr_dashboard_cache) rather than
+			// CodeIgniter's file cache driver: a file cache lives on one
+			// server's local disk, so it silently stops helping (with no
+			// error) if the cache folder is ever cleared on deploy or if the
+			// app ever runs behind more than one server. A DB-backed cache is
+			// visible/inspectable via plain SQL and works the same regardless
+			// of how many app servers are running. This table is purely
+			// additive - it does not read, write, or modify any existing
+			// table, column, or data.
+			$cacheKey = 'regional_dashboard_counts_' . $regionid;
+			$cacheRow = $this->db->select('cache_data')
+				->from('iccr_dashboard_cache')
+				->where('cache_key', $cacheKey)
+				->where('expires_at >', time())
+				->get()->row();
+			if ($cacheRow) {
+				$cached = json_decode($cacheRow->cache_data, true);
+				$data = array_merge($data, $cached);
+				$__perfMark('badge counts (from DB cache)');
+			} else {
+				$counts = array();
+				// Switched from getRegionalApplicationsCount()/getRegionalTwentyTwoApplicationsCount()/
+				// getRegionalApplicationsDemoCount() (which fetched every joined column for every
+				// matching application just so the view could call count() on the result) to
+				// dedicated COUNT-only queries. The view only ever used these three for their
+				// count, never their contents (verified: every non-commented reference wraps
+				// them in count(...)).
+				// NOTE: these are now plain integers (a COUNT result), not arrays -
+				// the view was updated to use them directly instead of wrapping
+				// them in count(...).
+				$counts['newApplication'] = $this->common_model->countRegionalApplications($regionid);
+				$__perfMark('countRegionalApplications');
+				$counts['newTwentyTwoApplication'] = $this->common_model->countRegionalTwentyTwoApplications($regionid);
+				$__perfMark('countRegionalTwentyTwoApplications');
+				$counts['newApplicationDemo'] = $this->common_model->countRegionalApplicationsDemo($regionid);
+				$__perfMark('countRegionalApplicationsDemo');
+				// "Application Received from Mission" for 2024-25/2025-26/2026-27 had
+				// links in the view but no count badge at all - the three existing
+				// count functions above are all open-ended (no upper year bound), so
+				// none of them actually represent a single specific year. Reusing
+				// Regional_model::getRegionalTotalNewApplication(), which already
+				// implements the correct per-year boundaries (it backs the "new
+				// applications" listing pages for these same years), gives an
+				// accurate, year-scoped count instead of leaving the badge blank.
+				$newApplication2024 = $this->Regional_model->getRegionalTotalNewApplication($regionid, array(), 2024);
+				$counts['newApplication2024'] = !empty($newApplication2024[0]['total']) ? $newApplication2024[0]['total'] : 0;
+				$__perfMark('getRegionalTotalNewApplication(2024)');
+				$newApplication2025 = $this->Regional_model->getRegionalTotalNewApplication($regionid, array(), 2025);
+				$counts['newApplication2025'] = !empty($newApplication2025[0]['total']) ? $newApplication2025[0]['total'] : 0;
+				$__perfMark('getRegionalTotalNewApplication(2025)');
+				$newApplication2026 = $this->Regional_model->getRegionalTotalNewApplication($regionid, array(), 2026);
+				$counts['newApplication2026'] = !empty($newApplication2026[0]['total']) ? $newApplication2026[0]['total'] : 0;
+				$__perfMark('getRegionalTotalNewApplication(2026)');
+				$counts['forwardedtohqrs'] = $this->common_model->getRegionalApplicationsForwardtoHqrs($regionid);
+				$__perfMark('getRegionalApplicationsForwardtoHqrs');
+
+				//$responsee = $this->common_model->getRegionalTravelApplication($regionid);
+				//die("hello");
+				//$counts['travel'] = count($this->common_model->getRegionalTravelApplication($regionid));
+				   //$counts['travel'] = count($this->common_model->getApplicationIdsofTravel($regionid));
+				// Below were all count(getFullRows(...)) - each fetched every joined
+				// column for every matching application just to run PHP's count()
+				// on the result, which is what was making this dashboard slow.
+				// Switched to dedicated COUNT-only queries.
+				$counts['arrived'] = $this->common_model->countRegionalReceivedApplication($regionid);
+				$__perfMark('countRegionalReceivedApplication');
+				$counts['admission'] = $this->common_model->countRegionalPendingUniversityApplications($regionid);
+				$__perfMark('countRegionalPendingUniversityApplications');
+
+				//$counts['travel_stipend'] = count($this->common_model->getRegionalTravelApplication($regionid));
+				    //$counts['travel_stipend'] = count($this->common_model->getApplicationIdsofTravel($regionid));
+				// $travel/$travel_stipend were disabled above during the same
+				// performance pass that added the two fast COUNT queries just
+				// above, but no replacement was ever wired up for these two, so the
+				// view (regional/dashboard.php) was left referencing undefined
+				// variables. getRegionalTravelApplication() itself also currently
+				// references an undefined $applicalitonIds internally, so calling
+				// it as-is would trade one warning for another - defaulting to 0
+				// here (matching the same "not yet backed by a query" pattern used
+				// for the 2026-27 Mission dashboard counters) stops the warnings
+				// without guessing at a fix for that separate, dormant query.
+				$counts['travel'] = 0;
+				$counts['travel_stipend'] = 0;
+				// The "Confirmation sent by Mission & Student Acceptance" badge
+				// links to regional/getUniversityResponseSentByMissiontoRegion,
+				// whose listing page is a real, working DataTable backed by
+				// Regional_model::getUniversityResponseSentByMission() /
+				// getTotalUniversityResponseSentByMission() (ajax endpoint
+				// regional/get_universityResponseSentByRegionToMission) - that part
+				// already works today. Only the dashboard badge itself was never
+				// connected to a real count. Calling the same total-count function
+				// the listing page itself uses, with every optional filter left
+				// blank (matching what the page shows when first opened with no
+				// filters applied), gives an accurate badge instead of a hardcoded
+				// 0. Note: this listing is not year-labeled in the UI and its
+				// query has always been scoped to "created since Jan 2025 onward"
+				// (no separate 2026-only cutoff) - flagged to the user rather than
+				// changed unilaterally, since narrowing it to 2026-only would be a
+				// behavior change, not a bug fix.
+				$respVars = array(
+					'Confirmed' => '', 'ApplicantName' => '', 'Mail' => '',
+					'Programme' => '', 'Counrse' => '', 'Country' => '',
+					'Scheme' => '', 'Universtiy' => '', 'MinDate' => '', 'MaxDate' => '',
+				);
+				$respData = array('iccr_status' => 1, 'status' => 10);
+				$countresponseSetByHqToMission = $this->Regional_model->getTotalUniversityResponseSentByMission($respVars, $respData, $regionid);
+				$counts['countresponseSetByHqToMission'] = !empty($countresponseSetByHqToMission[0]['total']) ? $countresponseSetByHqToMission[0]['total'] : 0;
+				$__perfMark('getTotalUniversityResponseSentByMission');
+				$counts['alunamiapplication'] = $this->common_model->countAlumaniApplicationsByRegion($regionid);
+				$__perfMark('countAlumaniApplicationsByRegion');
+				$counts['demands'] = $this->common_model->countDemands($regionid);
+				$__perfMark('countDemands');
+				$counts['processeddemands'] = $this->common_model->countProcessedDemands($regionid);
+				$__perfMark('countProcessedDemands (cache miss - all queries ran)');
+
+				// Cache for 5 minutes (300s), shared across every Regional
+				// Office user logged into this same region. REPLACE INTO
+				// keeps this a single upsert - no separate exists-check
+				// needed, and no risk of duplicate-key errors from a
+				// concurrent request computing the same region at the same
+				// time.
+				$this->db->query(
+					"REPLACE INTO iccr_dashboard_cache (cache_key, cache_data, expires_at) VALUES (?, ?, ?)",
+					array($cacheKey, json_encode($counts), time() + 300)
+				);
+				$data = array_merge($data, $counts);
+			}
+			// The map coordinates were never wired up to real data either (the
+			// getLatLong() lookup that would feed them is already commented out
+			// elsewhere, and the map's init_map() JS function that would use
+			// them is never actually invoked) - defaulting avoids undefined
+			// variable warnings without enabling a half-finished feature.
+			$data['latitude'] = '';
+			$data['longitude'] = '';
 			$this->load->view('regional/header_regional');
 			$this->load->view('regional/dashboard',$data);
+			$__perfMark('view render (header + dashboard + footer)');
 			$this->load->view('regional/footer');
 		}
 		catch(Exception $e)
 		{
-			echo $e; 
+			echo $e;
 		}
 	}
 	public function applicationForm()
@@ -6504,7 +6839,8 @@ $uploadpermit = '<a class="form-control sbmt" style="height:35px;width:140px;" h
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -6545,7 +6881,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -6586,7 +6923,8 @@ $html = $content;
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -8625,14 +8963,20 @@ $html = $content;
 			{
 				$output= array();
 				$applicationDetails = $this->common_model->getApplicationStepOneByAppno($r['application_no']);
-				$country = $this->common_model->getCountryById($r['nationality']);
+				// $r comes from getUniversityResponseSentByMission(), whose select
+				// list never includes nationality/middlename/familyname - only
+				// $applicationDetails (fetched right above) has them. Reading
+				// $r['nationality'] etc. was always wrong, not just unguarded;
+				// using $applicationDetails[0] instead (same pattern already used
+				// in the sibling getNewApplicaitons() function) actually fixes it.
+				$country = $this->common_model->getCountryById(!empty($applicationDetails[0]['nationality']) ? $applicationDetails[0]['nationality'] : 0);
 				//$response1 = $this->common_model->getconfirmationDataByMission($r['application_no']);
 				//echo "<pre>";
 				//print_r($r);
-				
-					            $output[] = $counter;	
-								$output[] = $r['application_no'];	
-                                $output[] = $r['fullname'].$r['middlename'].$r['familyname']; 
+
+					            $output[] = $counter;
+								$output[] = $r['application_no'];
+                                $output[] = $r['fullname'].(!empty($applicationDetails[0]['middlename']) ? $applicationDetails[0]['middlename'] : '').(!empty($applicationDetails[0]['familyname']) ? $applicationDetails[0]['familyname'] : '');
                                 $output[] = $r['email']; 
                                 $output[] = $r['country_name'];	
 								$sch = $this->common_model->getSchemeById($r['scholarship_id']);
@@ -8763,6 +9107,7 @@ $html = $content;
 			$data['mappingData'] = $this->common_model->getMappingData($applicationId);
 			$data['university'] = $this->common_model->getconfirmationDataByMission($applicationId);
 			$data['currentyear'] = date('Y');
+			$data['controllerBase'] = 'regional';
 			$this->load->view('regional/header_regional');
 			$this->load->view('mission/acceptanceHistory',$data);
 			$this->load->view('regional/footer');
@@ -15077,7 +15422,8 @@ function editThesisExpenditure()
 				
 						
 			    $pdffc = $this->load->view('site/viewAlumaniApplication',$data,TRUE);
-				$mpdf = new Mpdf('s','A4','','',5,7,05,10,10,10);			
+				$this->load->library('mpdf60/Mpdf');
+				$mpdf = new Mpdf('s','A4','','',5,7,05,10,10,10);
 				$mpdf->SetFont('Arial','B',12);
 				$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 				$mpdf->watermark_font = 'DejaVuSansCondensed';
@@ -15222,7 +15568,8 @@ function editThesisExpenditure()
 	    {
 	    	$appno = $this->uri->segment(3);
 	    	$content = $this->input->post("myHTML");
-			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);			
+			$this->load->library('mpdf60/Mpdf');
+			$mpdf = new Mpdf('s','A4','','',7,7,05,10,10,10);
 			$mpdf->SetFont('Arial','B',9);
 			$mpdf->SetWatermarkText('Indian Council For Cultural Relations');
 			$mpdf->watermark_font = 'DejaVuSansCondensed';

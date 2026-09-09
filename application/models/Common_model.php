@@ -155,7 +155,7 @@ class Common_model extends CI_Model {
 		$this->db->where(array('iccr_status_mapping.status !=' => 5));
 		$this->db->where(array('iccr_status_mapping.status !=' => 6));
 		$this->db->where(array('iccr_status_mapping.status !=' => 15));
-          $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' .$regionId .' or iccr_student_application_details.university_choice_fourth_state=' . $regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . $regionId . ')');
+          $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId .' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
 		  $this->db->where('iccr_status_mapping.created >=',1612227054); 
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		$this->db->order_by('iccr_student_details.created', 'ASC');
@@ -165,7 +165,33 @@ class Common_model extends CI_Model {
         }
         return $this->db->get()->result_array();
     }
-	
+
+	// COUNT-only version of getRegionalApplicationsDemoCount() for dashboard
+	// widgets that only need the number, not the full joined rows (this was
+	// one of the queries making the Regional dashboard take 6+ seconds to
+	// load - see application/logs/dashboard_perf.log). Same filters as the
+	// original, minus the ORDER BY (irrelevant for a count) and minus the
+	// unused giant commented-out select().
+	function countRegionalApplicationsDemo($regionId) {
+		$this->db->distinct();
+		$this->db->select('iccr_status_mapping.application_no');
+		$this->db->from('iccr_status_mapping');
+		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+		$this->db->where(array('iccr_status_mapping.status >=' => 1));
+		$this->db->where(array('iccr_status_mapping.status !=' => 5));
+		$this->db->where(array('iccr_status_mapping.status !=' => 6));
+		$this->db->where(array('iccr_status_mapping.status !=' => 15));
+		$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId .' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
+		$this->db->where('iccr_status_mapping.created >=',1612227054);
+		$code = $this->db->error();
+		if ($code['code'] > 0) {
+			//show_error('Message');
+		}
+		return $this->db->count_all_results();
+	}
+
 	function applicantAyushAcceptance($schemeids) {
         $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_student_application_details.course,iccr_student_other_details.created,iccr_status_mapping.scholarship_id,iccr_status_mapping.regional_university,iccr_status_mapping.scholar_acceptance');
         $this->db->from('iccr_status_mapping');
@@ -202,7 +228,7 @@ class Common_model extends CI_Model {
 		//$this->db->where(array('iccr_status_mapping.status !=' => 6));
 		$this->db->where(array('iccr_status_mapping.status !=' => 15));
 		$this->db->where(array('iccr_student_application_details.universty_choice_fourth !=' => 489));
-        $this->db->where('(iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . $regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . $regionId . ')');
+        $this->db->where('(iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
 		$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		$this->db->order_by('iccr_student_details.created', 'ASC');
@@ -212,8 +238,28 @@ class Common_model extends CI_Model {
         }
         return $this->db->get()->result_array();
     }
-	
-	
+
+	// COUNT-only version of getRegionalApplicationsCount() - see comment on
+	// countRegionalApplicationsDemo() above for why this exists.
+	function countRegionalApplications($regionId) {
+		$this->db->distinct();
+		$this->db->select('iccr_status_mapping.application_no');
+		$this->db->from('iccr_status_mapping');
+		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+		$this->db->where(array('iccr_status_mapping.status >=' => 1));
+		$this->db->where(array('iccr_status_mapping.status !=' => 15));
+		$this->db->where(array('iccr_student_application_details.universty_choice_fourth !=' => 489));
+		$this->db->where('(iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
+		$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
+		$code = $this->db->error();
+		if ($code['code'] > 0) {
+			//show_error('Message');
+		}
+		return $this->db->count_all_results();
+	}
+
 	function getRegionalTwentyTwoApplicationsCount($regionId) {
 		$this->db->distinct('iccr_status_mapping.application_no');
        /*  $this->db->select('iccr_status_mapping.status,iccr_status_mapping.mission_status_date,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.programme,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_two,iccr_student_application_details.course_option_name_three,iccr_student_application_details.email,iccr_status_mapping.university_status_1,iccr_status_mapping.university_status_2,iccr_status_mapping.university_status_3,iccr_status_mapping.uni_forwarded_letter,iccr_status_mapping.uni_forwarded_letter_two,iccr_status_mapping.uni_forwarded_letter_three,iccr_status_mapping.scholarship_id,iccr_student_application_details.course_subject'); */
@@ -227,7 +273,7 @@ class Common_model extends CI_Model {
 		//$this->db->where(array('iccr_status_mapping.status !=' => 6));
 		$this->db->where(array('iccr_status_mapping.status !=' => 15));
 		$this->db->where(array('iccr_student_application_details.universty_choice_fourth !=' => 489));
-        $this->db->where('(iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . $regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . $regionId . ')');
+        $this->db->where('(iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
 		$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		$this->db->order_by('iccr_student_details.created', 'ASC');
@@ -237,6 +283,27 @@ class Common_model extends CI_Model {
         }
         return $this->db->get()->result_array();
     }
+
+	// COUNT-only version of getRegionalTwentyTwoApplicationsCount() - see
+	// comment on countRegionalApplicationsDemo() above for why this exists.
+	function countRegionalTwentyTwoApplications($regionId) {
+		$this->db->distinct();
+		$this->db->select('iccr_status_mapping.application_no');
+		$this->db->from('iccr_status_mapping');
+		$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+		$this->db->where(array('iccr_status_mapping.status >=' => 1));
+		$this->db->where(array('iccr_status_mapping.status !=' => 15));
+		$this->db->where(array('iccr_student_application_details.universty_choice_fourth !=' => 489));
+		$this->db->where('(iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
+		$this->db->where(array('iccr_status_mapping.created >='=> 1644471556));
+		$code = $this->db->error();
+		if ($code['code'] > 0) {
+			//show_error('Message');
+		}
+		return $this->db->count_all_results();
+	}
 
     function saveYoutubeLink($uid, $link) {
         $data = array(
@@ -511,7 +578,7 @@ class Common_model extends CI_Model {
 								//echo "---------------";die;
                                 $course = $this->common_model->getCoursesById($result[0]['course']);
                                 $response['course_id'] = $result[0]['course'];
-                                $response['course_name'] = $course[0]['title'];
+                                $response['course_name'] = (!empty($course) ? $course[0]['title'] : '');
                                 $response['programme_id'] = $result[0]['programme'];
 								$strm1 = $this->common_model->getStreamById($result[0]['course_option_name']);
                                 $response['name'] = $result[0]['course_option_name'];
@@ -519,7 +586,7 @@ class Common_model extends CI_Model {
                             } elseif ($result[0]['universty_choice_two'] == $universityId) {
                                 $course1 = $this->common_model->getCoursesById($result[0]['course_two']);
                                 $response['course_id'] = $result[0]['course'];
-                                $response['course_name'] = $course1[0]['title'];
+                                $response['course_name'] = (!empty($course1) ? $course1[0]['title'] : '');
                                 $response['programme_id'] = $result[0]['programme'];
 								$strm2 = $this->common_model->getStreamById($result[0]['course_option_name_two']);
                                 $response['name'] = $result[0]['course_option_name_two'];
@@ -527,7 +594,7 @@ class Common_model extends CI_Model {
                             } elseif ($result[0]['universty_choice_three'] == $universityId) {
                                 $course2 = $this->common_model->getCoursesById($result[0]['course_three']);
                                 $response['course_id'] = $result[0]['course'];
-                                $response['course_name'] = $course2[0]['title'];
+                                $response['course_name'] = (!empty($course2) ? $course2[0]['title'] : '');
                                 $response['programme_id'] = $result[0]['programme'];
 								$strm3 = $this->common_model->getStreamById($result[0]['course_option_name_three']);
 								//echo "<pre>";print_r($strm3);die;
@@ -538,7 +605,7 @@ class Common_model extends CI_Model {
 
                                 $course3 = $this->common_model->getCoursesById($result[0]['course_fourth']);
                                 $response['course_id'] = $result[0]['course'];
-                                $response['course_name'] = $course3[0]['title'];
+                                $response['course_name'] = (!empty($course3) ? $course3[0]['title'] : '');
                                 $response['programme_id'] = $result[0]['programme'];
 								$strm4 = $this->common_model->getStreamById($result[0]['course_option_name_fourth']);
                                 $response['name'] = $result[0]['course_option_name_fourth'];
@@ -550,7 +617,7 @@ class Common_model extends CI_Model {
                                 $course4 = $this->common_model->getCoursesById($result[0]['course_fifth']);
 								//echo $course4;die;
                                 $response['course_id'] = $result[0]['course'];
-                                $response['course_name'] = $course4[0]['title'];
+                                $response['course_name'] = (!empty($course4) ? $course4[0]['title'] : '');
                                 $response['programme_id'] = $result[0]['programme'];
 								$strm5 = $this->common_model->getStreamById($result[0]['course_option_name_fifth']);
 							
@@ -563,21 +630,21 @@ class Common_model extends CI_Model {
                     if ($result[0]['universty_choice'] == $universityId) {
                         $course = $this->common_model->getCoursesById($result[0]['course']);
                         $response['course_id'] = $result[0]['course'];
-                        $response['course_name'] = $course[0]['title'];
+                        $response['course_name'] = (!empty($course) ? $course[0]['title'] : '');
                         $response['programme_id'] = $result[0]['programme'];
                         $response['subject'] = $result[0]['course_option_name'];
                         return $response;
                     } elseif ($result[0]['universty_choice_two'] == $universityId) {
                         $course1 = $this->common_model->getCoursesById($result[0]['course_two']);
                         $response['course_id'] = $result[0]['course'];
-                        $response['course_name'] = $course1[0]['title'];
+                        $response['course_name'] = (!empty($course1) ? $course1[0]['title'] : '');
                         $response['programme_id'] = $result[0]['programme'];
                         $response['subject'] = $result[0]['course_option_name_two'];
                         return $response;
                     } elseif ($result[0]['universty_choice_three'] == $universityId) {
                         $course2 = $this->common_model->getCoursesById($result[0]['course_three']);
                         $response['course_id'] = $result[0]['course'];
-                        $response['course_name'] = $course2[0]['title'];
+                        $response['course_name'] = (!empty($course2) ? $course2[0]['title'] : '');
                         $response['programme_id'] = $result[0]['programme'];
                         $response['subject'] = $result[0]['course_option_name_three'];
                         return $response;
@@ -648,60 +715,60 @@ class Common_model extends CI_Model {
                 if ($result[0]['programme'] == 1 || $result[0]['programme'] == 2) {
                     if ($result[0]['course_type'] == 1 || $result[0]['course_type'] == 2) {
                         $course = $this->common_model->getCoursesById($result[0]['course']);
-                        return $course[0]['title'] . ' ' . $result[0]['course_option_name'];
+                        return (!empty($course) ? $course[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name'];
                     } else {
                         if ($result[0]['universty_choice'] == $universityId) {
                             $course = $this->common_model->getCoursesById($result[0]['course']);
 							$strm1 = $this->common_model->getStreamById($result[0]['course_option_name']);
-                            return $course[0]['title'] . ' ' . $result[0]['course_option_name'];
+                            return (!empty($course) ? $course[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name'];
                         } elseif ($result[0]['universty_choice_two'] == $universityId) {
                             $course1 = $this->common_model->getCoursesById($result[0]['course_two']);
 							$strm2 = $this->common_model->getStreamById($result[0]['course_option_name_two']);
-                            return $course1[0]['title'] . ' ' . $result[0]['course_option_name_two'];
+                            return (!empty($course1) ? $course1[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_two'];
                         } elseif ($result[0]['universty_choice_three'] == $universityId) {
                             $course2 = $this->common_model->getCoursesById($result[0]['course_three']);
 							$strm3 = $this->common_model->getStreamById($result[0]['course_option_name_three']);
-                            return $course2[0]['title'] . ' ' . $result[0]['course_option_name_three'];
+                            return (!empty($course2) ? $course2[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_three'];
                         }
 						elseif ($result[0]['universty_choice_fourth'] == $universityId) {
                             $course3 = $this->common_model->getCoursesById($result[0]['course_fourth']);
 							$strm4 = $this->common_model->getStreamById($result[0]['course_option_name_fourth']);
-                            return $course3[0]['title'] . ' ' . $result[0]['course_option_name_fourth'];
+                            return (!empty($course3) ? $course3[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_fourth'];
                         }
 						elseif ($result[0]['universty_choice_fifth'] == $universityId) {
                             $course4 = $this->common_model->getCoursesById($result[0]['course_fifth']);
 							$strm5 = $this->common_model->getStreamById($result[0]['course_option_name_fifth']);
-                            return $course4[0]['title'] . ' ' . $result[0]['course_option_name_fifth'];
+                            return (!empty($course4) ? $course4[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_fifth'];
                         }
                     }
                 } elseif ($result[0]['programme'] == 5 || $result[0]['programme'] == 6 || $result[0]['programme'] == 9) {
 
                     if ($result[0]['universty_choice'] == $universityId) {
                         $course = $this->common_model->getCoursesById($result[0]['course']);
-                        return $course[0]['title'] . ' ' . $result[0]['course_option_name'];
+                        return (!empty($course) ? $course[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name'];
                     } elseif ($result[0]['universty_choice_two'] == $universityId) {
                         $course1 = $this->common_model->getCoursesById($result[0]['course_two']);
-                        return $course1[0]['title'] . ' ' . $result[0]['course_option_name_two'];
+                        return (!empty($course1) ? $course1[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_two'];
                     } elseif ($result[0]['universty_choice_three'] == $universityId) {
                         $course2 = $this->common_model->getCoursesById($result[0]['course_three']);
-                        return $course2[0]['title'] . ' ' . $result[0]['course_option_name_three'];
+                        return (!empty($course2) ? $course2[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_three'];
                     }
 					elseif ($result[0]['universty_choice_fourth'] == $universityId) {
                             $course3 = $this->common_model->getCoursesById($result[0]['course_fourth']);
-                            return $course3[0]['title'] . ' ' . $result[0]['course_option_name_fourth'];
+                            return (!empty($course3) ? $course3[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_fourth'];
                         }
 						elseif ($result[0]['universty_choice_fifth'] == $universityId) {
                             $course4 = $this->common_model->getCoursesById($result[0]['course_fifth']);
-                            return $course4[0]['title'] . ' ' . $result[0]['course_option_name_fifth'];
+                            return (!empty($course4) ? $course4[0]['title'] : 'NA') . ' ' . $result[0]['course_option_name_fifth'];
                         }
                 }
             } elseif ($result[0]['programme'] == 3 || $result[0]['programme'] == 4 || $result[0]['programme'] == 7 || $result[0]['programme'] == 8) {
                 if ($result[0]['programme'] != 7) {
                     $course = $this->common_model->getProgrammeById($result[0]['programme']);
-                    return $course[0]['name'] . ' (' . $result[0]['course_subject'] . ')';
+                    return (!empty($course) ? $course[0]['name'] : 'NA') . ' (' . $result[0]['course_subject'] . ')';
                 } else {
                     $course = $this->common_model->getProgrammeById($result[0]['programme']);
-                    return $course[0]['name'];
+                    return !empty($course) ? $course[0]['name'] : 'NA';
                 }
             }
         }
@@ -1474,7 +1541,14 @@ class Common_model extends CI_Model {
     /* Expenditure Report End	 */
 
      function getConfirmationofFourthOptionByHqrs($missionId = null) {
-        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_student_application_details.course,iccr_student_application_details.programme,iccr_status_mapping.university_is_accept,iccr_status_mapping.regional_university,iccr_status_mapping.scholarship_id,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_doc');
+        // Added to this SELECT:
+        //   * course_two..course_fifth, course_option_name*, course_subject -
+        //     the view already reads these to build the Course column, but they
+        //     were never selected, so every choice after the first printed "NA".
+        //   * mission_medical_fitness / mission_undertaking_form - the two
+        //     documents the Mission uploads while processing, so this screen can
+        //     offer them for download.
+        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_two,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_fourth,iccr_student_application_details.course_option_name_fifth,iccr_student_application_details.course_subject,iccr_student_application_details.programme,iccr_status_mapping.university_is_accept,iccr_status_mapping.regional_university,iccr_status_mapping.scholarship_id,iccr_status_mapping.mission_medical_fitness,iccr_status_mapping.mission_undertaking_form,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_doc');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no');
@@ -1490,11 +1564,18 @@ class Common_model extends CI_Model {
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        // In production db_debug is FALSE, so a failed query returns FALSE
+        // rather than raising. Calling ->result_array() on FALSE is a fatal
+        // error on PHP 8 and the page goes blank with a 500. Returning an empty
+        // array instead means the screen still renders (with no rows) and the
+        // cause can be read from the log.
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 
 	function getConfirmationofFourthOptionByHqrsOld($missionId) {
-        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_student_application_details.course,iccr_student_application_details.programme,iccr_status_mapping.university_is_accept,iccr_status_mapping.regional_university,iccr_status_mapping.scholarship_id,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_doc');
+        // Same additions as getConfirmationofFourthOptionByHqrs() above - the
+        // "Old" table on the same screen renders from an identical view block.
+        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_two,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_fourth,iccr_student_application_details.course_option_name_fifth,iccr_student_application_details.course_subject,iccr_student_application_details.programme,iccr_status_mapping.university_is_accept,iccr_status_mapping.regional_university,iccr_status_mapping.scholarship_id,iccr_status_mapping.mission_medical_fitness,iccr_status_mapping.mission_undertaking_form,iccr_university_response_by_hqrs.regional_university,iccr_university_response_by_hqrs.region_one_doc');
         $this->db->from('iccr_status_mapping');
 
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
@@ -1508,7 +1589,9 @@ class Common_model extends CI_Model {
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        // Guarded for the same reason as the method above: a failed query
+        // returns FALSE in production, and ->result_array() on FALSE is fatal.
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
     function getAllExpenditureAppId() {
         
@@ -1518,11 +1601,18 @@ class Common_model extends CI_Model {
         $this->db->select('iccr_divisions.name,iccr_divisions.scheme_ids');
         $this->db->from('iccr_divisions');
         $this->db->where(array('iccr_divisions.id' => $id));
+        // show_error('Message', 500) removed: this checked $this->db->error()
+        // from BEFORE this query even ran (a copy-paste bug repeated
+        // throughout this file, everywhere else left harmlessly commented
+        // out). Since this function runs in Headquarter's constructor on
+        // every page load, a leftover error from any unrelated prior query
+        // in the same request was enough to trigger this and show the
+        // generic "Whoops" error page for otherwise-working pages.
         $code = $this->db->error();
         if ($code['code'] > 0) {
-            show_error('Message', 500);
+            //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 
     function getCourseDurationFromAcademicDetails($appid) {
@@ -1565,7 +1655,14 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_student_application_details.country', $vars['country']);
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
@@ -1574,7 +1671,14 @@ class Common_model extends CI_Model {
             $this->db->like('iccr_student_application_details.gender', $vars['gender']);
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -1602,7 +1706,7 @@ class Common_model extends CI_Model {
         }
         if ($this->input->post('Region')) {
 			$this->db->where('iccr_university_response.region_one_status', $this->input->post('Region'));
-            //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
 			$this->db->where('iccr_university_response.regional_university', $this->input->post('Universtiy'));
@@ -1614,7 +1718,7 @@ class Common_model extends CI_Model {
         }
 		if(!empty($vars['region'])){
 			$this->db->where('iccr_university_response.region_one_status', $vars['region']);
-            //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
 		if($this->input->post('MinDate') != "" && $this->input->post('MaxDate') != "")
         {
@@ -1687,13 +1791,27 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -1705,10 +1823,10 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
         $this->db->limit($vars['length'],$vars['start']);
         //echo $this->db->_compile_select();die;
@@ -1749,13 +1867,27 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -1767,10 +1899,10 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
         
         $code = $this->db->error();
@@ -1802,13 +1934,27 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -1820,10 +1966,10 @@ class Common_model extends CI_Model {
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
         
         $code = $this->db->error();
@@ -1846,10 +1992,24 @@ class Common_model extends CI_Model {
 			$this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');	
 		}
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -2966,7 +3126,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
 
     function getTotalFundtoRegionbyFY($regionId, $Fy) {
 
-        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released ELSE 0 END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released ELSE 0 END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released ELSE 0 END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released ELSE 0 END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " and financial_year='" . $Fy . "' Group BY regional_office";
+        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released ELSE 0 END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released ELSE 0 END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released ELSE 0 END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released ELSE 0 END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " and financial_year='" . preg_replace('/[^0-9\-]/', '', $Fy) . "' Group BY regional_office";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2975,7 +3135,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
     }
 
     function getCurrentQuarterFundDetails($regionId, $fy, $quarter) {
-        $sql = "Select amount_released FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " and quarter=" . $quarter . " and financial_year='" . $fy . "'";
+        $sql = "Select amount_released FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " and quarter=" . (int)$quarter . " and financial_year='" . preg_replace('/[^0-9\-]/', '', $fy) . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2984,7 +3144,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
     }
 
     function getTotalFundtoRegion($regionId) {
-        $sql = "Select created,financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " group by financial_year";
+        $sql = "Select created,financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " group by financial_year";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2994,10 +3154,10 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
 
     function getAdvStipendByFY($fromyear, $toyear, $regionId) {
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN adv_stipend_amount END) Fourth_Quarter FROM iccr_exp_advance_stipend where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN adv_stipend_amount END) Fourth_Quarter FROM iccr_exp_advance_stipend where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3010,10 +3170,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEA
 		//echo $toyear;
 		//echo $appid;die;
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN adv_stipend_amount END) Fourth_Quarter  FROM iccr_exp_advance_stipend where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN adv_stipend_amount END) Fourth_Quarter  FROM iccr_exp_advance_stipend where application_id='" . $appid . "'";
 //echo $sql;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -3024,10 +3184,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getStipendByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3037,10 +3197,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStipendByFYByAppno($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3050,10 +3210,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getMedicalReimbrusmentbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Medical Reimbursment' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3063,10 +3223,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMedicalReimbrusmentbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Medical Reimbursment' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3076,10 +3236,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getThesisbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Thesis Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3089,10 +3249,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getThesisbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Thesis Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3102,10 +3262,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMiscbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Misc Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3115,10 +3275,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function gethraByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'HRA' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3128,10 +3288,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function gethraByFYByAppno($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'HRA' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3141,10 +3301,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getStudyTourbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Study Tour' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $toyear . " THEN st_amount END) Fourth_Quarter FROM iccr_exp_study_tour where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN st_amount END) Fourth_Quarter FROM iccr_exp_study_tour where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3154,10 +3314,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudyTourbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Study Tour' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $toyear . " THEN st_amount END) Fourth_Quarter 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN st_amount END) Fourth_Quarter 
 FROM iccr_exp_study_tour where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -3168,10 +3328,10 @@ FROM iccr_exp_study_tour where application_id='" . $appid . "'";
 
     function getTravelDetailsbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Trvel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3181,10 +3341,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND 
 
     function getTravelDetailsbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Trvel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3194,10 +3354,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND 
 
     function getHostelChargesByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'Hostel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3207,10 +3367,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO
 
     function getHostelChargesByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Hostel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3220,10 +3380,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO
 
     function getACAbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ACA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3233,10 +3393,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getACAbyFYByAppid($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'ACA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3246,10 +3406,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getOCFByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'OCF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3259,10 +3419,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getOCFByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'OCF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3272,10 +3432,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getTFByByAppid($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'TF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee  where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee  where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3285,10 +3445,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getTFByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'TF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3298,10 +3458,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMiscUniByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Misc' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN uni_msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous_university where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN uni_msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous_university where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3311,10 +3471,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND
 
     function getEnglishBridgeByappid($fromyear, $toyear, $appid) {
         $sql = "Select 'EBC' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3324,10 +3484,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getEnglishBridgeByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'EBC' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3337,10 +3497,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getOrientChargesByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'OP' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3350,10 +3510,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getOrientChargesByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'OP' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3363,10 +3523,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getCampsByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'Camps' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3376,10 +3536,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getCampsByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Camps' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3389,10 +3549,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getISAByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3402,10 +3562,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getISAByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3415,10 +3575,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getSumptuaryByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'sump' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3428,10 +3588,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(
 
     function getSumptuaryByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'sump' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3441,10 +3601,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(
 
     function getEmergencyFundByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3454,10 +3614,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getEmergencyFundByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where regionid=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where regionid=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3467,10 +3627,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudentDayByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3480,10 +3640,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudentDayByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3500,6 +3660,18 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
             //show_error('Message');
         }
         return $this->db->get()->result_array();
+    }
+
+    // Lightweight COUNT-only version of getDemands() for dashboards.
+    function countDemands($regionid) {
+        $this->db->select('id');
+        $this->db->from('iccr_rodemands');
+        $this->db->where(array('regional_office' => $regionid, 'status' => -1));
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
     }
 
     function getconfirmationDataforHqrs($appno) {
@@ -3544,7 +3716,7 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 	function getconfirmationDataByMissionSfs($appno) {
         $this->db->select('application_id,region_one_status_date,region_one_doc,regional_university,university_is_accept,course,confirmed_to_mission,confirmed_course,reject_reason,timeline');
@@ -3599,7 +3771,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        // In production db_debug is FALSE, so a failed query returns FALSE and
+        // ->result_array() on FALSE is fatal on PHP 8. Return an empty array so
+        // the calling screen still renders.
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 	
 	function getconfirmationDataforIcarhoptionHqrs($appno) {
@@ -3623,6 +3798,97 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
         }
         return $this->db->get()->result_array();
     }
+
+    /**
+     * Single authoritative source for every university response attached to an
+     * application.
+     *
+     * Background / why this exists:
+     * The history pages used to build each block from a DIFFERENT query over the
+     * SAME table (iccr_university_response):
+     *   - "8. Confirmation Status"      -> getconfirmationDataByMission()  (confirmed_to_mission = 1)
+     *   - "Date of Forwarding" block    -> getconfirmationData()           (university_is_accept = 1)
+     * An applicant picks up to five universities, so this table legitimately holds
+     * several rows per application. Neither query had an ORDER BY and both blindly
+     * used row [0], so the two blocks could - and did - land on two different rows
+     * and print two different university names for the same student. This function
+     * returns ALL of the rows, once, in a stable order, with the university name
+     * already resolved, so every block on the page can be rendered from one
+     * consistent dataset.
+     *
+     * A LEFT join is used on purpose: a response row whose university was later
+     * de-activated (iccr_univercities.status != 1) must still be listed rather
+     * than silently vanishing from the page.
+     */
+    function getUniversityResponsesForApplication($appno) {
+        if (empty($appno)) {
+            return array();
+        }
+        $this->db->select('iccr_university_response.*, iccr_univercities.name as university_name, iccr_univercities.status as university_status');
+        $this->db->from('iccr_university_response');
+        $this->db->join('iccr_univercities', 'iccr_univercities.id = iccr_university_response.regional_university', 'left');
+        $this->db->where('iccr_university_response.application_id', $appno);
+        $this->db->order_by('iccr_university_response.id', 'ASC');
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        $q_ = $this->db->get();
+        return $q_ ? $q_->result_array() : array();
+    }
+
+    /**
+     * Picks the ONE row out of getUniversityResponsesForApplication() that
+     * represents the university the applicant was finally placed in.
+     *
+     * Precedence (highest first):
+     *   1. accepted by the university AND confirmed onward to the mission
+     *      (confirmed_to_mission = 1 is set by Headquarter::saveconfirmedcourse()
+     *       / Mission's final confirmation - this is the definitive allotment)
+     *   2. confirmed_to_mission = 1 even if the accept flag was never written
+     *   3. accepted, and matching the university recorded on iccr_status_mapping
+     *   4. any accepted row (lowest id wins, so it is at least deterministic)
+     * Returns NULL when nothing has been decided yet, which callers render as "NA"
+     * instead of falling back to an arbitrary row.
+     *
+     * @param array $responses rows from getUniversityResponsesForApplication()
+     * @param int|null $mappingUniversityId iccr_status_mapping.regional_university
+     */
+    function pickFinalUniversityResponse($responses, $mappingUniversityId = null) {
+        if (empty($responses) || !is_array($responses)) {
+            return null;
+        }
+        $confirmedAndAccepted = null;
+        $confirmedOnly        = null;
+        $acceptedMatchMapping = null;
+        $acceptedAny          = null;
+
+        foreach ($responses as $row) {
+            $isAccepted  = (isset($row['university_is_accept']) && (int) $row['university_is_accept'] === 1);
+            $isConfirmed = (isset($row['confirmed_to_mission']) && (int) $row['confirmed_to_mission'] === 1);
+
+            if ($isAccepted && $isConfirmed && $confirmedAndAccepted === null) {
+                $confirmedAndAccepted = $row;
+            }
+            if ($isConfirmed && $confirmedOnly === null) {
+                $confirmedOnly = $row;
+            }
+            if ($isAccepted && $mappingUniversityId !== null && $acceptedMatchMapping === null
+                && (int) $row['regional_university'] === (int) $mappingUniversityId) {
+                $acceptedMatchMapping = $row;
+            }
+            if ($isAccepted && $acceptedAny === null) {
+                $acceptedAny = $row;
+            }
+        }
+
+        if ($confirmedAndAccepted !== null) return $confirmedAndAccepted;
+        if ($confirmedOnly !== null)        return $confirmedOnly;
+        if ($acceptedMatchMapping !== null) return $acceptedMatchMapping;
+        if ($acceptedAny !== null)          return $acceptedAny;
+        return null;
+    }
+
 	function getconfirmationDataAcceptance($appno) {
         $this->db->select('iccr_university_response.*');
         $this->db->from('iccr_university_response');
@@ -3800,8 +4066,20 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
         return $this->db->get()->result_array();
     }
 
+    // Lightweight COUNT-only version of getProcessedDemands() for dashboards.
+    function countProcessedDemands($regionid) {
+        $this->db->select('id');
+        $this->db->from('iccr_rodemands');
+        $this->db->where(array('regional_office' => $regionid, 'status >' => 0));
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
+    }
+
     function getTotalFundtoRegionDetails($regionId) {
-        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " Group BY regional_office";
+        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " Group BY regional_office";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -4513,7 +4791,7 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
         $this->db->join('iccr_scheme', 'iccr_scheme.id = iccr_scheme_slots.scheme_id');
         $this->db->join('iccr_countries', 'iccr_countries.id = iccr_scheme_slots.country_id');
         $this->db->join('iccr_missions', 'iccr_missions.country = iccr_scheme_slots.country_id');
-        $this->db->where('iccr_scheme_slots.slots=-3 or iccr_scheme_slots.country_id=' . $missionId);
+        $this->db->where('iccr_scheme_slots.slots=-3 or iccr_scheme_slots.country_id=' . (int)$missionId);
         $this->db->group_by('iccr_scheme.id');
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -4836,6 +5114,18 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
         return $this->db->get()->result_array();
     }
 
+    // Lightweight COUNT-only version of getAlumaniApplications() for dashboards.
+    function countAlumaniApplications($missionid) {
+        $this->db->select('id');
+        $this->db->from('iccr_alumni_data');
+        $this->db->where('mission_id', $missionid);
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
+    }
+
      function getAllAlumaniApplications() {
         $this->db->select('*');
         $this->db->from('iccr_alumni_data');
@@ -4870,6 +5160,20 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
             //show_error('Message');
         }
         return $this->db->get()->result_array();
+    }
+
+    // Lightweight COUNT-only version of getAlumaniApplicationsByRegion() for dashboards.
+    function countAlumaniApplicationsByRegion($region) {
+        $this->db->select('iccr_alumni_data.id');
+        $this->db->from('iccr_alumni_data');
+        $this->db->join('iccr_univercities', 'iccr_univercities.id = iccr_alumni_data.unverisity','left');
+        $this->db->where('iccr_univercities.state', $region);
+        $this->db->or_where(array('iccr_alumni_data.regional_id' => $region));
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
     }
 
     function getAlumaniApplicationbyId($appno) {
@@ -5191,7 +5495,7 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 	
 	 function getAlumniUniversityById($universityId) {
@@ -5449,15 +5753,39 @@ function getVisaConveyedoldApplicatgion($missionId) {
         return $this->db->get()->result_array();
     }
 
-    function getConfirmationofCandidates($missionId) {
+    // $year is optional and defaults to null so every existing caller that
+    // doesn't pass it (the plain "Acceptance/Decline by Applicant" list, the
+    // Missionlive.php duplicate controller, etc.) keeps its original
+    // all-time behavior unchanged. Only the mission/listofacceptance/2026
+    // route passes $year=2026 explicitly, which is the one place this list
+    // is supposed to be scoped to a single academic year.
+    function getConfirmationofCandidates($missionId, $year = null) {
         $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_status_mapping.arrival_date,iccr_status_mapping.visa_from_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.travel_arrival_date,iccr_status_mapping.travel_informed_to_region,iccr_status_mapping.travel_plan_doc,iccr_student_application_details.course,iccr_status_mapping.scholarship_id,iccr_status_mapping.regional_university,iccr_status_mapping.scholar_acceptance');
         $this->db->from('iccr_status_mapping');
-        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        // These were plain (INNER) joins, which silently drop a row entirely if
+        // it has no matching iccr_student_application_details row (or that row
+        // has no matching iccr_countries row via nationality) - unlike the
+        // sidebar count widget (countgetConfirmationofCandidates), which only
+        // joins iccr_student_other_details and so counts every row regardless.
+        // That mismatch is why the sidebar could show a non-zero count while
+        // this actual list rendered empty. Using LEFT joins here means a row
+        // is never hidden just because one of these secondary tables doesn't
+        // have a perfectly matching record; the view already has null-safe
+        // fallbacks for these fields.
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no', 'left');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
-        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id', 'left');
         $this->db->where_in('iccr_student_other_details.application_through', $missionId);
         $this->db->where(array('iccr_status_mapping.status >' => 10));
-		$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
+        if ($year == 2026) {
+            // Matches the same 2026-01-01 UTC cutoff used by
+            // countgetConfirmationofCandidates26() so the dashboard count and
+            // this list agree with each other instead of one being all-time
+            // and the other being year-scoped.
+            $this->db->where(array('iccr_status_mapping.created >='=> 1767225600));
+        } else {
+            $this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
+        }
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -5468,9 +5796,10 @@ function getVisaConveyedoldApplicatgion($missionId) {
 	    function getConfirmationofoldCandidates($missionId) {
         $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.region_one_doc,iccr_status_mapping.arrival_date,iccr_status_mapping.visa_from_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.travel_arrival_date,iccr_status_mapping.travel_informed_to_region,iccr_status_mapping.travel_plan_doc,iccr_student_application_details.course,iccr_status_mapping.scholarship_id,iccr_status_mapping.regional_university,iccr_status_mapping.scholar_acceptance');
         $this->db->from('iccr_status_mapping');
-        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        // Same LEFT join fix as getConfirmationofCandidates() above.
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no', 'left');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
-        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id', 'left');
         $this->db->where_in('iccr_student_other_details.application_through', $missionId);
         $this->db->where(array('iccr_status_mapping.status >' => 10));
 		$this->db->where(array('iccr_status_mapping.created <='=> 1615749687));
@@ -5553,6 +5882,24 @@ function getVisaConveyedoldApplicatgion($missionId) {
         return $this->db->get()->result_array();
     }
 
+    // Lightweight COUNT-only version of getMissionsRejectedApplications() for the
+    // mission dashboard widget - avoids fetching every joined column just to
+    // run PHP's count() on the result.
+    function countgetMissionsRejectedApplications($missionid) {
+        $this->db->select('iccr_status_mapping.id');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->where(array('iccr_status_mapping.mission_status' => 2, 'iccr_status_mapping.status' => 1));
+        $this->db->where_in('iccr_student_other_details.application_through', $missionid);
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
+    }
+
     function getRoApplication() {
         $this->db->select('iccr_status_mapping.status,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no');
         $this->db->from('iccr_status_mapping');
@@ -5587,7 +5934,7 @@ function getVisaConveyedoldApplicatgion($missionId) {
         return $this->db->get()->result_array();
     }
 	 function getMissionsProcessedApplications($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date');
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
@@ -5609,7 +5956,7 @@ function getVisaConveyedoldApplicatgion($missionId) {
     }
 	
 	function getMissionsProcessedApplications25($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date');
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
@@ -5631,7 +5978,7 @@ function getVisaConveyedoldApplicatgion($missionId) {
         return $this->db->get()->result_array();
     }
 	function getMissionsAyushProcessedApplications($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date');
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
@@ -5654,7 +6001,7 @@ function getVisaConveyedoldApplicatgion($missionId) {
     }
 
 	function getMissionsAyushProcessedApplications25($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date');
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
@@ -5699,8 +6046,28 @@ FROM iccr_university_response where application_id ='" . $appno . "' GROUP BY ap
         }
         return $this->db->query($sql)->result_array();
     }
-    
-	
+
+    // Batched version of getUniversityResponses(): takes an array of
+    // application numbers and returns all of them in a single query instead
+    // of one query per application. Used to fix an N+1 query loop on the
+    // Headquarter dashboard. Returns rows indexed by application_id.
+    function getUniversityResponsesBatch($appnos) {
+        $result = array();
+        if (empty($appnos)) {
+            return $result;
+        }
+        $this->db->select("application_id, GROUP_CONCAT(region_one_status SEPARATOR ',') as regional_office, GROUP_CONCAT(regional_university SEPARATOR ',') as University, GROUP_CONCAT(university_is_accept SEPARATOR ',') as response, GROUP_CONCAT(region_one_doc SEPARATOR ';') as docs, GROUP_CONCAT(confirmed_to_mission SEPARATOR ',') as confirmed_to_mission", false);
+        $this->db->from('iccr_university_response');
+        $this->db->where_in('application_id', $appnos);
+        $this->db->group_by('application_id');
+        $rows = $this->db->get()->result_array();
+        foreach ($rows as $row) {
+            $result[$row['application_id']] = $row;
+        }
+        return $result;
+    }
+
+
 	function getUniversityResponsesbyHqrs($appno) {
         $sql = "SELECT application_id, GROUP_CONCAT(region_one_status SEPARATOR ',') as regional_office,GROUP_CONCAT(regional_university SEPARATOR ',') as University,GROUP_CONCAT(university_is_accept SEPARATOR ',') as response, GROUP_CONCAT(region_one_doc SEPARATOR ';') as docs, GROUP_CONCAT(confirmed_to_mission SEPARATOR ',') as confirmed_to_mission
 FROM iccr_university_response_by_hqrs where application_id ='" . $appno . "' GROUP BY application_id";
@@ -5727,7 +6094,7 @@ FROM iccr_university_response_by_hqrs where application_id ='" . $appno . "' GRO
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         // $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         $this->db->order_by('iccr_status_mapping.id', 'ASC');
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -5919,6 +6286,28 @@ function getRegionalApplicationsConfirmationtoHqrs($schemeids) {
         return $this->db->get()->result_array();
     }
 
+    // Lightweight COUNT-only version of getRegionalReceivedApplication() for
+    // dashboard widgets that only need the number, not the full rows (fixes
+    // the regional dashboard fetching every joined column for every matching
+    // application just to run PHP's count() on the result).
+    function countRegionalReceivedApplication($regionId) {
+        $this->db->distinct();
+        $this->db->select('iccr_status_mapping.application_no');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.country = iccr_countries.id');
+        $this->db->join('iccr_travelplan', 'iccr_travelplan.application_id = iccr_status_mapping.application_no');
+        $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no', 'left');
+        $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
+    }
+
     function getRegionalReceivedApplication($regionId) {
         $this->db->distinct();
         $this->db->select('iccr_status_mapping.status,iccr_student_application_details.created,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.ref_no,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_student_application_details.universty_choice_three,iccr_student_application_details.university_choice_one_state,iccr_student_application_details.university_choice_two_state,iccr_student_application_details.university_choice_three_state,iccr_status_mapping.region_one_status,iccr_status_mapping.university_status,iccr_status_mapping.arrival_date,iccr_status_mapping.visa_from_date,iccr_status_mapping.visa_to_date,iccr_status_mapping.travel_arrival_date,iccr_status_mapping.travel_informed_to_region,iccr_status_mapping.travel_plan_doc,iccr_status_mapping.scholarship_id,iccr_status_mapping.regional_university,iccr_student_application_details.course,iccr_student_application_details.programme,iccr_status_mapping.bonafide_doc,iccr_status_mapping.joining_doc,iccr_status_mapping.police_doc');
@@ -5930,11 +6319,11 @@ function getRegionalApplicationsConfirmationtoHqrs($schemeids) {
         $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no', 'left');
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
 
-        $this->db->where('(iccr_university_response.region_one_status=' . $regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . $regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
         $this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
 		$this->db->order_by('iccr_travelplan.created','DESC');
 		//$this->db->where(array('iccr_status_mapping.status' => 15));
-        // $this->db->where(' (iccr_student_application_details.university_choice_one_state='.$regionId.' or iccr_student_application_details.university_choice_two_state='.$regionId.' or iccr_student_application_details.university_choice_three_state='.$regionId.')'); 	
+        // $this->db->where(' (iccr_student_application_details.university_choice_one_state='. (int)$regionId.' or iccr_student_application_details.university_choice_two_state='. (int)$regionId.' or iccr_student_application_details.university_choice_three_state='. (int)$regionId.')'); 	
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -5956,10 +6345,10 @@ function getRegionalApplicationsConfirmationtoHqrs($schemeids) {
             //$this->db->where_in('iccr_status_mapping.application_no',$applicalitonIds);
         }
 
-        //  $this->db->where('(iccr_university_response.region_one_status='.$regionId.' && iccr_university_response_by_hqrs.region_one_status='.$regionId.')'); 
+        //  $this->db->where('(iccr_university_response.region_one_status='. (int)$regionId.' && iccr_university_response_by_hqrs.region_one_status='. (int)$regionId.')'); 
         //  $this->db->where('(iccr_university_response.university_is_accept!=2 or iccr_university_response_by_hqrs.university_is_accept!=2)'); 
         //  $this->db->where('(iccr_university_response.university_is_accept=1 or iccr_university_response_by_hqrs.university_is_accept=1)'); 
-        //$this->db->where(' (iccr_student_application_details.university_choice_one_state='.$regionId.' or iccr_student_application_details.university_choice_two_state='.$regionId.' or iccr_student_application_details.university_choice_three_state='.$regionId.')'); 	   
+        //$this->db->where(' (iccr_student_application_details.university_choice_one_state='. (int)$regionId.' or iccr_student_application_details.university_choice_two_state='. (int)$regionId.' or iccr_student_application_details.university_choice_three_state='. (int)$regionId.')'); 	   
         //  echo $this->db->_compile_select();
         //  die;  
         $code = $this->db->error();
@@ -5994,8 +6383,8 @@ function getRegionalApplicationsConfirmationtoHqrs($schemeids) {
 join iccr_status_mapping on iccr_status_mapping.application_no = tt.application_id 
 join iccr_student_application_details on iccr_student_application_details.application_no = iccr_status_mapping.application_no 
 join iccr_countries on iccr_student_application_details.country = iccr_countries.id 
-join iccr_travelplan on iccr_travelplan.application_id = iccr_status_mapping.application_no and iccr_travelplan.regional_office_contacted = ".$regionId." and iccr_travelplan.status = iccr_status_mapping.status
-where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`created` < 1615749687 and tt.university_is_accept=1 and tt.region_one_status =".$regionId." order by iccr_travelplan.created DESC";
+join iccr_travelplan on iccr_travelplan.application_id = iccr_status_mapping.application_no and iccr_travelplan.regional_office_contacted = ". (int)$regionId." and iccr_travelplan.status = iccr_status_mapping.status
+where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`created` < 1615749687 and tt.university_is_accept=1 and tt.region_one_status =". (int)$regionId." order by iccr_travelplan.created DESC";
 
 
         $result = $this->db->query($sql);
@@ -6016,7 +6405,7 @@ join iccr_status_mapping on iccr_status_mapping.application_no = tt.application_
 join iccr_student_application_details on iccr_student_application_details.application_no = iccr_status_mapping.application_no 
 join iccr_countries on iccr_student_application_details.country = iccr_countries.id 
 join iccr_travelplan on iccr_travelplan.application_id = iccr_status_mapping.application_no and iccr_travelplan.status = iccr_status_mapping.status 
-where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`created` >= 1615749687 and tt.university_is_accept=1 and tt.confirmed_to_mission = 1 and  tt.region_one_status =".$regionId." order by iccr_travelplan.created DESC";
+where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`created` >= 1615749687 and tt.university_is_accept=1 and tt.confirmed_to_mission = 1 and  tt.region_one_status =". (int)$regionId." order by iccr_travelplan.created DESC";
 
 
         $result = $this->db->query($sql);
@@ -6033,12 +6422,30 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where(array('iccr_status_mapping.mission_status' => 1, 'iccr_status_mapping.status' => 4, 'iccr_status_mapping.region_one_status>' => 0, 'iccr_status_mapping.iccr_status' => -1));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
         }
         return $this->db->get()->result_array();
+    }
+
+    // Lightweight COUNT-only version of getRegionalPendingUniversityApplications()
+    // for the dashboard widget - avoids pulling ~35 joined columns per matching
+    // row just to count them in PHP.
+    function countRegionalPendingUniversityApplications($regionId) {
+        $this->db->select('iccr_status_mapping.application_no');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ') ');
+        $this->db->where(array('iccr_status_mapping.status >='=>4));
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        return $this->db->count_all_results();
     }
 
     function getRegionalPendingUniversityApplications($regionId) {
@@ -6051,8 +6458,8 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         //$this->db->where_in('iccr_status_mapping.status', array(4));
         
         // $this->db->where('iccr_status_mapping.region_one_status <',1);
-        //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ') ');
-		 $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . $regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . $regionId . ') ');
+        //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ') ');
+		 $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ') ');
         $this->db->where(array('iccr_status_mapping.status >='=>4));
          //echo $this->db->_compile_select();
         $code = $this->db->error();
@@ -6071,8 +6478,8 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
 		$this->db->join('iccr_student_other_details', 'iccr_student_other_details.uid = iccr_status_mapping.uid');
         $this->db->where(array('iccr_status_mapping.status >=' =>1));
 		//$this->db->where(array('iccr_status_mapping.status >=' =>4));
-        //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
-		$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' .$regionId .' or iccr_student_application_details.university_choice_fourth_state=' . $regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . $regionId . ')');
+        //$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
+		$this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId .' or iccr_student_application_details.university_choice_fourth_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_fifth_state=' . (int)$regionId . ')');
         $this->db->order_by('iccr_status_mapping.id', 'ASC');
 //echo $this->db->_compile_select();die;
         $code = $this->db->error();
@@ -6090,7 +6497,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where_in('iccr_status_mapping.status', array(4));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
 
 
         $this->db->order_by('iccr_status_mapping.id', 'ASC');
@@ -6110,7 +6517,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         $this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
 		$this->db->where(array('iccr_status_mapping.status !=' => 5));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		//$this->db->order_by('iccr_status_mapping.mission_status_date', 'ASC');
 		//$this->db->order_by("STR_TO_DATE(iccr_status_mapping.mission_status_date, '%d/%M/%Y %H:%i')");
@@ -6365,6 +6772,45 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
             //show_error('Message');
         }
         return $this->db->get()->result_array();
+    }
+	
+    function getHQRSAYUSHReceivedApplication2026() {
+        // Includes the nomenclature columns so the listing can show the full
+        // nomenclature titles. The earlier years select only the short course
+        // ids, which is why those pages can only display abbreviated course
+        // names. course_subject and the course_option_name columns are also
+        // selected here because the view refers to them; without them the
+        // page raises undefined-key warnings for every row.
+        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.created,iccr_student_details.apply_course_type,iccr_status_mapping.mission_status_date,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_student_application_details.course,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_subject,iccr_student_application_details.nomenclature,iccr_student_application_details.nomenclature_two,iccr_student_application_details.nomenclature_three,iccr_student_application_details.nomenclature_fourth,iccr_student_application_details.nomenclature_fifth,iccr_status_mapping.iccr_status');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+		$this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+        $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->where(array('iccr_status_mapping.status >='=> 1));
+        $this->db->where(array('iccr_student_application_details.course_type' => 1));
+		// Uses the same 2026 window as the main applications listing in
+		// Hqrs_model, rather than the arbitrary mid-year start used by the
+		// earlier years in this file. Those earlier methods also set no upper
+		// bound, which is why the 2025 page currently also lists 2026
+		// applications.
+		$this->db->where(array('iccr_status_mapping.created >='=> 1767149344));
+		$this->db->where(array('iccr_status_mapping.created <='=> 1798761599));
+
+		$this->db->order_by('iccr_status_mapping.created', 'DESC');
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+		// With db_debug off (production) a failed query returns FALSE, and
+		// calling result_array() on FALSE is fatal - the page would then die
+		// with no output at all.
+		$q_ = $this->db->get();
+		if ($q_ === false) {
+			log_message('error', 'getHQRSAYUSHReceivedApplication2026() query failed: ' . json_encode($this->db->error()));
+			return array();
+		}
+		return $q_->result_array();
     }
 	
     
@@ -6739,7 +7185,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 
     function getNationalityById($id) {
@@ -6782,7 +7228,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 	
 	 function getUniversityApplicationStepOneByAppno1($appno) {
@@ -7063,11 +7509,14 @@ function getApplicationSubmitDatabyUserId($uersId) {
         $this->db->select('*');
         $this->db->from('iccr_student_other_details');
         $this->db->where('application_no', $appno);
-		$this->db->where_in('application_through', $missionuserCountryId1);  
+		// where_in('application_through', $missionuserCountryId1) removed:
+		// $missionuserCountryId1 was never defined (its source lines above are
+		// commented out), so this was silently forcing an always-empty result
+		// on every call site (Headquarter.php, Applicant.php, University.php).
         $code = $this->db->error();
         if ($code['code'] > 0) {
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 
     function getApplicationStepThree($userid) {
@@ -7213,7 +7662,7 @@ function getApplicationSubmitDatabyUserId($uersId) {
         $code = $this->db->error();
         if ($code['code'] > 0) {
         }
-        return $this->db->get()->result_array();
+        $q_ = $this->db->get(); return $q_ ? $q_->result_array() : array();
     }
 
     function applicationExists($userid) {
@@ -7749,7 +8198,7 @@ function educationSfsExists($userid) {
         if ($success >= 0){
             $this->db->delete('iccr_student_education_other_courses_details', array('education_details_id' => $row[0]['id']));
 
-            foreach($this->input->post('other_course_country') as $key=>$occ){
+            foreach((array)$this->input->post('other_course_country') as $key=>$occ){
                 $clean['education_details_id'] = $row[0]['id'];
                 $clean['other_course_country'] = $occ;
                 $clean['other_course_university'] = $this->input->post('other_course_university')[$key];
@@ -9020,15 +9469,15 @@ function getuniversitiesall() {
 	    function getnomenclatureByid($id) {
        
 			 try {
-						$this->db->select('iccr_nomenclature.title');						
+						$this->db->select('iccr_nomenclature.title');
 						$this->db->from('iccr_nomenclature');
-						$this->db->where('iccr_nomenclature.id', $id);						
+						$this->db->where('iccr_nomenclature.id', $id);
 						$result = $this->db->get();
 						$code = $this->db->error();
 						//echo $this->db->last_query();die;
-						return $result->result_array();
+						return $result ? $result->result_array() : array();
 					} catch (Exception $e) {
-						
+
 					}
     }
 	
@@ -9167,7 +9616,7 @@ function getuniversitiesall() {
     }
     function getMappingData($appno) {
         $this->db->select('joining_date,completion_date,scholarship_id,regional_university,university_is_accept,region_forward_mission_status,region_one_doc,region_one_status_date,region_one_status,travel_arrival_date,status,scholar_acceptance,mission_status,mission_status_date,mission_person_name,mission_person_designation,mission_person_place,mission_person_signature,english_proficiency_test_marks,visa_from_date,visa_to_date,visa_issueplace,visa_approved,visa_no,visa_isuue_date,undertaking_doc,visa_grant_permission,application_no,iccr_status_mapping.scholar_acceptance,iccr_status_mapping.medical_fitness');
-		
+
         $this->db->from('iccr_status_mapping');
         $this->db->where('application_no', $appno);
         $result = $this->db->get();
@@ -9176,7 +9625,7 @@ function getuniversitiesall() {
         if ($code['code'] > 0) {
             //show_error('Message');
         }
-        return $result->result_array();
+        return $result ? $result->result_array() : array();
     }
     function getRegionalResponseData($appno) {
         $this->db->select('regional_university');
@@ -9192,6 +9641,19 @@ function getuniversitiesall() {
         return $result->result_array();
     }
     
+
+	// Returns the nomenclature recorded against an application, together with
+	// the scheme id. Added for the Mission "view application" screen, which
+	// shows the confirmed university's letter alongside the scheme and
+	// nomenclature. Read-only, and selects only these two columns, so it
+	// cannot affect any existing behaviour.
+	function getSchemeAndNomenclatureByAppNo($appno) {
+		$this->db->select('scholarship_id,nomenclature');
+		$this->db->from('iccr_status_mapping');
+		$this->db->where('application_no', $appno);
+		$result = $this->db->get();
+		return $result ? $result->result_array() : array();
+	}
 
 	 function getMappingDataResponse($appno) {
         $this->db->select('joining_date,completion_date,iccr_university_response.application_id,iccr_status_mapping.scholarship_id,iccr_university_response.regional_university,iccr_university_response.university_is_accept,iccr_university_response.region_one_doc,iccr_university_response.region_one_status_date,iccr_university_response.region_one_status,travel_arrival_date,iccr_status_mapping.status,iccr_status_mapping.mission_status,mission_status_date,mission_person_name,mission_person_designation,mission_person_place,mission_person_signature,english_proficiency_test_marks,visa_from_date,visa_to_date,visa_no,visa_isuue_date,undertaking_doc,visa_grant_permission,application_no,iccr_status_mapping.scholar_acceptance,iccr_university_response.scholar_acceptance as rspo_scholar_acceptance,iccr_status_mapping.medical_fitness');
@@ -10118,15 +10580,15 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
         $this->db->where_in('iccr_student_other_details.application_through', $missionId);
         $this->db->where(array('iccr_status_mapping.status >' => 10));
 		$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
-		
 
+        $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
         }
         $countRowQuery = $this->db->count_all_results();
         return $countRowQuery;
     }
-	
+
 	function countgetConfirmationofCandidates2025($missionId) {
         $this->db->select('iccr_status_mapping.id');
         $this->db->from('iccr_status_mapping');
@@ -10136,13 +10598,35 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
 		$this->db->where(array('iccr_status_mapping.created >='=> 1744184668));
 
+        $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
         }
         $countRowQuery = $this->db->count_all_results();
         return $countRowQuery;
     }
-	
+
+	// Same pattern as countgetConfirmationofCandidates2025() above, just moved to
+	// a 2026-start cutoff (1767225600 = 2026-01-01 00:00:00 UTC). This backs the
+	// "Acceptance/Decline by Applicant (2026-2027)" dashboard box, which was
+	// previously hardcoded to 0 in Mission::dashboard() because this query
+	// didn't exist yet.
+	function countgetConfirmationofCandidates26($missionId) {
+        $this->db->select('iccr_status_mapping.id');
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->where_in('iccr_student_other_details.application_through', $missionId);
+        $this->db->where(array('iccr_status_mapping.status >' => 10));
+		$this->db->where(array('iccr_status_mapping.created >='=> 1767225600));
+
+        $code = $this->db->error();
+        if ($code['code'] > 0) {
+            //show_error('Message');
+        }
+        $countRowQuery = $this->db->count_all_results();
+        return $countRowQuery;
+    }
+
 	function countgetVisaConveyedApplicatgion($missionId) {
         $this->db->select('iccr_status_mapping.id');
         $this->db->from('iccr_status_mapping');
@@ -10496,7 +10980,7 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		$this->db->join('iccr_univercities', 'iccr_univercities.id = iccr_university_response.regional_university');
 		
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
-        $this->db->where('(iccr_university_response.region_one_status=' . $regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . $regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
 		$this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
    
 		
@@ -10506,13 +10990,27 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -10524,10 +11022,10 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
        
        // echo $this->db->_compile_select();
@@ -10555,7 +11053,7 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		$this->db->join('iccr_univercities', 'iccr_univercities.id = iccr_university_response.regional_university');
 		
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
-        $this->db->where('(iccr_university_response.region_one_status=' . $regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . $regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
 		$this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
    
 		
@@ -10565,13 +11063,27 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -10583,10 +11095,10 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
       
        // echo $this->db->_compile_select();
@@ -10640,7 +11152,7 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		$this->db->join('iccr_univercities', 'iccr_univercities.id = iccr_university_response.regional_university');
 		
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
-        $this->db->where('(iccr_university_response.region_one_status=' . $regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . $regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
 		$this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
 		
 		//echo $this->db->_compile_select();exit;
@@ -10872,6 +11384,15 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 	
 	function getUniversityInfo($universityId) {
         $this->db->select('*');
+        // iccr_users has no 'name' column - the university's display name is
+        // actually stored in 'username'. Only university/dashboard.php was
+        // written to read 'username' correctly; every other university view
+        // (new_applications, rejected_applications, hold_applications, etc.)
+        // reads $universityData[0]['name'], which never existed and threw
+        // "Undefined array key 'name'" on every one of those pages. Aliasing
+        // username as name here fixes all of them at the single shared
+        // source instead of patching each view separately.
+        $this->db->select('username as name', FALSE);
         $this->db->from('iccr_users');
         $this->db->where(array('iccr_users.university' => $universityId));
         $code = $this->db->error();
@@ -10896,13 +11417,27 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		}
         $this->db->where(array('iccr_status_mapping.status' => 1, "iccr_status_mapping.mission_status" => -1, 'iccr_status_mapping.iccr_status' => -1, 'iccr_status_mapping.region_one_status' => -1, 'iccr_status_mapping.region_two_status' => -1, 'iccr_status_mapping.region_three_status' => -1));
 		
-		$this->db->where(' (iccr_student_application_details.universty_choice=' . $universityId . ' or iccr_student_application_details.universty_choice_two=' . $universityId . ' or iccr_student_application_details.universty_choice_three=' . $universityId . ')');
+		$this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$universityId . ' or iccr_student_application_details.universty_choice_two=' . (int)$universityId . ' or iccr_student_application_details.universty_choice_three=' . (int)$universityId . ')');
         
         if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -10938,12 +11473,26 @@ WHERE `iccr_status_mapping`.`status` >= 1 AND `iccr_status_mapping`.`scholarship
 		}
         //$this->db->where(array('iccr_status_mapping.status' => 1, "iccr_status_mapping.mission_status" => -1, 'iccr_status_mapping.iccr_status' => -1, 'iccr_status_mapping.region_one_status' => -1, 'iccr_status_mapping.region_two_status' => -1, 'iccr_status_mapping.region_three_status' => -1,'iccr_student_other_details.mission_made_through'=>$cuntryid));
 		 $this->db->where(array('iccr_status_mapping.status' => 1, "iccr_status_mapping.mission_status" => -1, 'iccr_status_mapping.iccr_status' => -1, 'iccr_status_mapping.region_one_status' => -1, 'iccr_status_mapping.region_two_status' => -1, 'iccr_status_mapping.region_three_status' => -1));
-		$this->db->where(' (iccr_student_application_details.universty_choice=' . $universityId . ' or iccr_student_application_details.universty_choice_two=' . $universityId . ' or iccr_student_application_details.universty_choice_three=' . $universityId . ')');
+		$this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$universityId . ' or iccr_student_application_details.universty_choice_two=' . (int)$universityId . ' or iccr_student_application_details.universty_choice_three=' . (int)$universityId . ')');
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);

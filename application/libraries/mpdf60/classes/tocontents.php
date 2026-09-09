@@ -32,7 +32,11 @@ var $TOC_pagenumstyle;	// mPDF 6
 var $TOC_suppress;	// mPDF 6
 var $m_TOC; 
 
-function tocontents(&$mpdf) {
+// Renamed from the old PHP4-style same-as-class-name constructor to
+// __construct() - PHP 8 no longer calls the former automatically, which
+// left $this->mpdf null and caused "Attempt to read property on null"
+// warnings anywhere a table of contents was generated in a PDF.
+function __construct(&$mpdf) {
 	$this->mpdf = $mpdf;
 	$this->_toc=array();
 	$this->TOCmark = 0;

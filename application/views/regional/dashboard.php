@@ -132,19 +132,19 @@ However for Ph.d last date is 31st August 2020.</marquee>--->
 			<?php $user_data = $this->session->userdata('user_data');	
 				//echo print_r($user_data);
 				?>
-				<li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2026">Application Received from Mission(2026-2027)</a></li>
-					  <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2025">Application Received from Mission(2025-2026)</a></li>
-            <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2024">Application Received from Mission(2024-2025)</a></li>
-            <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2022">Application Received from Mission(2022-2023)<span class="pull-right fltright"><?php echo count($newTwentyTwoApplication); ?></span></a></li>
-	          <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2021">Application Received from Mission(2021-2022)<span class="pull-right fltright"><?php echo count($newApplication); ?></span></a></li>	
+				<li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2026">Application Received from Mission(2026-2027)<span class="pull-right fltright"><?php echo $newApplication2026; ?></span></a></li>
+					  <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2025">Application Received from Mission(2025-2026)<span class="pull-right fltright"><?php echo $newApplication2025; ?></span></a></li>
+            <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2024">Application Received from Mission(2024-2025)<span class="pull-right fltright"><?php echo $newApplication2024; ?></span></a></li>
+            <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2022">Application Received from Mission(2022-2023)<span class="pull-right fltright"><?php echo $newTwentyTwoApplication; ?></span></a></li>
+	          <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo/2021">Application Received from Mission(2021-2022)<span class="pull-right fltright"><?php echo $newApplication; ?></span></a></li>	
 
 	          <?php 
 	          $admissioncount=1;
-	          if(count($newApplication)>0)
+	          if($newApplication>0)
 				{
 					
 					?>
-					 <li><a href="<?php echo site_url(); ?>regional/universityapplications1">University Response Sent to Hqrs<span class="pull-right fltright"><!---<?php echo count($newApplication); ?>----></span></a></li>
+					 <li><a href="<?php echo site_url(); ?>regional/universityapplications1">University Response Sent to Hqrs<span class="pull-right fltright"><!---<?php echo $newApplication; ?>----></span></a></li>
 					<?php
 				}
 				else
@@ -174,9 +174,9 @@ However for Ph.d last date is 31st August 2020.</marquee>--->
 			   <?php
 			    if($regionName[0]["id"] == 23){
 				?>
-			    <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo">Application Received from Mission<span class="pull-right fltright"><?php echo count($newApplication); ?></span></a></li>	
+			    <li><a href="<?php echo site_url(); ?>regional/new_applicationsDemo">Application Received from Mission<span class="pull-right fltright"><?php echo $newApplication; ?></span></a></li>	
 				
-				<li><a href="<?php echo site_url(); ?>regional/universityapplications1">University Response Sent to Hqrs<span class="pull-right fltright"><!---<?php echo count($newApplication); ?></span></a></li>
+				<li><a href="<?php echo site_url(); ?>regional/universityapplications1">University Response Sent to Hqrs<span class="pull-right fltright"><!---<?php echo $newApplication; ?></span></a></li>
 				<?php
 				}
 			
@@ -186,7 +186,7 @@ However for Ph.d last date is 31st August 2020.</marquee>--->
 			   </div>--->
 			  <li><a href="<?php echo site_url(); ?>regional/getUniversityResponseSentByMissiontoRegion"><img src="<?php echo site_url();?>assets/site/main/images/newnotification.gif.png" alt="new gif Image">Confirmation sent by Mission & Student Acceptance<span class="pull-right fltright"><?php echo $countresponseSetByHqToMission; ?></span></a></li>
 	         <!--<li><a href="<?php echo site_url(); ?>regional/expenditureStatement">Reports<span class="pull-right fltright"><?php echo $arrived; ?></span></a></li>-->
-			  <!----<li><a href="<?php echo site_url(); ?>regional/new_applicationsDemoOne">Application Received<span class="pull-right fltright"><?php echo count($newApplicationDemo); ?></span></a></li>---->
+			  <!----<li><a href="<?php echo site_url(); ?>regional/new_applicationsDemoOne">Application Received<span class="pull-right fltright"><?php echo $newApplicationDemo; ?></span></a></li>---->
 	          
 	        </ul>
       </div>
@@ -252,7 +252,7 @@ However for Ph.d last date is 31st August 2020.</marquee>--->
          
           <div class="small-box bg-custom">
             <div class="inner">            
-              <h3 ><?php echo count($newApplication);?></h3>
+              <h3 ><?php echo $newApplication;?></h3>
               <p>Application Receives from Mission </p>              
             </div>
             <div class="icon">
@@ -266,7 +266,7 @@ However for Ph.d last date is 31st August 2020.</marquee>--->
          
           <div class="small-box bg-custom">
             <div class="inner">            
-              <h3 ><?php echo count($newApplication);?></h3>
+              <h3 ><?php echo $newApplication;?></h3>
               <p>Admission Confirmed to Hqrs</p>              
             </div>
             <div class="icon">

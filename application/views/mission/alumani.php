@@ -95,7 +95,7 @@ marquee{
 							elseif($app['unverisity'] > 0)
 							{
 								$uni = $this->common_model->getUniversityById($app['unverisity']);
-								echo $uni[0]['name'];
+								echo isset($uni[0]['name']) ? $uni[0]['name'] : '';
 							}
 							?>
 						</td>

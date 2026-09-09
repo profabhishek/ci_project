@@ -48,7 +48,7 @@
 	<div  class="container" style="min-height:410px;padding:0px;">
 	<div class="tab-content">	
 	  <div id="step2" class="tab-pane fade in active">
-	   <?php echo form_open('Sfs/applicant_sfs_documents?appno='.$_GET['appno'],array('enctype' => 'multipart/form-data','onsubmit'=>'return validateFieldsOtherInfo()')); ?>	  
+	   <?php echo form_open('Sfs/applicant_sfs_documents?appno='.html_escape($_GET['appno']),array('enctype' => 'multipart/form-data','onsubmit'=>'return validateFieldsOtherInfo()')); ?>	  
               <div class="box-body">
               	 <div class="name-sec col-xs-12 col-sm-5 col-md-12">
 					<h4>17. Give below the names of two persons who have agreed to testify from their personal knowledge to your character (they must not be related to you and should have direct knowledge of your academic pursuits).</h4>
@@ -577,7 +577,7 @@
                <button type="submit" class="form-control btn btn-info">Next &nbsp;&nbsp;<span class="glyphicon glyphicon-forward"></span></button>
                 </div>
                 <div class="name-sec col-xs-4 col-sm-2 col-md-6 pull-right">
-				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_education_info?appno=<?php echo $_GET['appno']; ?>" class="form-control btn btn-info">
+				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_education_info?appno=<?php echo html_escape($_GET['appno']); ?>" class="form-control btn btn-info">
 				  <span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>
 				  </div>
               	</div>

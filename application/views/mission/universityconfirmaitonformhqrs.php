@@ -51,6 +51,8 @@ marquee{
 				<th>Scheme</th>		
 				<th>Status </th>
 				<th>University Letter</th>
+				<th>Medical Fitness Certificate</th>
+				<th>Undertaking Form</th>
 				<th>Iccr Letter</th>
 				<th>Process </th>
 			</thead>
@@ -76,34 +78,102 @@ marquee{
 						}
 						else
 						{
-							$course = $this->common_model->getCoursesById($app['course']);
-							$course1 = $this->common_model->getCoursesById($app['course_two']);
-							$course2 = $this->common_model->getCoursesById($app['course_three']);
-							$course3 = $this->common_model->getCoursesById($app['course_fourth']);
-							$course4 = $this->common_model->getCoursesById($app['course_fifth']);
-							echo $course[0]['title'].' '.$app['course_option_name'].'<br/>';
-							echo $course1[0]['title'].' '.$app['course_option_name_two'].'<br/>';
-							echo $course2[0]['title'].' '.$app['course_option_name_three'].'<br/>';
-							echo $course3[0]['title'].' '.$app['course_option_name_fourth'].'<br/>';
-							echo $course4[0]['title'].' '.$app['course_option_name_fifth'].'<br/>';
-							
+							$course = $this->common_model->getCoursesById($app['course'] ?? null);
+							$course1 = $this->common_model->getCoursesById($app['course_two'] ?? null);
+							$course2 = $this->common_model->getCoursesById($app['course_three'] ?? null);
+							$course3 = $this->common_model->getCoursesById($app['course_fourth'] ?? null);
+							$course4 = $this->common_model->getCoursesById($app['course_fifth'] ?? null);
+							echo (!empty($course) ? $course[0]['title'] : 'NA').' '.($app['course_option_name'] ?? '').'<br/>';
+							echo (!empty($course1) ? $course1[0]['title'] : 'NA').' '.($app['course_option_name_two'] ?? '').'<br/>';
+							echo (!empty($course2) ? $course2[0]['title'] : 'NA').' '.($app['course_option_name_three'] ?? '').'<br/>';
+							echo (!empty($course3) ? $course3[0]['title'] : 'NA').' '.($app['course_option_name_fourth'] ?? '').'<br/>';
+							echo (!empty($course4) ? $course4[0]['title'] : 'NA').' '.($app['course_option_name_fifth'] ?? '').'<br/>';
+
 						}?></td>
 						<td>
-						<?php $uni = $this->common_model->getUniversityById($app['regional_university']); echo $uni[0]['name'];?></td>			
-						
-						<td><?php $scheme = $this->common_model->getSchemeById($app['scholarship_id']);echo $scheme[0]['scheme_name'];?></td>
+						<?php $uni = $this->common_model->getUniversityById($app['regional_university']); echo !empty($uni) ? $uni[0]['name'] : 'NA';?></td>
+
+						<td><?php $scheme = $this->common_model->getSchemeById($app['scholarship_id']);echo !empty($scheme) ? $scheme[0]['scheme_name'] : 'NA';?></td>
 						<td>Received</td>
 						<td>
-                             <?php 
+                             <?php
+                              // The university approval letter is written to one
+                              // of two places depending on which module uploaded
+                              // it: ./<year>/university_approval/ (outside the
+                              // web root, so it has to be served through
+                              // mission/downloadDocs) or the public
+                              // assets/site/main/university_approval/ folder.
+                              //
+                              // This previously always built the assets/ link
+                              // without checking. When the file was not there,
+                              // Apache rewrote the request to index.php, no route
+                              // matched, and the 404_override sent it to
+                              // home/not_found - which renders the "Error 500"
+                              // page. Staff saw an internal server error for what
+                              // was only a missing upload. Confirm the file
+                              // exists before offering a link.
                               if(!empty($app['region_one_doc'])){
-                              ?>
-                               <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $app['region_one_doc']; ?>" target="_blank">Download</a>
-                                <?php
+                                  $uniDoc   = $app['region_one_doc'];
+                                  $uniYear  = (int) date('Y');
+                                  $uniFound = '';
+                                  for($y = $uniYear; $y >= $uniYear - 3; $y--){
+                                      $tryPath = './'.$y.'/university_approval/'.$uniDoc;
+                                      if(file_exists($tryPath)){ $uniFound = $tryPath; break; }
+                                  }
+                                  if($uniFound !== ''){
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url().'mission/downloadDocs/'.base64url_encode($uniFound); ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  elseif(file_exists(FCPATH.'assets/site/main/university_approval/'.$uniDoc)){
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $uniDoc; ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  else{
+                                      ?>
+                                      <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($uniDoc, ENT_QUOTES); ?>">File not found</span>
+                                      <?php
+                                  }
                                } else {
                                 echo "NA";
                                 }
-                               ?>   
+                               ?>
                         </td>
+                        <?php
+                        // Medical Fitness Certificate and Undertaking Form, both
+                        // uploaded by the Mission on the process screen and
+                        // stored under assets/site/main/mission_documents/.
+                        // Same rule as above: only link when the file is really
+                        // on disk, otherwise say so rather than sending staff to
+                        // an error page.
+                        $missionDocCells = array(
+                            'mission_medical_fitness'  => 'Medical Fitness Certificate',
+                            'mission_undertaking_form' => 'Undertaking Form',
+                        );
+                        foreach($missionDocCells as $docKey => $docLabel){
+                            $docName = isset($app[$docKey]) ? trim((string) $app[$docKey]) : '';
+                            ?>
+                            <td>
+                            <?php
+                            if($docName === ''){
+                                echo 'Not uploaded';
+                            }
+                            elseif(file_exists(FCPATH.'assets/site/main/mission_documents/'.$docName)){
+                                ?>
+                                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/mission_documents/<?php echo rawurlencode($docName); ?>"><span class="label label-success">Download</span></a>
+                                <?php
+                            }
+                            else{
+                                ?>
+                                <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($docName, ENT_QUOTES); ?>">File not found</span>
+                                <?php
+                            }
+                            ?>
+                            </td>
+                            <?php
+                        }
+                        ?>
 					<td>
 
                                     <?php
@@ -189,6 +259,8 @@ marquee{
 				<th>Scheme</th>		
 				<th>Status </th>
 				<th>University Letter</th>
+				<th>Medical Fitness Certificate</th>
+				<th>Undertaking Form</th>
 				<th>Iccr Letter</th>
 				<th>Process </th>
 			</thead>
@@ -214,34 +286,102 @@ marquee{
 						}
 						else
 						{
-							$course = $this->common_model->getCoursesById($app['course']);
-							$course1 = $this->common_model->getCoursesById($app['course_two']);
-							$course2 = $this->common_model->getCoursesById($app['course_three']);
-							$course3 = $this->common_model->getCoursesById($app['course_fourth']);
-							$course4 = $this->common_model->getCoursesById($app['course_fifth']);
-							echo $course[0]['title'].' '.$app['course_option_name'].'<br/>';
-							echo $course1[0]['title'].' '.$app['course_option_name_two'].'<br/>';
-							echo $course2[0]['title'].' '.$app['course_option_name_three'].'<br/>';
-							echo $course3[0]['title'].' '.$app['course_option_name_fourth'].'<br/>';
-							echo $course4[0]['title'].' '.$app['course_option_name_fifth'].'<br/>';
-							
+							$course = $this->common_model->getCoursesById($app['course'] ?? null);
+							$course1 = $this->common_model->getCoursesById($app['course_two'] ?? null);
+							$course2 = $this->common_model->getCoursesById($app['course_three'] ?? null);
+							$course3 = $this->common_model->getCoursesById($app['course_fourth'] ?? null);
+							$course4 = $this->common_model->getCoursesById($app['course_fifth'] ?? null);
+							echo (!empty($course) ? $course[0]['title'] : 'NA').' '.($app['course_option_name'] ?? '').'<br/>';
+							echo (!empty($course1) ? $course1[0]['title'] : 'NA').' '.($app['course_option_name_two'] ?? '').'<br/>';
+							echo (!empty($course2) ? $course2[0]['title'] : 'NA').' '.($app['course_option_name_three'] ?? '').'<br/>';
+							echo (!empty($course3) ? $course3[0]['title'] : 'NA').' '.($app['course_option_name_fourth'] ?? '').'<br/>';
+							echo (!empty($course4) ? $course4[0]['title'] : 'NA').' '.($app['course_option_name_fifth'] ?? '').'<br/>';
+
 						}?></td>
 						<td>
-						<?php $uni = $this->common_model->getUniversityById($app['regional_university']); echo $uni[0]['name'];?></td>			
-						
-						<td><?php $scheme = $this->common_model->getSchemeById($app['scholarship_id']);echo $scheme[0]['scheme_name'];?></td>
+						<?php $uni = $this->common_model->getUniversityById($app['regional_university']); echo !empty($uni) ? $uni[0]['name'] : 'NA';?></td>
+
+						<td><?php $scheme = $this->common_model->getSchemeById($app['scholarship_id']);echo !empty($scheme) ? $scheme[0]['scheme_name'] : 'NA';?></td>
 						<td>Received</td>
 						<td>
-                             <?php 
+                             <?php
+                              // The university approval letter is written to one
+                              // of two places depending on which module uploaded
+                              // it: ./<year>/university_approval/ (outside the
+                              // web root, so it has to be served through
+                              // mission/downloadDocs) or the public
+                              // assets/site/main/university_approval/ folder.
+                              //
+                              // This previously always built the assets/ link
+                              // without checking. When the file was not there,
+                              // Apache rewrote the request to index.php, no route
+                              // matched, and the 404_override sent it to
+                              // home/not_found - which renders the "Error 500"
+                              // page. Staff saw an internal server error for what
+                              // was only a missing upload. Confirm the file
+                              // exists before offering a link.
                               if(!empty($app['region_one_doc'])){
-                              ?>
-                               <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $app['region_one_doc']; ?>" target="_blank">Download</a>
-                                <?php
+                                  $uniDoc   = $app['region_one_doc'];
+                                  $uniYear  = (int) date('Y');
+                                  $uniFound = '';
+                                  for($y = $uniYear; $y >= $uniYear - 3; $y--){
+                                      $tryPath = './'.$y.'/university_approval/'.$uniDoc;
+                                      if(file_exists($tryPath)){ $uniFound = $tryPath; break; }
+                                  }
+                                  if($uniFound !== ''){
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url().'mission/downloadDocs/'.base64url_encode($uniFound); ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  elseif(file_exists(FCPATH.'assets/site/main/university_approval/'.$uniDoc)){
+                                      ?>
+                                      <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/university_approval/<?php echo $uniDoc; ?>"><span class="label label-success">Download</span></a>
+                                      <?php
+                                  }
+                                  else{
+                                      ?>
+                                      <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($uniDoc, ENT_QUOTES); ?>">File not found</span>
+                                      <?php
+                                  }
                                } else {
                                 echo "NA";
                                 }
-                               ?>   
+                               ?>
                         </td>
+                        <?php
+                        // Medical Fitness Certificate and Undertaking Form, both
+                        // uploaded by the Mission on the process screen and
+                        // stored under assets/site/main/mission_documents/.
+                        // Same rule as above: only link when the file is really
+                        // on disk, otherwise say so rather than sending staff to
+                        // an error page.
+                        $missionDocCells = array(
+                            'mission_medical_fitness'  => 'Medical Fitness Certificate',
+                            'mission_undertaking_form' => 'Undertaking Form',
+                        );
+                        foreach($missionDocCells as $docKey => $docLabel){
+                            $docName = isset($app[$docKey]) ? trim((string) $app[$docKey]) : '';
+                            ?>
+                            <td>
+                            <?php
+                            if($docName === ''){
+                                echo 'Not uploaded';
+                            }
+                            elseif(file_exists(FCPATH.'assets/site/main/mission_documents/'.$docName)){
+                                ?>
+                                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/mission_documents/<?php echo rawurlencode($docName); ?>"><span class="label label-success">Download</span></a>
+                                <?php
+                            }
+                            else{
+                                ?>
+                                <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($docName, ENT_QUOTES); ?>">File not found</span>
+                                <?php
+                            }
+                            ?>
+                            </td>
+                            <?php
+                        }
+                        ?>
 					<td>
 
                                     <?php

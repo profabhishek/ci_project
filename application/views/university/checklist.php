@@ -323,14 +323,14 @@ foreach($univercitie_fourth as $univercity1)
 								$file_path_school_leaving_x = $docsArray[$doctypes['school_leaving_x']['type']]['path'];
 								$file_path_school_leaving = $docsArray[$doctypes['school_leaving']['type']]['path'];
 								$file_path_ug = $docsArray[$doctypes['ug']['type']]['path'];
-								$file_path_pg = $docsArray[$doctypes['pg']['type']]['path'];
-								$file_path_phd = $docsArray[$doctypes['phd']['type']]['path'];
-								$file_path_phdReseachPaper = $docsArray[$doctypes['phdReseachPaper']['type']]['path'];
-								$file_path_indian_address = $docsArray[$doctypes['indian_address']['type']]['path'];
-								$file_path_d1 = $docsArray[$doctypes['d1']['type']]['path'];
+								$file_path_pg = (isset($docsArray[$doctypes['pg']['type']]['path']) ? $docsArray[$doctypes['pg']['type']]['path'] : '');
+								$file_path_phd = (isset($docsArray[$doctypes['phd']['type']]['path']) ? $docsArray[$doctypes['phd']['type']]['path'] : '');
+								$file_path_phdReseachPaper = (isset($docsArray[$doctypes['phdReseachPaper']['type']]['path']) ? $docsArray[$doctypes['phdReseachPaper']['type']]['path'] : '');
+								$file_path_indian_address = (isset($docsArray[$doctypes['indian_address']['type']]['path']) ? $docsArray[$doctypes['indian_address']['type']]['path'] : '');
+								$file_path_d1 = (isset($docsArray[$doctypes['d1']['type']]['path']) ? $docsArray[$doctypes['d1']['type']]['path'] : '');
 								/*$file_path_physical = $docsArray[$doctypes['physical']['type']]['path'];*/
 								$file_path_tl = $docsArray[$doctypes['tl']['type']]['path'];
-								$file_path_otherDoc = $docsArray[$doctypes['otherDoc']['type']]['path'];
+								$file_path_otherDoc = (isset($docsArray[$doctypes['otherDoc']['type']]['path']) ? $docsArray[$doctypes['otherDoc']['type']]['path'] : '');
 							?>	
 							<tr>
 								<td><?php echo $counter; $counter++;?></td>
@@ -1103,7 +1103,7 @@ foreach($univercitie_fourth as $univercity1)
 						}
 						elseif($counter == 5)
 						{
-							if($applicaitonStepOne[0]['programee'] == 5 || $applicaitonStepOne[0]['programee'] == 6)
+							if((isset($applicaitonStepOne[0]['programee']) ? $applicaitonStepOne[0]['programee'] : null) == 5 || (isset($applicaitonStepOne[0]['programee']) ? $applicaitonStepOne[0]['programee'] : null) == 6)
 							{
 								array_push($arrrayCounter,1);
 								?>
@@ -1115,7 +1115,7 @@ foreach($univercitie_fourth as $univercity1)
 						}
 						elseif($counter == 6)
 						{
-							if($applicaitonStepOne[0]['programee'] == 3 || $applicaitonStepOne[0]['programee'] == 4)
+							if((isset($applicaitonStepOne[0]['programee']) ? $applicaitonStepOne[0]['programee'] : null) == 3 || (isset($applicaitonStepOne[0]['programee']) ? $applicaitonStepOne[0]['programee'] : null) == 4)
 							{
 								array_push($arrrayCounter,1);
 								?>
@@ -1234,6 +1234,7 @@ foreach($univercitie_fourth as $univercity1)
 
 							  <?php
 							  $applicationId = $this->uri->segment(3);
+							  $user_data = isset($user_data) ? $user_data : $this->session->userdata('user_data');
 							  $universityId = $user_data['university'];
 								$getLableOfCourse = $this->common_model->getLableOfCourse($applicationId,$universityId);  
 								// print_r($getLableOfCourse);
@@ -1254,6 +1255,7 @@ foreach($univercitie_fourth as $univercity1)
 					      	<option value="">Select</option>	
 							  <?php
 							  $applicationId = $this->uri->segment(3);
+							  $user_data = isset($user_data) ? $user_data : $this->session->userdata('user_data');
 							  $universityId = $user_data['university'];
 								$getLableOfCourse = $this->common_model->getMainStream($applicationId,$universityId);  
 								// print_r($getLableOfCourse);
@@ -1295,7 +1297,7 @@ foreach($univercitie_fourth as $univercity1)
 												$nomenc = $this->common_model->getnomenclatureByid($nomen1);
 												foreach($nomenc as $nm)
 												{
-													echo '<option value="'.$nm['id'].'">'.$nm['title'].'</option>';
+													echo '<option value="'.(isset($nm['id']) ? $nm['id'] : '').'">'.(isset($nm['title']) ? $nm['title'] : '').'</option>';
 												}
 												}
 												if($applicaitonStepOne[0]['universty_choice_three']==$universityId)
@@ -1319,7 +1321,7 @@ foreach($univercitie_fourth as $univercity1)
 												$nomenc = $this->common_model->getnomenclatureByid($nomen1);
 												foreach($nomenc as $nm)
 												{
-													echo '<option value="'.$nm['id'].'">'.$nm['title'].'</option>';
+													echo '<option value="'.(isset($nm['id']) ? $nm['id'] : '').'">'.(isset($nm['title']) ? $nm['title'] : '').'</option>';
 												}
 												}
 							

@@ -132,13 +132,17 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
 						  }
 						  if($title == 1)
 						  {
-						  	echo 'Mr.';						  
+						  	echo 'Mr.';
 						  }
 						  elseif($title == 2)
-						  { 
-						  	echo 'Mrs';
+						  {
+						  	echo 'Ms.';
 						  }
-					  ?>	
+						  elseif($title == 3)
+						  {
+						  	echo 'Mrs.';
+						  }
+					  ?>
 					   <?php if(!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['fullname'];?>	</td>
 							</tr>
 							<tr >

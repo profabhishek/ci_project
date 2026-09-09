@@ -41,10 +41,17 @@ class Mission_model extends CI_Model {
         $this->db->where_in('iccr_student_other_details.application_through', $missionId);       
         //$this->db->where_in('iccr_student_details.student_type', $marray);  
         if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-        }       
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+        }
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -54,6 +61,16 @@ class Mission_model extends CI_Model {
         }  
        
        if ($vars['Universtiy'] != "") {
+		   // iccr_university_response is normally only joined a few lines below,
+		   // and only when $vars['Confirmed'] == -1 - but this University filter
+		   // can be used independently of that condition, so a search using this
+		   // filter without Confirmed==-1 was referencing a table that was never
+		   // joined into the query, causing MySQL's "Unknown column" error.
+		   // Joining it here too (harmless if the later block also joins it,
+		   // since CodeIgniter's query builder just adds another JOIN clause -
+		   // duplicate identical joins are a MySQL no-op) guarantees the table
+		   // is always present whenever this column is referenced.
+		   $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no','left');
 		   $this->db->where('iccr_university_response.regional_university', $vars['Universtiy']);
            // $this->db->where(' (iccr_student_application_details.universty_choice=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_two=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_three=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fourth=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fifth=' . $vars['Universtiy'] . ')');
         }
@@ -63,7 +80,7 @@ class Mission_model extends CI_Model {
 			$this->db->where('iccr_university_response.university_is_accept	',1);
 			$this->db->group_by('iccr_university_response.application_id');
 			$this->db->order_by('iccr_university_response.region_one_status_date','ASC');
-			} 
+			}
 		if ($vars['Confirmed'] == 10) {
 				$this->db->where(array('iccr_student_application_details.course_type =' => 1));
 				$this->db->where(array('iccr_status_mapping.status >=' => 1,'iccr_status_mapping.mission_status' => 1));
@@ -146,10 +163,17 @@ class Mission_model extends CI_Model {
 		} */
         //$this->db->where(array('iccr_status_mapping.status >=' => 1,'iccr_status_mapping.mission_status' => -1, 'iccr_status_mapping.iccr_status' => -1, 'iccr_status_mapping.region_one_status' => -1, 'iccr_status_mapping.region_two_status' => -1, 'iccr_status_mapping.region_three_status' => -1,'iccr_status_mapping.region_four_status' => -1,'iccr_status_mapping.region_five_status' => -1));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-        }       
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+        }
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -159,6 +183,11 @@ class Mission_model extends CI_Model {
         }  
        
        if ($vars['Universtiy'] != "") {
+		   // Same missing-join fix as the sibling getMissionApplications() above -
+		   // this filter can run independently of the Confirmed==-1 branch below
+		   // that normally adds this join, so join it here too to guarantee the
+		   // table is present whenever this column is referenced.
+		   $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no','left');
 		   $this->db->where('iccr_university_response.regional_university', $vars['Universtiy']);
             //$this->db->where(' (iccr_student_application_details.universty_choice=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_two=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_three=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fourth=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_fifth=' . $vars['Universtiy'] . ')');
         }
@@ -173,7 +202,7 @@ class Mission_model extends CI_Model {
 			$this->db->where('iccr_university_response.university_is_accept	',1);
 			$this->db->group_by('iccr_university_response.application_id');
 			$this->db->order_by('iccr_university_response.region_one_status_date','ASC');
-			}  
+			}
 			if ($vars['Confirmed'] == 10) {
 				$this->db->where(array('iccr_student_application_details.course_type =' => 1));
 				$this->db->where(array('iccr_status_mapping.status >=' => 1,'iccr_status_mapping.mission_status' => 1));
@@ -252,10 +281,17 @@ class Mission_model extends CI_Model {
 		 $this->db->where('iccr_status_mapping.created >=',1612227054); 
         
         if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-        }       
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+        }
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -265,6 +301,13 @@ class Mission_model extends CI_Model {
         }  
        
         if ($vars['Universtiy'] != "") {
+			 // This function never joins iccr_university_response anywhere else,
+			 // so referencing this column unconditionally threw "Unknown column"
+			 // for any search using this filter. Join it here, scoped to only
+			 // when the filter is actually used, matching the pattern used for
+			 // iccr_student_application_details a few lines above in this
+			 // same function.
+			 $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no','left');
 			 $this->db->where('iccr_university_response.regional_university', $vars['Universtiy']);
             //$this->db->where(' (iccr_student_application_details.universty_choice=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_two=' . $vars['Universtiy'] . ' or iccr_student_application_details.universty_choice_three=' . $vars['Universtiy'] . ')');
         }
@@ -293,10 +336,17 @@ class Mission_model extends CI_Model {
         $this->db->where(array('iccr_status_mapping.status >=' => 1, "iccr_status_mapping.mission_status" => -1, 'iccr_status_mapping.iccr_status' => -1, 'iccr_status_mapping.region_one_status' => -1, 'iccr_status_mapping.region_two_status' => -1, 'iccr_status_mapping.region_three_status' => -1,'iccr_student_other_details.mission_made_through'=>$cuntryid));
 		$this->db->where('iccr_status_mapping.created >=',1612227054); 
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-        }       
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+        }
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -413,17 +463,36 @@ return $this->db->query($sql)->result_array();
         //$this->db->where_in('iccr_student_other_details.application_through', $missionId);
 		//$this->db->where(' (iccr_student_application_details.universty_choice=' . $universityId . ' or iccr_student_application_details.universty_choice_two=' . $universityId . ' or iccr_student_application_details.universty_choice_three=' . $universityId . ')');
 		$this->db->join('iccr_university_response', ' iccr_university_response.application_id = iccr_status_mapping.application_no');
-        $this->db->where('iccr_university_response.regional_university', $universityId);
+        // $universityId is not supplied by the caller for this listing (it filters by
+        // mission via $missionId instead), so guard against passing an undefined/null
+        // value into the where clause which otherwise leaves a dangling comparison.
+        if (isset($universityId) && $universityId != "") {
+            $this->db->where('iccr_university_response.regional_university', $universityId);
+        }
         //$this->db->where(array('iccr_status_mapping.status >=' => 10));
 		$this->db->where(array('iccr_university_response.confirmed_to_mission =' =>1));
 		$this->db->where(array('iccr_status_mapping.status>=' => 1,'iccr_status_mapping.universities_status!=' => 18,'iccr_status_mapping.scholar_acceptance'=>1));
 		//$this->db->where('iccr_status_mapping.created' >='1615749687');
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
         if($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
         }       
         if($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);
@@ -468,7 +537,12 @@ return $this->db->query($sql)->result_array();
         //$this->db->where_in('iccr_student_other_details.application_through', $missionId);
 		//$this->db->where(' (iccr_student_application_details.universty_choice=' . $universityId . ' or iccr_student_application_details.universty_choice_two=' . $universityId . ' or iccr_student_application_details.universty_choice_three=' . $universityId . ')');
 		$this->db->join('iccr_university_response', ' iccr_university_response.application_id = iccr_status_mapping.application_no');
-        $this->db->where('iccr_university_response.regional_university', $universityId);
+        // $universityId is not supplied by the caller for this listing (it filters by
+        // mission via $missionId instead), so guard against passing an undefined/null
+        // value into the where clause which otherwise leaves a dangling comparison.
+        if (isset($universityId) && $universityId != "") {
+            $this->db->where('iccr_university_response.regional_university', $universityId);
+        }
         //$this->db->where(array('iccr_status_mapping.status >=' => 10));
 		$this->db->where(array('iccr_university_response.confirmed_to_mission =' =>1));
 		$this->db->where(array('iccr_status_mapping.status>=' => 1,'iccr_status_mapping.universities_status!=' => 18,'iccr_status_mapping.scholar_acceptance'=>1));
@@ -476,10 +550,17 @@ return $this->db->query($sql)->result_array();
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
          if ($vars['ApplicantName'] != "") {
-            $this->db->like('iccr_student_application_details.fullname', $vars['ApplicantName']);
-        }       
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+        }
         if ($vars['Mail'] != "") {
-            $this->db->like('iccr_student_application_details.email', $vars['Mail']);
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
         }
         if ($vars['Programme'] != "") {
             $this->db->where('iccr_student_application_details.programme', $vars['Programme']);

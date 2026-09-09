@@ -1,6 +1,13 @@
 <?php
-require('libraries/fpdi/Fpdf.php');
-require('htmlparser.inc');
+// These were relative paths ('libraries/fpdi/Fpdf.php' and 'htmlparser.inc'),
+// which PHP resolves against the include_path and the current working
+// directory rather than this file's own location. That only worked while the
+// working directory happened to be the application folder; from any other
+// entry point the require failed and the request died with a blank 500 before
+// producing any output. __DIR__ ties both includes to this file's directory,
+// which is where they actually live.
+require_once __DIR__ . '/Fpdf.php';
+require_once __DIR__ . '/htmlparser.inc';
 
 class PdfHTMLTable extends FPDF
 {

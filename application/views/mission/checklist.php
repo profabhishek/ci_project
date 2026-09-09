@@ -154,11 +154,15 @@ var schemetype = [];
 	}
 </script>
 <?php	
-$userd = $this->common_model->getUserInfo( $applicaitonStepOne[ 0 ][ 'uid' ] ); 
+$userd = $this->common_model->getUserInfo( $applicaitonStepOne[ 0 ][ 'uid' ] );
 //echo "<pre>";print_r($userd);die;
 $currentyear = date('Y');
-$ar = explode('/',$userd->dir);
-$oldYear = $ar[2];
+if (!empty($userd->dir)) {
+	$ar = explode('/',$userd->dir);
+	$oldYear = isset($ar[2]) ? $ar[2] : 'main';
+} else {
+	$oldYear = 'main';
+}
 //echo $oldYear;
 $universityarray = array();	
 $univarray = array();
@@ -1112,7 +1116,7 @@ else{echo "NA";}
                         <tr>
                             <td>2.</td>
                             <td ><?php $university_second = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_two']);
-                                echo $university_second[0]['name']; ?></td>
+                                echo isset($university_second[0]['name']) ? $university_second[0]['name'] : ''; ?></td>
 								<td>  
 							<?php
                $sts = 0;
@@ -1313,7 +1317,7 @@ else{
                         <tr>
                             <td>3.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_three']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo isset($university_three[0]['name']) ? $university_three[0]['name'] : ''; ?></td>
 								<td>  
 							<?php
                 $sts = 0;
@@ -1539,7 +1543,7 @@ else{echo "NA";}
 						    <tr>
                             <td>4.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fourth']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                $sts = 0;
@@ -1754,7 +1758,7 @@ else{echo "NA";}
 						    <tr>
                             <td>5.</td>
                             <td><?php $university_three = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice_fifth']);
-                                echo $university_three[0]['name']; ?></td>
+                                echo !empty($university_three) ? $university_three[0]['name'] : 'NA'; ?></td>
 								<td>  
 							<?php
                $sts = 0;

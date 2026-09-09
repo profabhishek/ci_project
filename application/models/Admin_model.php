@@ -1143,13 +1143,27 @@ class admin_model extends CI_Model {
             $this->db->where('iccr_student_application_details.country', $this->input->post('Country'));
         }
         if ($this->input->post('ApplicantName')) {
-            $this->db->like('iccr_student_application_details.fullname', $this->input->post('ApplicantName'));
+            // iccr_student_application_details.fullname is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('ApplicantName')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Gender')) {
             $this->db->like('iccr_student_application_details.gender', $this->input->post('Gender'));
         }
         if ($this->input->post('Mail')) {
-            $this->db->like('iccr_student_application_details.email', $this->input->post('Mail'));
+            // iccr_student_application_details.email is stored with an older
+            // latin1_swedish_ci collation while the search text PHP/MySQL compares
+            // it against comes through as utf8mb3_general_ci - mixing the two in a
+            // LIKE throws "Illegal mix of collations" and crashes the search
+            // instead of returning results. Converting the column to utf8mb3 and
+            // explicitly setting the collation for just this comparison fixes the
+            // mismatch without touching the actual column/table definition.
+            $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($this->input->post('Mail')).'%'), NULL, FALSE);
         }
         if ($this->input->post('Programme')) {
             $this->db->where('iccr_student_application_details.programme', $this->input->post('Programme'));
@@ -1161,10 +1175,10 @@ class admin_model extends CI_Model {
             $this->db->where('iccr_status_mapping.scholarship_id', $this->input->post('Scheme'));
         }
         if ($this->input->post('Region')) {
-            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . $this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . $this->input->post('Region') . ')');
+            $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_two_state=' . (int)$this->input->post('Region') . ' or iccr_student_application_details.university_choice_three_state=' . (int)$this->input->post('Region') . ')');
         }
         if ($this->input->post('Universtiy')) {
-            $this->db->where(' (iccr_student_application_details.universty_choice=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . $this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . $this->input->post('Universtiy') . ')');
+            $this->db->where(' (iccr_student_application_details.universty_choice=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_two=' . (int)$this->input->post('Universtiy') . ' or iccr_student_application_details.universty_choice_three=' . (int)$this->input->post('Universtiy') . ')');
         }
 		if ($this->input->post('Status')) {
 			$this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
@@ -2152,7 +2166,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
 
     function getTotalFundtoRegionbyFY($regionId, $Fy) {
 
-        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released ELSE 0 END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released ELSE 0 END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released ELSE 0 END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released ELSE 0 END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " and financial_year='" . $Fy . "' Group BY regional_office";
+        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released ELSE 0 END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released ELSE 0 END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released ELSE 0 END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released ELSE 0 END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " and financial_year='" . preg_replace('/[^0-9\-]/', '', $Fy) . "' Group BY regional_office";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2161,7 +2175,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
     }
 
     function getCurrentQuarterFundDetails($regionId, $fy, $quarter) {
-        $sql = "Select amount_released FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " and quarter=" . $quarter . " and financial_year='" . $fy . "'";
+        $sql = "Select amount_released FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " and quarter=" . (int)$quarter . " and financial_year='" . preg_replace('/[^0-9\-]/', '', $fy) . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2170,7 +2184,7 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
     }
 
     function getTotalFundtoRegion($regionId) {
-        $sql = "Select created,financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " group by financial_year";
+        $sql = "Select created,financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " group by financial_year";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2180,10 +2194,10 @@ FROM iccr_hqrs_fund_monitoring Group BY regional_office,financial_year order by 
 
     function getAdvStipendByFY($fromyear, $toyear, $regionId) {
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN adv_stipend_amount END) Fourth_Quarter FROM iccr_exp_advance_stipend where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN adv_stipend_amount END) Fourth_Quarter FROM iccr_exp_advance_stipend where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2193,10 +2207,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getAdvStipendByFYofAppid($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN adv_stipend_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN adv_stipend_amount END) Fourth_Quarter  FROM iccr_exp_advance_stipend where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN adv_stipend_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN adv_stipend_amount END) Fourth_Quarter  FROM iccr_exp_advance_stipend where application_id='" . $appid . "'";
 //echo $sql;
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -2207,10 +2221,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(adv_stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getStipendByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2220,10 +2234,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStipendByFYByAppno($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'Stipend' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $fromyear . " THEN amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . $toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(stipend_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN amount END) Fourth_Quarter FROM iccr_exp_stipend where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2233,10 +2247,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(stipend_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getMedicalReimbrusmentbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Medical Reimbursment' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2246,10 +2260,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMedicalReimbrusmentbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Medical Reimbursment' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN mr_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . $toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN mr_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(mr_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN mr_amount END) Fourth_Quarter FROM iccr_exp_medical_reimbursment where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2259,10 +2273,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(mr_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getThesisbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Thesis Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2272,10 +2286,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getThesisbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Thesis Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tc_amount END) Fourth_Quarter FROM iccr_exp_thesis_charges where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2285,10 +2299,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMiscbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Misc Charges' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN msc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN msc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(msc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2298,10 +2312,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function gethraByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'HRA' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2311,10 +2325,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function gethraByFYByAppno($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'HRA' as Category,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Second_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN hra_amount END) Third_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . $toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Second_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hra_amount END) Third_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hra_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN hra_amount END) Fourth_Quarter FROM iccr_exp_hra where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2324,10 +2338,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hra_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getStudyTourbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Study Tour' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $toyear . " THEN st_amount END) Fourth_Quarter FROM iccr_exp_study_tour where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN st_amount END) Fourth_Quarter FROM iccr_exp_study_tour where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2337,10 +2351,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudyTourbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Study Tour' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN st_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . $toyear . " THEN st_amount END) Fourth_Quarter 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN st_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(st_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(st_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN st_amount END) Fourth_Quarter 
 FROM iccr_exp_study_tour where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -2351,10 +2365,10 @@ FROM iccr_exp_study_tour where application_id='" . $appid . "'";
 
     function getTravelDetailsbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Trvel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2364,10 +2378,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND 
 
     function getTravelDetailsbyFYByAppId($fromyear, $toyear, $appid) {
         $sql = "Select 'Trvel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN travel_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . $toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN travel_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(travel_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN travel_amount END) Fourth_Quarter FROM iccr_exp_travel where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2377,10 +2391,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(travel_release_date, '%d/%m/%Y')) IN(1,2,3) AND 
 
     function getHostelChargesByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'Hostel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2390,10 +2404,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO
 
     function getHostelChargesByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Hostel' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $fromyear . " THEN hos_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . $toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$fromyear . " THEN hos_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(hos_from, '%d/%m/%Y'))=" . (int)$toyear . " THEN hos_amount END) Fourth_Quarter FROM iccr_exp_hostel where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2403,10 +2417,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(hos_from, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO
 
     function getACAbyFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ACA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2416,10 +2430,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getACAbyFYByAppid($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'ACA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN aca_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . $toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN aca_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(aca_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN aca_amount END) Fourth_Quarter FROM iccr_exp_aca where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2429,10 +2443,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(aca_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getOCFByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'OCF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2442,10 +2456,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getOCFByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'OCF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN ocf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ocf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ocf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ocf_amount END) Fourth_Quarter FROM iccr_exp_other_fee where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2455,10 +2469,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ocf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEA
 
     function getTFByByAppid($fromyear, $toyear, $appid) {
         $sql = "Select doc, 'TF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee  where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee  where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2468,10 +2482,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getTFByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'TF' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN tf_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . $toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN tf_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(tf_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN tf_amount END) Fourth_Quarter FROM iccr_exp_tution_fee where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2481,10 +2495,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(tf_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getMiscUniByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Misc' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $fromyear . " THEN uni_msc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . $toyear . " THEN uni_msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous_university where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN uni_msc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN uni_msc_amount END) Fourth_Quarter FROM iccr_exp_miscellaneous_university where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2494,10 +2508,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(uni_msc_release_date, '%d/%m/%Y')) IN(1,2,3) AND
 
     function getEnglishBridgeByappid($fromyear, $toyear, $appid) {
         $sql = "Select 'EBC' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2507,10 +2521,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getEnglishBridgeByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'EBC' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ebc_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ebc_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ebc_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ebc_amount END) Fourth_Quarter FROM iccr_exp_english_bridge_course where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2520,10 +2534,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ebc_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getOrientChargesByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'OP' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2533,10 +2547,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getOrientChargesByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'OP' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN op_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . $toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN op_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(op_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN op_amount END) Fourth_Quarter FROM iccr_exp_orientation_programme where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2546,10 +2560,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(op_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getCampsByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'Camps' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2559,10 +2573,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getCampsByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'Camps' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN camps_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . $toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN camps_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(camps_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN camps_amount END) Fourth_Quarter FROM iccr_exp_camps where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2572,10 +2586,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(camps_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR
 
     function getISAByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2585,10 +2599,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getISAByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN isa_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . $toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN isa_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(isa_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN isa_amount END) Fourth_Quarter FROM iccr_exp_isa_meeting where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2598,10 +2612,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(isa_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(S
 
     function getSumptuaryByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'sump' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2611,10 +2625,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(
 
     function getSumptuaryByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'sump' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sump_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sump_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sump_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sump_amount END) Fourth_Quarter FROM iccr_exp_sumptuary where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2624,10 +2638,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sump_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(
 
     function getEmergencyFundByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2637,10 +2651,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getEmergencyFundByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN ef_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . $toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where regionid=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN ef_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(ef_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN ef_amount END) Fourth_Quarter FROM iccr_exp_emergency_fund where regionid=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2650,10 +2664,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(ef_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudentDayByAppid($fromyear, $toyear, $appid) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where application_id='" . $appid . "'";
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where application_id='" . $appid . "'";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2663,10 +2677,10 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
 
     function getStudentDayByFY($fromyear, $toyear, $regionId) {
         $sql = "Select 'ISA' as Category, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) First_Quarter,
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Second_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $fromyear . " THEN sd_amount END) Third_Quarter, 
-SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . $toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where regionId=" . $regionId;
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(4,5,6) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) First_Quarter,
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(7,8,9) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Second_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(10,11,12) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$fromyear . " THEN sd_amount END) Third_Quarter, 
+SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(STR_TO_DATE(sd_from_date, '%d/%m/%Y'))=" . (int)$toyear . " THEN sd_amount END) Fourth_Quarter FROM iccr_exp_student_day where regionId=" . (int)$regionId;
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -2803,7 +2817,7 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
     }
 
     function getTotalFundtoRegionDetails($regionId) {
-        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . $regionId . " Group BY regional_office";
+        $sql = "Select financial_year as FY, regional_office as RO,SUM(CASE WHEN quarter=1 THEN amount_released END) First_Quarter,SUM(CASE WHEN quarter=2 THEN amount_released END) Second_Quareter,SUM(CASE WHEN quarter=3 THEN amount_released END) Third_Quareter,SUM(CASE WHEN quarter=4 THEN amount_released END) Fourth_Quareter FROM iccr_hqrs_fund_monitoring where regional_office=" . (int)$regionId . " Group BY regional_office";
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -3508,7 +3522,7 @@ SUM(CASE WHEN MONTH(STR_TO_DATE(sd_from_date, '%d/%m/%Y')) IN(1,2,3) AND YEAR(ST
         $this->db->join('iccr_scheme', 'iccr_scheme.id = iccr_scheme_slots.scheme_id');
         $this->db->join('iccr_countries', 'iccr_countries.id = iccr_scheme_slots.country_id');
         $this->db->join('iccr_missions', 'iccr_missions.country = iccr_scheme_slots.country_id');
-        $this->db->where('iccr_scheme_slots.slots=-3 or iccr_scheme_slots.country_id=' . $missionId);
+        $this->db->where('iccr_scheme_slots.slots=-3 or iccr_scheme_slots.country_id=' . (int)$missionId);
         $this->db->group_by('iccr_scheme.id');
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -4324,7 +4338,7 @@ FROM iccr_university_response where application_id ='" . $appno . "' GROUP BY ap
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         // $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         $this->db->order_by('iccr_status_mapping.id', 'ASC');
         $code = $this->db->error();
         if ($code['code'] > 0) {
@@ -4458,9 +4472,9 @@ FROM iccr_university_response where application_id ='" . $appno . "' GROUP BY ap
         $this->db->join('iccr_university_response', 'iccr_university_response.application_id = iccr_status_mapping.application_no', 'left');
         $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no', 'left');
 
-        $this->db->where('(iccr_university_response.region_one_status=' . $regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . $regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
+        $this->db->where('(iccr_university_response.region_one_status=' . (int)$regionId . ' and iccr_university_response.university_is_accept=1) or (iccr_university_response_by_hqrs.region_one_status=' . (int)$regionId . ' and iccr_university_response_by_hqrs.university_is_accept=1)');
         $this->db->where(array('iccr_status_mapping.status' => 14, 'iccr_travelplan.status' => 14));
-        // $this->db->where(' (iccr_student_application_details.university_choice_one_state='.$regionId.' or iccr_student_application_details.university_choice_two_state='.$regionId.' or iccr_student_application_details.university_choice_three_state='.$regionId.')'); 	
+        // $this->db->where(' (iccr_student_application_details.university_choice_one_state='. (int)$regionId.' or iccr_student_application_details.university_choice_two_state='. (int)$regionId.' or iccr_student_application_details.university_choice_three_state='. (int)$regionId.')'); 	
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -4488,10 +4502,10 @@ FROM iccr_university_response where application_id ='" . $appno . "' GROUP BY ap
             //$this->db->where_in('iccr_status_mapping.application_no',$applicalitonIds);
         }
 
-        //  $this->db->where('(iccr_university_response.region_one_status='.$regionId.' && iccr_university_response_by_hqrs.region_one_status='.$regionId.')'); 
+        //  $this->db->where('(iccr_university_response.region_one_status='. (int)$regionId.' && iccr_university_response_by_hqrs.region_one_status='. (int)$regionId.')'); 
         //  $this->db->where('(iccr_university_response.university_is_accept!=2 or iccr_university_response_by_hqrs.university_is_accept!=2)'); 
         //  $this->db->where('(iccr_university_response.university_is_accept=1 or iccr_university_response_by_hqrs.university_is_accept=1)'); 
-        //$this->db->where(' (iccr_student_application_details.university_choice_one_state='.$regionId.' or iccr_student_application_details.university_choice_two_state='.$regionId.' or iccr_student_application_details.university_choice_three_state='.$regionId.')'); 	   
+        //$this->db->where(' (iccr_student_application_details.university_choice_one_state='. (int)$regionId.' or iccr_student_application_details.university_choice_two_state='. (int)$regionId.' or iccr_student_application_details.university_choice_three_state='. (int)$regionId.')'); 	   
         //  echo $this->db->_compile_select();
         //  die;  
         $code = $this->db->error();
@@ -4516,7 +4530,7 @@ join iccr_status_mapping on iccr_status_mapping.application_no = tt.application_
 join iccr_student_application_details on iccr_student_application_details.application_no = iccr_status_mapping.application_no 
 join iccr_countries on iccr_student_application_details.country = iccr_countries.id 
 join iccr_travelplan on iccr_travelplan.application_id = iccr_status_mapping.application_no and iccr_travelplan.status = iccr_status_mapping.status 
-where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 and tt.region_one_status =".$regionId." || tt.region_one_status=".$regionId_lcknow;
+where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 and tt.region_one_status =". (int)$regionId." || tt.region_one_status=".$regionId_lcknow;
         $result = $this->db->query($sql);
         if ($result != "") {
             return $result->result_array();
@@ -4531,7 +4545,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where(array('iccr_status_mapping.mission_status' => 1, 'iccr_status_mapping.status' => 4, 'iccr_status_mapping.region_one_status>' => 0, 'iccr_status_mapping.iccr_status' => -1));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         $code = $this->db->error();
         if ($code['code'] > 0) {
             //show_error('Message');
@@ -4547,7 +4561,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         //$this->db->where_in('iccr_status_mapping.status', array(4));
         // $this->db->where('iccr_status_mapping.region_one_status <',1);
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ') ');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ') ');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
 		$this->db->where(array('iccr_status_mapping.status !=' => 5));
         //  echo $this->db->_compile_select();
@@ -4566,7 +4580,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 
         $this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
 		$this->db->where(array('iccr_status_mapping.status !=' => 5));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		$this->db->order_by('iccr_student_details.created', 'ASC');
         $code = $this->db->error();
@@ -4584,7 +4598,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 
         $this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
 		//$this->db->where(array('iccr_status_mapping.status !=' => 5));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
         //$this->db->order_by('iccr_status_mapping.id', 'ASC');
 		$this->db->order_by('iccr_student_details.created', 'ASC');
         $code = $this->db->error();
@@ -4601,7 +4615,7 @@ where iccr_status_mapping.status IN(13,14,-14,15) and tt.university_is_accept=1 
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where_in('iccr_status_mapping.status', array(4));
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ')');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ')');
 
 
         $this->db->order_by('iccr_status_mapping.id', 'ASC');
@@ -6969,7 +6983,7 @@ count(iccr_status_mapping.status) as Total FROM `iccr_status_mapping`
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         //$this->db->where_in('iccr_status_mapping.status', array(4));
         // $this->db->where('iccr_status_mapping.region_one_status <',1);
-        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . $regionId . ' or iccr_student_application_details.university_choice_two_state=' . $regionId . ' or iccr_student_application_details.university_choice_three_state=' . $regionId . ') ');
+        $this->db->where(' (iccr_student_application_details.university_choice_one_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_two_state=' . (int)$regionId . ' or iccr_student_application_details.university_choice_three_state=' . (int)$regionId . ') ');
         $this->db->where(array('iccr_status_mapping.status >=' => 4));
 		$this->db->where(array('iccr_countries.id =' => 1));
 		//$this->db->where(array('iccr_status_mapping.status !=' => 5));

@@ -231,7 +231,7 @@
                                             $sts++;
                                             if ($resp['response'] == 1) {
                                                 ?>
-                                                <a target="_blank" href="<?php echo site_url(); ?>headquarter/confirmationReceivedWithFormat/<?php echo $app['application_no']; ?>/<?php echo $resp['University']; ?>" target="_blank">Download</a>
+                                                <a target="_blank" href="<?php echo site_url(); ?>headquarter/confirmationReceivedWithNewFormat/<?php echo $app['application_no']; ?>/<?php echo $resp['University']; ?>" target="_blank">Download</a>
 
                         <?php
                     } elseif ($resp['response'] == 2) {

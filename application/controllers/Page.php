@@ -318,7 +318,6 @@ class Page extends CI_Controller
 	public function pageslugunique_check($data)
         {
 		$check_slug = $this->common_model->getAllPages($data);
-		print_r($check_slug);exit;
 			if (!empty($check_slug))
 			{
 					
@@ -332,7 +331,6 @@ class Page extends CI_Controller
 	public function getPageUpdateStatus()
         {
 		$check_slug = $this->common_model->getAllPages($data);
-		print_r($check_slug);exit;
 			if (!empty($check_slug))
 			{
 					

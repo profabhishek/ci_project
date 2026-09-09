@@ -155,15 +155,15 @@
 					$userType = $this->user_model->checkForgetType($email);
 					//echo "<pre>";
 					//print_r($userType);die;
-					if($cleanPost['year']!= '' && !empty($cleanPost['year']) && $userType->user_type == 1)
+					if($cleanPost['year']!= '' && !empty($cleanPost['year']) && is_object($userType) && $userType->user_type == 1)
 					{
 						$num_res = $this->user_model->checkForgetWithType($email,$cleanPost['year']);
 						//echo $num_res;die;
 					}
 					else
 					{
-						
-						if($userType->user_type == 1){
+
+						if(is_object($userType) && $userType->user_type == 1){
 							$this->session->set_flashdata('message_type', 'error');
 							$this->session->set_flashdata('error','Please select registration year');
 							redirect('home/forgotPassword');
@@ -182,7 +182,10 @@
 					}
 					
 					
-					if ($num_res == 1) 
+					// See Home.php forgot_password() for why this checks !empty()
+					// instead of == 1 (checkForgetWithType() returns a row object,
+					// not literally 1).
+					if (!empty($num_res))
 					{
 						// Make a small string (code) to assign to the user // to indicate they've requested a change of // password
 						$code = mt_rand('5000', '200000');

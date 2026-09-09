@@ -1,0 +1,410 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+date_default_timezone_set('Asia/Kolkata');
+
+$config['base_url'] = 'http://localhost/ci_project/';
+$config['site_url'] = 'http://localhost/ci_project/';
+
+$config['index_page'] = '';
+
+$config['uri_protocol']	= 'REQUEST_URI';
+
+$config['url_suffix'] = '';
+
+$config['language']	= 'english';
+
+$config['charset'] = 'UTF-8';
+
+$config['enable_hooks'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Class Extension Prefix
+|--------------------------------------------------------------------------
+|
+| This item allows you to set the filename/classname prefix when extending
+| native libraries.  For more information please see the user guide:
+|
+| https://codeigniter.com/user_guide/general/core_classes.html
+| https://codeigniter.com/user_guide/general/creating_libraries.html
+|
+*/
+$config['subclass_prefix'] = 'MY_';
+
+$config['composer_autoload'] = FALSE;
+
+$config['permitted_uri_chars'] = 'a-z 0-9~%.:_\-';
+
+$config['allow_get_array'] = TRUE;
+$config['enable_query_strings'] = FALSE;
+$config['controller_trigger'] = 'c';
+$config['function_trigger'] = 'm';
+$config['directory_trigger'] = 'd';
+
+/*
+|--------------------------------------------------------------------------
+| Error Logging Threshold
+|--------------------------------------------------------------------------
+|
+| You can enable error logging by setting a threshold over zero. The
+| threshold determines what gets logged. Threshold options are:
+|
+|	0 = Disables logging, Error logging TURNED OFF
+|	1 = Error Messages (including PHP errors)
+|	2 = Debug Messages
+|	3 = Informational Messages
+|	4 = All Messages
+|
+| You can also pass an array with threshold levels to show individual error types
+|
+| 	array(2) = Debug Messages, without Error Messages
+|
+| For a live site you'll usually only enable Errors (1) to be logged otherwise
+| your log files will fill up very fast.
+|
+*/
+$config['log_threshold'] = 1;
+/*
+|--------------------------------------------------------------------------
+| Error Logging Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| application/logs/ directory. Use a full server path with trailing slash.
+|
+*/
+$config['log_path'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Log File Extension
+|--------------------------------------------------------------------------
+|
+| The default filename extension for log files. The default 'php' allows for
+| protecting the log files via basic scripting, when they are to be stored
+| under a publicly accessible directory.
+|
+| Note: Leaving it blank will default to 'php'.
+|
+*/
+$config['log_file_extension'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Log File Permissions
+|--------------------------------------------------------------------------
+|
+| The file system permissions to be applied on newly created log files.
+|
+| IMPORTANT: This MUST be an integer (no quotes) and you MUST use octal
+|            integer notation (i.e. 0700, 0644, etc.)
+*/
+$config['log_file_permissions'] = 0644;
+
+/*
+|--------------------------------------------------------------------------
+| Date Format for Logs
+|--------------------------------------------------------------------------
+|
+| Each item that is logged has an associated date. You can use PHP date
+| codes to set your own date formatting
+|
+*/
+$config['log_date_format'] = 'Y-m-d H:i:s';
+
+/*
+|--------------------------------------------------------------------------
+| Error Views Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| application/views/errors/ directory.  Use a full server path with trailing slash.
+|
+*/
+$config['error_views_path'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Cache Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| application/cache/ directory.  Use a full server path with trailing slash.
+|
+*/
+$config['cache_path'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Cache Include Query String
+|--------------------------------------------------------------------------
+|
+| Whether to take the URL query string into consideration when generating
+| output cache files. Valid options are:
+|
+|	FALSE      = Disabled
+|	TRUE       = Enabled, take all query parameters into account.
+|	             Please be aware that this may result in numerous cache
+|	             files generated for the same page over and over again.
+|	array('q') = Enabled, but only take into account the specified list
+|	             of query parameters.
+|
+*/
+$config['cache_query_string'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Encryption Key
+|--------------------------------------------------------------------------
+|
+| If you use the Encryption class, you must set an encryption key.
+| See the user guide for more info.
+|
+| https://codeigniter.com/user_guide/libraries/encryption.html
+|
+*/
+$config['encryption_key'] = 'EDCV^FR5tgb7u8%';
+
+/*
+|--------------------------------------------------------------------------
+| Session Variables
+|--------------------------------------------------------------------------
+|
+| 'sess_driver'
+|
+|	The storage driver to use: files, database, redis, memcached
+|
+| 'sess_cookie_name'
+|
+|	The session cookie name, must contain only [0-9a-z_-] characters
+|
+| 'sess_expiration'
+|
+|	The number of SECONDS you want the session to last.
+|	Setting to 0 (zero) means expire when the browser is closed.
+|
+| 'sess_save_path'
+|
+|	The location to save sessions to, driver dependent.
+|
+|	For the 'files' driver, it's a path to a writable directory.
+|	WARNING: Only absolute paths are supported!
+|
+|	For the 'database' driver, it's a table name.
+|	Please read up the manual for the format with other session drivers.
+|
+|	IMPORTANT: You are REQUIRED to set a valid save path!
+|
+| 'sess_match_ip'
+|
+|	Whether to match the user's IP address when reading the session data.
+|
+|	WARNING: If you're using the database driver, don't forget to update
+|	         your session table's PRIMARY KEY when changing this setting.
+|
+| 'sess_time_to_update'
+|
+|	How many seconds between CI regenerating the session ID.
+|
+| 'sess_regenerate_destroy'
+|
+|	Whether to destroy session data associated with the old session ID
+|	when auto-regenerating the session ID. When set to FALSE, the data
+|	will be later deleted by the garbage collector.
+|
+| Other session cookie settings are shared with the rest of the application,
+| except for 'cookie_prefix' and 'cookie_httponly', which are ignored here.
+|
+*/
+$config['sess_driver'] = 'files';
+$config['sess_cookie_name'] = 'ci_session';
+$config['sess_expiration'] = 7200;
+$config['sess_save_path'] = FCPATH.'application/ci_sessions/';
+$config['sess_match_ip'] = FALSE;
+$config['sess_time_to_update'] = 600;
+$config['sess_regenerate_destroy'] = TRUE;
+
+/*
+|--------------------------------------------------------------------------
+| Cookie Related Variables
+|--------------------------------------------------------------------------
+|
+| 'cookie_prefix'   = Set a cookie name prefix if you need to avoid collisions
+| 'cookie_domain'   = Set to .your-domain.com for site-wide cookies
+| 'cookie_path'     = Typically will be a forward slash
+| 'cookie_secure'   = Cookie will only be set if a secure HTTPS connection exists.
+| 'cookie_httponly' = Cookie will only be accessible via HTTP(S) (no javascript)
+|
+| Note: These settings (with the exception of 'cookie_prefix' and
+|       'cookie_httponly') will also affect sessions.
+|
+*/
+$config['cookie_prefix']	= '';
+$config['cookie_domain']	= '';
+$config['cookie_path']		= '/';
+$config['cookie_secure']	= FALSE;
+$config['cookie_httponly'] 	= TRUE;
+
+/*
+|--------------------------------------------------------------------------
+| Standardize newlines
+|--------------------------------------------------------------------------
+|
+| Determines whether to standardize newline characters in input data,
+| meaning to replace \r\n, \r, \n occurrences with the PHP_EOL value.
+|
+| This is particularly useful for portability between UNIX-based OSes,
+| (usually \n) and Windows (\r\n).
+|
+*/
+$config['standardize_newlines'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Global XSS Filtering
+|--------------------------------------------------------------------------
+|
+| Determines whether the XSS filter is always active when GET, POST or
+| COOKIE data is encountered
+|
+| WARNING: This feature is DEPRECATED and currently available only
+|          for backwards compatibility purposes!
+|
+*/
+$config['global_xss_filtering'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Cross Site Request Forgery
+|--------------------------------------------------------------------------
+| Enables a CSRF cookie token to be set. When set to TRUE, token will be
+| checked on a submitted form. If you are accepting user data, it is strongly
+| recommended CSRF protection be enabled.
+|
+| 'csrf_token_name' = The token name
+| 'csrf_cookie_name' = The cookie name
+| 'csrf_expire' = The number in seconds the token should expire.
+| 'csrf_regenerate' = Regenerate token on every submission
+| 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
+*/
+$config['csrf_protection'] = TRUE;
+$config['csrf_token_name'] = 'csrftestname';
+$config['csrf_cookie_name'] = 'csrfcookiename';
+$config['csrf_expire'] = 7200;
+$config['csrf_regenerate'] = TRUE;
+$config['csrf_exclude_uris'] = array();
+$config['csrf_exclude_uris'] = array('applicant/selectedUnvercity','home/applicaitonAluminiProcess','applicant/uploadProfilePic','applicant/uploadSfsSignature','applicant/processConfirmedappfromhqrsSfs','applicant/processConfirmedappfromhqrsAyush','applicant/uploadTranslationSfs','applicant/uploadPhysicalFitnessSfs','applicant/uploadProfileSfsPic','applicant/uploadPhdSfs','applicant/getCourseByPrgramme','applicant/uploadLicence','applicant/uploadSchoolLeaving','applicant/uploadUnderGraduate','applicant/uploadPostGraduate','applicant/uploadPhd','applicant/uploadPanCard','applicant/uploadIdProof','applicant/uploadAddressProof','applicant/uploadPhysicalFitness','applicant/uploadMphil','applicant/uploadPassport','applicant/uploadLicence','applicant/getMissionsByCountry','applicant/uploadSignature','admin/updateUniversity','admin/updateSeatsAllotment','mission/getSlotsbySchemes','mission/holdApplication','mission/applicaitonProcess','mission/applicaitonAgreeProcess','mission/UploadUnderTaking','admin/deleteMission','admin/deleteRegion','admin/deleteScheme','admin/downloadTotalConfirmationpdfs','regional/getCourseByPrgramme','regional/getCourseByPrgrammeold','headquarter/getReports','admin/downloadTotalafricanConfirmationPdf','headquarter/getCourseByPrgrammeold','applicant/uploadTranslation','headquarter/getExpenditureDetails','regional/getExpenditureDetails','regional/universtiyLetter','regional/getCourseDetail','regional/logout','applicant/logout','user/logout','mission/logout','mission/openMissionOfferLetter','mission/getNewApplicaitons/2026','mission/getNewApplicaitons/2025','mission/getNewApplicaitons/2024','mission/getNewApplicaitons/2023','mission/getNewApplicaitons/2022','mission/getNewApplicaitons/2021','home/getPhdDob','headquarter/logout','headquarter/getStudentDetails','headquarter/getExpStudentDetails','regional/getMissionsByCountry','regional/getNewApplicaitons/2026','regional/getNewApplicaitons/2025','regional/getNewApplicaitons/2024','regional/getNewApplicaitons/2023','regional/getNewApplicaitons/2022','regional/getNewApplicaitons/2021','mission/getNewApplicaitons','mission/getPendingApplicaitons','headquarter/getNewApplicaitons/2020','headquarter/getNewApplicaitons/2019','headquarter/getNewApplicaitons/2018','regional/getNewApplicaitons','admin/downloadTotalConfirmation','regional/get_universityResponseSentByRegionToMission','headquarter/get_universityResponseSentByHqToMission/2021','headquarter/get_universityResponseSentByHqToMission/2022','headquarter/get_universityResponseSentByHqToMission/2023','headquarter/get_universityResponseSentByHqToMission/2024','headquarter/get_universityResponseSentByHqToMission/2025','headquarter/get_universityResponseSentByHqToMission/2026','regional/getUniversityapplications','admin/getReports','applicant/getCourseType','headquarter/getConfirmationFromRO','headquarter/get_universityResponseSentByHqToMission1','headquarter/getNewAllApplicaitons/2022','headquarter/getNewAllApplicaitons/2024','headquarter/getNewAllApplicaitons/2025','headquarter/getNewAllApplicaitons/2026','headquarter/getNewAllApplicaitons/2023','headquarter/getNewAllApplicaitons/2021','admin/ajaxfile','applicant/uploadPhdResearchPaper','applicant/uploadOtherDocs','regional/editExpenditure','regional/uploadAddressProof','regional/uploadExpenditure','regional/studentExpenditureSave','regional/getAddStudents','regional/studentDetails','regional/saveStudentDetails','regional/showStudentDetails','headquarter/getCountIccr','regional/editAdvancStipenedExpenditure','regional/uploadSignature','regional/upload','regional/studentBonafideSave','regional/editBonafideDetails','regional/getBonafide','regional/saveBonafideDetails','regional/editPromotedDetails','regional/getCountRegional','regional/getTravelStudents','regional/showTravelDetails','regional/isCheckDetails','regional/isAlreadytTravelPlan','regional/isUnderTaking','regional/isAlreadytTravelPlan','headquarter/getAdmittReports','headquarter/openHqrsStatus','home/getMissionsByCountry','home/getDob','regional/getexpenditureStatementDetails','admin/getAfricaReports','applicant/uploadIdProofSfs','applicant/uploadPassportSfs','applicant/uploadPostGraduateSfs','applicant/uploadSchoolLeavingSfs','applicant/uploadOtherDocsSfs','mission/editApplication','mission/getSfsNewApplicaitons','university/getNewUniversityApplicaitons','university/getCourseDetail','university/applicaitonProcess','university/holdApplication','university/getCourseByPrgrammeold','applicant/selectedUniversityData','university/getUniversityStreamByProgramme','university/getNewUniversityApproveApplicaitons/2021','university/getUniversityRejectedApplicaitons/2021','university/getUniversityRejectedApplicaitons/2022','university/getUniversityRejectedApplicaitons/2023','university/getNewUniversityApproveApplicaitons/2024','university/getNewUniversityApproveApplicaitons/2025','university/getNewUniversityApproveApplicaitons/2026','university/getNewUniversityApproveApplicaitons/2023','university/getNewUniversityApproveApplicaitons/2022','university/getUniversityPageBySlug','applicant/getAyushUniversityByCourse','applicant/selectedAyushSchemeUniversityData','applicant/selectedSchemeUniversityData','applicant/getStreamByCourse','university/getUniversityCourseProgramme','university/getUniversityAcceptance/2021','university/getUniversityAcceptance/2022','university/getUniversityAcceptance/2023','university/getUniversityAcceptance/2024','university/getUniversityAcceptance/2025','university/getUniversityAcceptance/2026','university/getNewUniversityApplicaitons/2021','university/getNewUniversityApplicaitons/2022','university/getNewUniversityApplicaitons/2023','university/getNewUniversityApplicaitons/2024','university/getNewUniversityApplicaitons/2025','university/getNewUniversityApplicaitons/2026','university/getUniversityStream','university/getUniversityStreamById','university/getUniversityStreamByCourseProgrammeCoureseType','admin/getUniversityCourseProgramme','admin/getUniversityStream','admin/getUniversityStreamById','admin/getUniversityStreamByCourseProgrammeCoureseType','headquarter/getExpStudentDetailsRegionWise','headquarter/expenditureReportofStudentRegionWise','mission/ajaxfile','mission/uploadAluminiDocs','admin/deleteNotification','home/uploadAluminiProfilePic','university/ajaxfile','applicant/uploadGmatScore','university/editUniversityRemarks','applicant/editApplicantRemarks','applicant/processConfirmedappfromhqrs','applicant/scholarsvisaendrosment','applicant/createTravelPlan','applicant/applicant_personal_info','applicant/applicant_education_info','applicant/applicant_other_info','applicant/applicant_documents','applicant/applicant_education_info_save','applicant/applicantStatus','applicant/applicant_personal_info_prev','applicant/applicant_personal_info_preview','applicant/applicant_education_info_preview','applicant/applicant_other_info_preview','applicant/applicant_documents_info_preview','applicant/applicant_other_info_save','applicant/applicant_document_info_save','applicant/applicant_document_info_final_save','applicant/applicant_download_form','university/openUniversityStatus','mission/openUniversityStatus','mission/processApplication','mission/applicaitonProcess','regional/openUniversityStatus','headquarter/openUniversityStatus','applicant/uploadSchoolLeavingx','university/getUniversityRejectedApplicaitons','mission/getUniversityConfirmDetail','mission/getCourseDetail','university/getNewUniversityApproveApplicaitons','applicant/getCertificateCourseType','headquarter/getNewAllApplicaitons','regional/editHostelExpenditure','regional/editTutionFeeExpenditure','regional/editStipenedExpenditure','regional/editHRAExpenditure','regional/editACAExpenditure','regional/editTourExpenditure','regional/editMedicalExpenditure','regional/editThesisExpenditure','regional/editMiscellaneousExpenditure','mission/getCourseByPrgrammeold','regional/rpUpload','headquarter/getApplicaitonsAcceptance/2021','headquarter/getApplicaitonsAcceptance/2020','headquarter/getApplicaitonsAcceptance/2019','headquarter/getApplicaitonsAcceptance/2018','user/sendOTP','user/validateOTP','applicant/getDuration','applicant/uploadTOEFLDocs','applicant/uploadIELTSDocs','applicant/uploadDUOLINGODocs','applicant/uploadSubjectDocs');
+			
+
+
+$config['sess_match_useragent'] = FALSE;
+/*
+|--------------------------------------------------------------------------
+| Output Compression
+|--------------------------------------------------------------------------
+|
+| Enables Gzip output compression for faster page loads.  When enabled,
+| the output class will test whether your server supports Gzip.
+| Even if it does, however, not all browsers support compression
+| so enable only if you are reasonably sure your visitors can handle it.
+|
+| Only used if zlib.output_compression is turned off in your php.ini.
+| Please do not use it together with httpd-level output compression.
+|
+| VERY IMPORTANT:  If you are getting a blank page when compression is enabled it
+| means you are prematurely outputting something to your browser. It could
+| even be a line of whitespace at the end of one of your scripts.  For
+| compression to work, nothing can be sent before the output buffer is called
+| by the output class.  Do not 'echo' any values with compression enabled.
+|
+*/
+$config['compress_output'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Master Time Reference
+|--------------------------------------------------------------------------
+|
+| Options are 'local' or any PHP supported timezone. This preference tells
+| the system whether to use your server's local time as the master 'now'
+| reference, or convert it to the configured one timezone. See the 'date
+| helper' page of the user guide for information regarding date handling.
+|
+*/
+$config['time_reference'] = 'gmt';
+
+/*
+|--------------------------------------------------------------------------
+| Rewrite PHP Short Tags
+|--------------------------------------------------------------------------
+|
+| If your PHP installation does not have short tag support enabled CI
+| can rewrite the tags on-the-fly, enabling you to utilize that syntax
+| in your view files.  Options are TRUE or FALSE (boolean)
+|
+| Note: You need to have eval() enabled for this to work.
+|
+*/
+$config['rewrite_short_tags'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
+| Reverse Proxy IPs
+|--------------------------------------------------------------------------
+|
+| If your server is behind a reverse proxy, you must whitelist the proxy
+| IP addresses from which CodeIgniter should trust headers such as
+| HTTP_X_FORWARDED_FOR and HTTP_CLIENT_IP in order to properly identify
+| the visitor's IP address.
+|
+| You can use both an array or a comma-separated list of proxy addresses,
+| as well as specifying whole subnets. Here are a few examples:
+|
+| Comma-separated:	'10.0.1.200,192.168.5.0/24'
+| Array:		array('10.0.1.200', '192.168.5.0/24')
+*/
+
+
+$config['proxy_ips'] = '';
+$config['detainedReason'] = array('1'=>'Medical Grounds','2'=>'Backlog','3'=>'Malpractice','4'=>'Shortage of attendance');
+$config['financial_year_last'] = '5';
+$config['Mission_Applicant_Pending_Date'] = '20 Jan 2018';
+$config['roles_id'] = array('1'=>'Student','2'=>'Mission','3'=>'ICCR','4'=>'Regional Office','5'=>'Super Admin','7'=>'Agency','8'=>'University');
+$config['mission_checklist'] = array(3,4,8,10,11);
+$config['applicant_checklist'] = array(1,2,5,7,9);
+$config['roles'] = array('student'=>1,'Mission'=>2,'ICCR'=>3,'Regional Office'=>4,'Super Admin'=>5,'Agency' =>7,'University'=> 8);
+$config['status'] = array('0', '1');
+$config['universities_status_master'] = array('1'=>'Pending with Applicant','2'=>'Submited','3'=>'Application on hold by university','5'=>'Application returned by university for re-submission by applicant','7'=>'Rejected','6'=>'Admission confirmed by university.Scholarship under consideration by Mission','11'=>'Application under consideration Mission for award of scholarship','8'=>'Scholarship awarded.Student to provide acceptance to offer and approach Indian Mission','9'=>'Re-submited by applicant');
+//$config['universities_status_master'] = array('1'=>'Pending with Applicant','2'=>'Submited','3'=>'Application on hold by university','5'=>'Application returned by university for re-submission by applicant','7'=>'Rejected','6'=>'Admission confirmed by university.Scholarship under consideration by Mission','11'=>'Application under consideration Mission for award of scholarship','8'=>'Scholarship awarded.Student to provide acceptance to offer and approach Indian Mission','9'=>'Re-submited by applicant');
+$config['programme'] = array('1'=>'UG','2'=>'PG','3'=>'M.Phil','4'=>'Ph.D','5'=>'Dance','6'=>'Music','7'=>'Yoga','8'=>'Ph.D Ayurveda','9'=>'CetificateCourse','12'=>'Diploma','13'=>'Certificate');
+$config['programme_exp'] = array('1'=>'Undergraduate','2'=>'Post Graduate','3'=>'M.Phil','4'=>'Ph.D','5'=>'Post-doctoral');
+//$config['programme_exp_stp'] = array('1'=>'5500','2'=>'6000','3'=>'7000','4'=>'7000','5'=>'7500');
+$config['programme_exp_stp'] = array('1'=>'18000','2'=>'20000','3'=>'7000','4'=>'22000','5'=>'25000');
+$config['fromEmail'] = 'splspd.iccr@nic.in';
+$config['isProduction'] = FALSE;
+$config['grade_cities'] = array('1'=>'Delhi','2'=>'Bengaluru','3'=>'Kolkata','4'=>'Chennai','5'=>'Mumbai','6'=>'Hyderabad','7'=>'Other');
+$config['alumini_cities'] = array('1'=>'Ahemdabad','2'=>'Bengaluru','3'=>'BHOPAL','4'=>'Chandigarh','5'=>'Chennai','6'=>'Bhubaneswar','8'=>'Guwahati','9'=>'Hyderabad','10'=>'Jaipur','11'=>'Jammu','12'=>'Kolkata','13'=>'Lucknow','14'=>'Mumbai','15'=>'Patna','16'=>'Pune','17'=>'Shillong','18'=>'Srinagar','19'=>'Thiruvananthapuram','20'=>'Varanasi','23'=>'Delhi','7'=>'Other');
+$config['doc_types'] = array(
+		'school_leaving'=>array('type'=>1,'title'=>'Marks/Grade Card of Grade XII and Transcript (equivalent to Grade XII in India) <span style="color:red;font-size:11px;">(Document size must be less than 1 MB)</span>'),
+		'ug'=>array('type'=>2,'title'=>'Under-Graduate Final Marksheet and Transcript. <span style="color:red;font-size:11px;">(Document size must be less than 1 MB)</span>'),
+		'pg'=>array('type'=>3,'title'=>"Post-Graduate Final Marksheet and Transcript. <span style='color:red;font-size:11px;'>(Document size must be less than 1 MB)</span>"),
+		'mhil'=>array('type'=>4,'title'=>'M-Phill (Synopsis) <span style="color:red;font-size:11px;">(Document size must be less than 3 MB)</span>'),
+		'phd'=>array('type'=>5,'title'=>'Doctorate (Ph.D) (Synopsis) <span style="color:red;font-size:11px;">(Document size must be less than 3 MB)</span>'),
+		'passport'=>array('type'=>6,'title'=>'Passport Copy (Front & Back Pages giving details of personal particulars and residence address) <span style="color:red;font-size:11px;">(Document size must be less than 1 MB)</span>'),
+		'id'=>array('type'=>7,'title'=>'Govt. Id Proof <span style="color:red;font-size:11px;">(Document size must be less than 2 MB)</span>'),
+		'dl'=>array('type'=>8,'title'=>'International Driving Licence <span style="color:red;font-size:11px;">(Document size must be less than 2 MB)</span>'),
+		'domicile'=>array('type'=>9,'title'=>'Residence Proof <span style="color:red;font-size:11px;">(Document size must be less than 2 MB)</span>'),
+		'pan'=>array('type'=>10,'title'=>'Pan Card Copy'),
+		'indian_address'=>array('type'=>11,'title'=>'Copy of Residential Permit. <span style="color:red;font-size:11px;">(Document size must be less than 2 MB)</span>'),
+		'physical'=>array('type'=>12,'title'=>'Medical fitness certificate <span style="color:red;font-size:11px;">(Document size must be less than 1 MB)</span>'),
+		'tl'=>array('type'=>13,'title'=>'English Translation of all documents which are not originally in English <span style="color:red;font-size:11px;">(Document size must be less than 3 MB)</span>'),
+		'phdReseachPaper'=>array('type'=>14,'title'=>'Doctorate (Ph.D) (Research Paper) <span style="color:red;font-size:11px;">(Document size must be less than 2 MB)</span>'),
+		'otherDoc'=>array('type'=>15,'title'=>'Any Other Document <span style="color:red;font-size:11px;">(Document size must be less than 3 MB)</span>'),
+		'gmat'=>array('type'=>16,'title'=>'GMAT Score<span style="color:red;font-size:11px;">(Document size must be less than 3 MB)</span>'),
+		'school_leaving_x'=>array('type'=>17,'title'=>'Marks/Grade Card of Grade X and Transcript (equivalent to Grade X in India) <span style="color:red;font-size:11px;">(Document size must be less than 1 MB)</span>'),
+		'toeflDoc'=>array('type'=>18,'title'=>'TOEFL Document <span style="color:red;font-size:11px;">(Document size must be less than 700 KB)</span>'),
+		'ieltsDoc'=>array('type'=>19,'title'=>'IELTS Document <span style="color:red;font-size:11px;">(Document size must be less than 700 KB)</span>'),
+		'duolingoDoc'=>array('type'=>20,'title'=>'DUOLINGO Document <span style="color:red;font-size:11px;">(Document size must be less than 700 KB)</span>'),
+		'subjectDoc'=>array('type'=>21,'title'=>'English as a Subject in School/College Document <span style="color:red;font-size:11px;">(Document size must be less than 700 KB)</span>'),
+		);
+		

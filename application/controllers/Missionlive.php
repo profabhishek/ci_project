@@ -520,6 +520,7 @@ class Mission extends CI_Controller {
 			$data['applicaitonStepThree'] = $this->common_model->getApplicationStepThreebyAppNo($applicationId);
 			$data['applicaitonDocuments'] = $this->common_model->getApplicationDocumentsbyAppNo($applicationId);
 			$data['mappingData'] = $this->common_model->getMappingData($applicationId);
+			$data['controllerBase'] = 'missionlive';
 			$this->load->view('mission/header_mission');
 			$this->load->view('mission/acceptanceHistory',$data);
 			$this->load->view('mission/footer');	
@@ -1685,6 +1686,12 @@ class Mission extends CI_Controller {
 	    /* Concatenate the array with ',' */
 	    return $fy;
 	}
+	public function downloadDocs(){
+		//echo base64_decode($this->uri->segment(3));die;
+		$file_name = base64url_decode($this->uri->segment(3));
+		fileForceDownload($file_name);
+	}
+
 	function confirmationReceivedWithFormat()
 	{
 		try

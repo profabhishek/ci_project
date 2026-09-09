@@ -276,50 +276,6 @@ var statesarray = JSON.parse('<?php echo $states_array;?>');
                       <p>No passport image uploaded.</p>
                   <?php endif; ?></td>
 								</tr>
-													<div id="imageModal" class="image-modal">
-						<span class="close" onclick="closeImage()">&times;</span>
-						<img class="modal-content" id="popupImage">
-					</div>
-				  <style>
-				.image-modal {
-					display: none;
-					position: fixed;
-					z-index: 9999;
-					padding-top: 60px;
-					left: 0;
-					top: 0;
-					width: 100%;
-					height: 100%;
-					background-color: rgba(0,0,0,0.9);
-				}
-
-				.image-modal img {
-					margin: auto;
-					display: block;
-					max-width: 90%;
-					max-height: 80%;
-				}
-
-				.close {
-					position: absolute;
-					top: 20px;
-					right: 40px;
-					color: #fff;
-					font-size: 40px;
-					font-weight: bold;
-					cursor: pointer;
-				}
-				</style>
-<script>
-function openImage(src) {
-    document.getElementById("imageModal").style.display = "block";
-    document.getElementById("popupImage").src = src;
-}
-
-function closeImage() {
-    document.getElementById("imageModal").style.display = "none";
-}
-</script>
 							<tr>
 									<td style="height:35px;font-weight: bold;">
 										<label>7. Issue of Passport (City, Country)</label>
@@ -398,11 +354,13 @@ function closeImage() {
 								<td colspan="2">
 								<table id="tblpassport" class="table" style="width: 100%;">
 									<thead>
+<tr>
 										<th style="width:150px; ">a) City</th>
 										<th style="width:150px; ">b) State</th>
 										<th style="width:150px; ">c) Country</th>
 										<th style="width:150px; ">d) Zipcode</th>
-									</thead>
+									</tr>
+</thead>
 									<tbody>
 										<tr>
 											<td><?php if(!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['postal_address_city'];?></td>
@@ -465,11 +423,13 @@ function closeImage() {
 									<td colspan="2" style="height:35px;">
 										<table id="tbl_father" class="table" style="width:100%;">
 											<thead>
+<tr>
 												<th>Name</th>
 												<th>Relation</th>
 												<th>Phone Number</th>
 												<th>Email ID</th>
-											</thead>
+											</tr>
+</thead>
 											<tbody>
 											<?php if (!empty( $registerData[0]['father_fname'])) { ?>
 												<tr>
@@ -505,12 +465,15 @@ function closeImage() {
 									<td colspan="2">
 										<table id="tbl_gaurdian" class="table" style="width: 100%;">
 											<thead>
+<tr>
 												<th>City</th>
 												<th>State</th>
 												<th>Country</th>
 												<th>Zincode</th>
-											</thead>
+											</tr>
+</thead>
 											<tbody>
+<tr>
 												<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_city']; ?></td>
 												<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_state']; ?></td>
 												<td><?php
@@ -524,7 +487,8 @@ function closeImage() {
 													}
 													?></td>
 												<td><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_pincode']; ?></td>
-											</tbody>
+											</tr>
+</tbody>
 										</table>
 									</td>
 								</tr>
@@ -758,6 +722,7 @@ function closeImage() {
 								<td colspan="2" style="height:35px;max-width:120px">
 								<table style="width:100%;" id="tbl_course">
 									<thead>
+<tr>
 										<th>13. Course applied for</th>
 					<?php 
 					if(count($applicaitonStepOne)>0 && $applicaitonStepOne[0]['programme'] == 1 || $applicaitonStepOne[0]['programme'] == 2 || $applicaitonStepOne[0]['programme'] == 9)
@@ -775,7 +740,8 @@ function closeImage() {
 						}
 						?>
 										
-									</thead>
+									</tr>
+</thead>
 									<tbody>
 										<tr>
 											<td><?php 
@@ -861,6 +827,7 @@ function closeImage() {
 									<?php
 									}
 									?>
+									</tr>
 
 
 									<?php $user_data = $this->session->userdata('user_data');
@@ -877,12 +844,14 @@ function closeImage() {
 									<td colspan="3">
 										<table id="tbl_uni" style="width: 100%;">
 											<thead>
+<tr>
 												<th>University</th>
 												<th>Course</th>
 												<th>Subject/Stream</th>
 												<th>Year</th>
 												<th>City</th>
-											</thead>
+											</tr>
+</thead>
 											<tbody>
 												<tr>
 													<td>
@@ -973,6 +942,7 @@ function closeImage() {
 										?>
 											<table id="tbl_uni" style="width: 100%;">
 												<thead>
+<tr>
 													<th>Nomenclture</th>
 													<th>University</th>
 													<?php
@@ -983,7 +953,8 @@ function closeImage() {
 													?>
 													
 														
-												</thead>
+												</tr>
+</thead>
 												<tbody>
 													<tr>
 														<td>
@@ -1326,12 +1297,14 @@ function closeImage() {
 										?>
 											<table id="tbl_uni" style="width: 100%;">
 												<thead>
+<tr>
 													<th>University 1</th>
 													<th>University 2</th>
 													<th>University 3</th>
 													<th>University 4</th>
 													<th>University 5</th>
-												</thead>
+												</tr>
+</thead>
 												<tbody>
 													<tr>
 														<td><?php $university_first = $this->common_model->getUniversityById($applicaitonStepOne[0]['universty_choice']);
@@ -1397,6 +1370,57 @@ function closeImage() {
 							</tbody>
 						</table>
 
+<!-- Image preview lightbox, its styles and its handlers.
+     Moved here from inside the passport table, where it sat between two
+     table rows. A block element there is invalid HTML: browsers silently
+     hoist it out, but PDF renderers do not - they end up with a cell whose
+     parent table is missing and abort. On-screen rendering is unchanged. -->
+													<div id="imageModal" class="image-modal">
+						<span class="close" onclick="closeImage()">&times;</span>
+						<img class="modal-content" id="popupImage">
+					</div>
+				  <style>
+				.image-modal {
+					display: none;
+					position: fixed;
+					z-index: 9999;
+					padding-top: 60px;
+					left: 0;
+					top: 0;
+					width: 100%;
+					height: 100%;
+					background-color: rgba(0,0,0,0.9);
+				}
+
+				.image-modal img {
+					margin: auto;
+					display: block;
+					max-width: 90%;
+					max-height: 80%;
+				}
+
+				.close {
+					position: absolute;
+					top: 20px;
+					right: 40px;
+					color: #fff;
+					font-size: 40px;
+					font-weight: bold;
+					cursor: pointer;
+				}
+				</style>
+<script>
+function openImage(src) {
+    document.getElementById("imageModal").style.display = "block";
+    document.getElementById("popupImage").src = src;
+}
+
+function closeImage() {
+    document.getElementById("imageModal").style.display = "none";
+}
+</script>
+
+
 					</div> <!--  Col-9 Div end here   -->
 
 					
@@ -1424,12 +1448,14 @@ function closeImage() {
 				<div class="passport-sec col-xs-12 col-sm-12 col-md-12 pdleft pdright">
 					<table id="tbl_edu" class="table" style="width:100%;">
 						<thead>
+<tr>
 							<th>Certificate/Degree</th>
 							<th>Country</th>
 							<th>Name of School/University/Board</th>
 							<th>Year</th>
 							<th >Percentage(%)/Grade</th>
-						</thead>
+						</tr>
+</thead>
 						<tbody>
 							<?php 
 							$programs = $this->config->item('programme');
@@ -1867,10 +1893,12 @@ function closeImage() {
 				<div class="passport-sec col-xs-12 col-sm-12 col-md-12 pdleft pdright">
 					<table id="tbl_optional" class="table" style="width:100%;">
 						<thead>
+<tr>
 							<th>Year</th>							
 							<th>Name of School/University/Board</th>
 							<th>Course</th>
-						</thead>
+						</tr>
+</thead>
 						<tbody>
 							<tr>
 								<td><?php if(!empty($applicaitonStepTwo)) echo $applicaitonStepTwo[0]['other_course_year'];?></td>
@@ -1897,12 +1925,14 @@ function closeImage() {
 					</div>
 				<table id="tbl_ref1" class="table" style="width:100%;">
 				<thead>
+<tr>
 					<th>Name</th>
 					<th>Occupation</th>
 					<th>Email</th>
 					<th>Telephone</th>
 					<th colspan="2">Postal Address</th>
-				</thead>
+				</tr>
+</thead>
 					<tbody>
 					<tr>
 										<td> <?php if(!empty($applicaitonStepThree)) echo $applicaitonStepThree[0]['enq_ref_one_name'];?></td>
@@ -1925,12 +1955,14 @@ function closeImage() {
 					</div>
 				<table style="width:100%;" id="tbl_ref2" class="table">
 					<thead>
+<tr>
 					<th>Name</th>
 					<th>Occupation</th>
 					<th>Email</th>
 					<th>Telephone</th>
 					<th colspan="2">Postal Address</th>
-				</thead>
+				</tr>
+</thead>
 					<tbody>
 						<tr>
 							<td><?php if(!empty($applicaitonStepThree)) echo $applicaitonStepThree[0]['enq_ref_two_name'];?></td>
@@ -1960,12 +1992,14 @@ function closeImage() {
 							<td>
 								<table id="tbl_relation" class="table" style="width:100%;">
 								<thead>
+								<tr>
 									<th>Name</th>
 									<th>Relationship</th>
 									<th>Occupation</th>
 									<th>Telephone</th>
 									<th>Email</th>
 									<th>Postal Address</th>
+								</tr>
 								</thead>
 					<tbody>
 						<tr>
@@ -2037,11 +2071,13 @@ function closeImage() {
 							<td>
 								<table id="tbl_schrls" style="width:100%;" class="table">
 								<thead>
+<tr>
 										<th>Year of Scholarship</th>
 										<th>Name of Course</th>
 										<th>Name of Institue/University</th>
 										<th>Duration of stay in India on Scholarship</th>
-									</thead>
+									</tr>
+</thead>
 					<tbody>
 						<tr>
 							<td style="height: 35px;">
@@ -2183,13 +2219,11 @@ function closeImage() {
 							}				
 							?>
 							
-							<tr><td  style="height: 25px;font-weight: bold; text-align: left;"> 
+							<tr><td  style="height: 25px;font-weight: bold; text-align: left;">
 								<label for="comment" >31. Any Other Information: </label> <?php if(!empty($applicaitonStepThree)) echo $applicaitonStepThree[0]['any_other_info'];?>
-									
-								</td>						
-							<tr>
-							
-							<hr>
+
+								</td>
+							</tr>
 								<?php
 	//echo "<pre>";print_r($applicaitonStepOne);
 	//$st = false;
@@ -2217,6 +2251,7 @@ if($registerData[0]['apply_course_type']!= 11) {
 ?>
                 <table id="tbl_relation" class="table" style="width: 100%;" <?php if($st){ echo 'style="display:none;"'; } ?>>
                     <thead>
+<tr>
                     <th>University Status</br></br>Preference</th>
                     <th >University Name</th>
 					<th >Confirmed Course</th>
@@ -2225,7 +2260,8 @@ if($registerData[0]['apply_course_type']!= 11) {
 					<th >Fee Structure</th>	
                     <!-----<th >ICCR Letter</th>----->	
 					 <th>Date of Confirmation</th>
-                    </thead>
+                    </tr>
+</thead>
                     <tbody>
                              <tr>											
                             <td>1.</td>
@@ -3436,6 +3472,7 @@ else{echo "NA";}
 				?>
 				<table id="tbl_relation" class="table" style="width: 100%;">
                     <thead>
+<tr>
                     <th>University Status</br></br>Preference</th>
                     <th >University Name</th>
 					<th >Confirmed Course</th>
@@ -3444,7 +3481,8 @@ else{echo "NA";}
                     <!-----<th >ICCR Letter</th>----->	
 					<th >University Letter</th>	
 					 <th>Date of Confirmation</th>
-                    </thead>
+                    </tr>
+</thead>
                     <tbody>
                              <tr>											
                             <td>1.</td>
@@ -3584,13 +3622,15 @@ if($registerData[0]['student_type']!= 11) {
 ?>
                 <table id="tbl_relation" class="table" style="width: 100%;">
                     <thead>
+<tr>
                     <th>Final Status</th>
                     <th>University Name</th>
                     <th>University Status</th>	
                     <th>University Letter</th>											
                     <th>ICCR Letter</th>
 					<th>Acceptance</th>	
-                    </thead>
+                    </tr>
+</thead>
                     <tbody>
                         <tr>											
                             <td></td>
@@ -3822,11 +3862,13 @@ foreach ($response as $resp) {
               	<div class="passport-sec col-xs-12 col-sm-12 col-md-12 pdleft pdright">
 					<table class="table">
 						<thead>
+<tr>
 							<th>S.No.</th>
 							<th>Document Name</th>
 							<th>Uploaded Document</th>							
 							<th>Uploaded Time</th>							
-						</thead>
+						</tr>
+</thead>
 						<tbody>
 							<?php
 								$counter = 1;	

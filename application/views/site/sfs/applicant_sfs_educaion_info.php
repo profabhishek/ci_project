@@ -48,7 +48,7 @@
 	<div  class="container" style="min-height:410px;padding-top:0px;padding:0;">	
 	<div class="tab-content">	
 	  <div id="step1" class="tab-pane fade in active ">
-	  <?php echo form_open('Sfs/applicant_sfs_other_info?appno='.$_GET['appno']); ?>	   
+	  <?php echo form_open('Sfs/applicant_sfs_other_info?appno='.html_escape($_GET['appno'])); ?>	   
 	  
               <div class="box-body panel panel-blue margin-bottom-40">  
 				 <div class="name-sec col-xs-12 col-sm-5 col-md-12">
@@ -600,7 +600,7 @@
 					<button type="submit" class="form-control btn btn-info">Next &nbsp;&nbsp;<span class="glyphicon glyphicon-forward"></span></button>
 	                </div>
                 <div class="name-sec col-xs-4 col-sm-2 col-md-4 pull-right">
-				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_personal_info?appno=<?php echo $_GET['appno']; ?>" class="form-control btn btn-info"><span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>
+				  <a href="<?php echo site_url();?>Sfs/applicant_sfs_personal_info?appno=<?php echo html_escape($_GET['appno']); ?>" class="form-control btn btn-info"><span class="glyphicon glyphicon-backward"></span>&nbsp;&nbsp;Previous</a>
 				  </div>
 				
               	</div>

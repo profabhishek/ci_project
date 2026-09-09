@@ -1,0 +1,88 @@
+2026-07-02 19:27:05 | +0ms | dashboard() start
+2026-07-02 19:27:05 | +0.6ms | division = 1
+2026-07-02 19:27:06 | +331.8ms | after getCountHqrsNewApplication
+2026-07-02 19:27:06 | +414.9ms | after getCountAllHqrsNewApplication
+2026-07-02 19:27:06 | +464.6ms | after getCountUniversityResponseSentByHqrsToMission
+2026-07-02 19:27:06 | +551.2ms | after getCountPendingUnderRegionalApplications
+2026-07-02 19:27:06 | +633.2ms | after getAppNoRegionalApplicationsConfirmationtoHqrs, count=655
+2026-07-02 19:27:06 | +655.5ms | after getUniversityResponsesBatch
+2026-07-02 19:27:06 | +657.1ms | after confirms/notconfirms loop
+2026-07-02 19:27:06 | +767.8ms | after countApplicantAcceptance
+2026-07-02 19:27:06 | +770.4ms | after getCountAllAlumaniApplications
+2026-07-02 19:27:06 | +771.7ms | after getCountAllDemands
+2026-07-02 19:27:06 | +772.1ms | all counts done, before views
+2026-07-02 19:27:06 | +773.1ms | after header_mission view
+2026-07-02 19:27:06 | VIEW +0ms | dashboard.php view start
+2026-07-02 19:27:06 | VIEW +0.3ms | before getActiveNotification
+2026-07-02 19:27:06 | VIEW +0.9ms | after getActiveNotification
+2026-07-02 19:27:06 | VIEW +1.2ms | before sidebar switch
+2026-07-02 19:27:06 | VIEW +1.5ms | after sidebar switch
+2026-07-02 19:27:06 | VIEW +2.4ms | dashboard.php view end (before script block)
+2026-07-02 19:27:06 | +777.1ms | after dashboard view
+2026-07-02 19:27:06 | +777.9ms | after footer view - request done
+2026-07-02 19:27:14 | +0ms | dashboard() start
+2026-07-02 19:27:14 | +0.6ms | division = 1
+2026-07-02 19:27:15 | +549ms | after getCountHqrsNewApplication
+2026-07-02 19:27:15 | +641.7ms | after getCountAllHqrsNewApplication
+2026-07-02 19:27:15 | +732.8ms | after getCountUniversityResponseSentByHqrsToMission
+2026-07-02 19:27:15 | +812.4ms | after getCountPendingUnderRegionalApplications
+2026-07-02 19:27:15 | +859.7ms | after getAppNoRegionalApplicationsConfirmationtoHqrs, count=655
+2026-07-02 19:27:15 | +880.9ms | after getUniversityResponsesBatch
+2026-07-02 19:27:15 | +882.1ms | after confirms/notconfirms loop
+2026-07-02 19:27:15 | +985ms | after countApplicantAcceptance
+2026-07-02 19:27:15 | +986.8ms | after getCountAllAlumaniApplications
+2026-07-02 19:27:15 | +988ms | after getCountAllDemands
+2026-07-02 19:27:15 | +988.4ms | all counts done, before views
+2026-07-02 19:27:15 | +989.3ms | after header_mission view
+2026-07-02 19:27:15 | VIEW +0ms | dashboard.php view start
+2026-07-02 19:27:15 | VIEW +0.2ms | before getActiveNotification
+2026-07-02 19:27:15 | VIEW +1ms | after getActiveNotification
+2026-07-02 19:27:15 | VIEW +1.4ms | before sidebar switch
+2026-07-02 19:27:15 | VIEW +1.7ms | after sidebar switch
+2026-07-02 19:27:15 | VIEW +2.8ms | dashboard.php view end (before script block)
+2026-07-02 19:27:15 | +993.6ms | after dashboard view
+2026-07-02 19:27:15 | +994.2ms | after footer view - request done
+2026-07-02 19:30:46 | +0ms | dashboard() start
+2026-07-02 19:30:46 | +1.1ms | division = 1
+2026-07-02 19:30:46 | +288.9ms | after getCountHqrsNewApplication
+2026-07-02 19:30:46 | +368.6ms | after getCountAllHqrsNewApplication
+2026-07-02 19:30:46 | +412.4ms | after getCountUniversityResponseSentByHqrsToMission
+2026-07-02 19:30:46 | +474ms | after getCountPendingUnderRegionalApplications
+2026-07-02 19:30:46 | +517.9ms | after getAppNoRegionalApplicationsConfirmationtoHqrs, count=655
+2026-07-02 19:30:46 | +534ms | after getUniversityResponsesBatch
+2026-07-02 19:30:46 | +535.6ms | after confirms/notconfirms loop
+2026-07-02 19:30:46 | +622.3ms | after countApplicantAcceptance
+2026-07-02 19:30:46 | +623.8ms | after getCountAllAlumaniApplications
+2026-07-02 19:30:46 | +624.9ms | after getCountAllDemands
+2026-07-02 19:30:46 | +625.1ms | all counts done, before views
+2026-07-02 19:30:46 | +626.4ms | after header_mission view
+2026-07-02 19:30:46 | VIEW +0ms | dashboard.php view start
+2026-07-02 19:30:46 | VIEW +0.4ms | before getActiveNotification
+2026-07-02 19:30:46 | VIEW +1.1ms | after getActiveNotification
+2026-07-02 19:30:46 | VIEW +1.4ms | before sidebar switch
+2026-07-02 19:30:46 | VIEW +1.6ms | after sidebar switch
+2026-07-02 19:30:46 | VIEW +2.1ms | dashboard.php view end (before script block)
+2026-07-02 19:30:46 | +630.7ms | after dashboard view
+2026-07-02 19:30:46 | +631.2ms | after footer view - request done
+2026-07-02 19:35:19 | +0ms | dashboard() start
+2026-07-02 19:35:19 | +0.6ms | division = 1
+2026-07-02 19:35:19 | +299ms | after getCountHqrsNewApplication
+2026-07-02 19:35:19 | +379.6ms | after getCountAllHqrsNewApplication
+2026-07-02 19:35:19 | +423.9ms | after getCountUniversityResponseSentByHqrsToMission
+2026-07-02 19:35:19 | +486.3ms | after getCountPendingUnderRegionalApplications
+2026-07-02 19:35:19 | +530.1ms | after getAppNoRegionalApplicationsConfirmationtoHqrs, count=655
+2026-07-02 19:35:19 | +546.8ms | after getUniversityResponsesBatch
+2026-07-02 19:35:19 | +548ms | after confirms/notconfirms loop
+2026-07-02 19:35:19 | +631.3ms | after countApplicantAcceptance
+2026-07-02 19:35:19 | +632.8ms | after getCountAllAlumaniApplications
+2026-07-02 19:35:19 | +633.3ms | after getCountAllDemands
+2026-07-02 19:35:19 | +633.6ms | all counts done, before views
+2026-07-02 19:35:19 | +634.3ms | after header_mission view
+2026-07-02 19:35:19 | VIEW +0ms | dashboard.php view start
+2026-07-02 19:35:19 | VIEW +0.3ms | before getActiveNotification
+2026-07-02 19:35:19 | VIEW +1.4ms | after getActiveNotification
+2026-07-02 19:35:19 | VIEW +1.9ms | before sidebar switch
+2026-07-02 19:35:19 | VIEW +2.2ms | after sidebar switch
+2026-07-02 19:35:19 | VIEW +3ms | dashboard.php view end (before script block)
+2026-07-02 19:35:19 | +638.7ms | after dashboard view
+2026-07-02 19:35:19 | +639.4ms | after footer view - request done

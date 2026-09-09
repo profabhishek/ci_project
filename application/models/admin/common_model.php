@@ -561,11 +561,10 @@ class Common_model extends CI_Model
 		$condition= '';
 		if(!empty($name))
 		{
-			$condition= " and (first_name like '%$name%')";
+			$condition= " and (first_name like '%" . $this->db->escape_like_str($name) . "%')";
 		}
 		$sql = "select *  from `users` WHERE 1=1 $condition";
 		$query = $this->db->query($sql);
-		print_r($this->db->last_query());
 		return $query->result();
 	}
 

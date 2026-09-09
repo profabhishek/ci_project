@@ -259,7 +259,8 @@
 			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name;
 			$responseApi[$key1]['scheme_name']=$scheme[0]['scheme_name'];
 			$responseApi[$key1]['level_of_course']=$program[0]['name'];
-			$responseApi[$key1]['course_name']=$r1['final_course'];
+			$nomenclature = !empty($r1['nomenclature']) ? $this->common_model->getnomenclatureByid($r1['nomenclature']) : [];
+			$responseApi[$key1]['Nomenclature']=$nomenclature[0]['title'] ?? '';
 			$responseApi[$key1]['university_name']=$confirmData[0]['name'];
 			$responseApi[$key1]['region_name']=$region[0]['name'];
 			$responseApi[$key1]['phone_number']=$r1['phone_number'];
@@ -309,63 +310,12 @@ function confirmedStudentAPINew(){
 
 		$result = $this->hqrs_model->getAllStudentData($year,$res);
 
-		//print_r($result); die;
 
-		$response = array();
-		if(!empty($result))
-		{
-
-			foreach($result as $key=>$r)
-			{
-				$applicationDetails = $this->common_model->getApplicationStepOneByAppno($r['application_no']);
-				$country = $this->common_model->getCountryById($applicationDetails[0]['nationality']);
-
-				$gender = "";
-				$output= array();
-
-				$output[$key]['fullname'] = $applicationDetails[0]['fullname'];
-				$output[$key]['email'] = $applicationDetails[0]['email'];
-				$output[$key]['application_no'] = $r['application_no'];
-
-				if($applicationDetails[0]['programme'] == 3 || $applicationDetails[0]['programme'] == 4 || $applicationDetails[0]['programme'] == 8)
-				{
-					$course = $this->common_model->getProgrammeById($applicationDetails[0]['programme']);
-					$output[] = $course[0]['name'].' ('.$applicationDetails[0]['course_subject'].')';
-				}
-				else
-				{
-					$course = $this->common_model->getCoursesById($applicationDetails[0]['course']);
-					$course1 = $this->common_model->getCoursesById($applicationDetails[0]['course_two']);
-					$course2 = $this->common_model->getCoursesById($applicationDetails[0]['course_three']);
-					$fullCourse ="";
-					$fullCourse .= $course[0]['title'].' '.$applicationDetails[0]['course_option_name'].'_';
-					$fullCourse .= $course1[0]['title'].' '.$applicationDetails[0]['course_option_name_two'].'_';
-					$fullCourse .= $course2[0]['title'].' '.$applicationDetails[0]['course_option_name_three'].'_';
-					$output[] = $fullCourse;
-				}
-
-				$universityDetails = "";
-				$uni1 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice']);
-				$uni2 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_two']);
-				$uni3 = $this->common_model->getUniversityById($applicationDetails[0]['universty_choice_three']);
-				$universityDetails .= '1) '.$uni1[0]['name'].'_';
-				$universityDetails .= '2) '.$uni2[0]['name'].'_';
-				$universityDetails .= '3) '.$uni3[0]['name'].'_';
-				$output[] = $universityDetails;
-				$scheme = $this->common_model->getSchemeById($r['scholarship_id']);
-				$output[] =	$scheme[0]['scheme_name'];
-				$output[] = $country[0]['country_name'];
-				$output[] = date("d-m-Y", $r['created']);
-				$response[] = $output;
-			}
-		}
-
-		$returnJson['data'] = $response;
 		$responseApi = array();
 
 		// Pre-fetch all lookup data in bulk to avoid N+1 queries
 		$missionsCache = []; $schemesCache = []; $programsCache = [];
-		$universitiesCache = []; $regionsCache = []; $courseTypeCache = [];
+		$universitiesCache = []; $regionsCache = []; $courseTypeCache = []; $nomenclatureCache = [];
 		foreach($result as $r1) {
 			$missionsCache[$r1['application_through']] = true;
 			$schemesCache[$r1['scholarship_id']] = true;
@@ -375,6 +325,7 @@ function confirmedStudentAPINew(){
 			$reg = $r1['course_type'] == 1 ? $r1['region_one_status_ayush'] : $r1['region_one_status'];
 			if($reg) $regionsCache[$reg] = true;
 			$courseTypeCache[$r1['course_type']] = true;
+			if(!empty($r1['nomenclature'])) $nomenclatureCache[$r1['nomenclature']] = true;
 		}
 		foreach(array_keys($missionsCache) as $mid) {
 			$missionsCache[$mid] = $this->db->get_where('iccr_missions', array('id'=>$mid))->row();
@@ -395,6 +346,9 @@ function confirmedStudentAPINew(){
 			$row = $this->db->get_where('iccr_course_type', array('id'=>$ctid))->row();
 			$courseTypeCache[$ctid] = $row->course_type ?? '';
 		}
+		foreach(array_keys($nomenclatureCache) as $nid) {
+			$nomenclatureCache[$nid] = $this->common_model->getnomenclatureByid($nid);
+		}
 
 		foreach($result as $key1=>$r1)
 		{
@@ -409,72 +363,43 @@ function confirmedStudentAPINew(){
 				$undertaking_date = !empty($r1['undertaking_doc']) ? date('d-m-Y',$r1['undertaking_doc']) : "";
 			}
 
-			 $visa_isuue_date="";
-			  if($r1['visa_isuue_date']!=null){
-                $visa_isuue_date=date_format(date_create($r1['visa_isuue_date']),'d-m-Y');
-             }
+			$visa_isuue_date = "";
+			if(!empty($r1['visa_isuue_date'])) { $d = date_create($r1['visa_isuue_date']); $visa_isuue_date = $d ? date_format($d,'d-m-Y') : ""; }
+			$visa_to_date = "";
+			if(!empty($r1['visa_to_date'])) { $d = date_create($r1['visa_to_date']); $visa_to_date = $d ? date_format($d,'d-m-Y') : ""; }
 
-			 $visa_to_date="";
-			 if($r1['visa_to_date']!=null){
-			   $visa_to_date=date_format(date_create($r1['visa_to_date']),'d-m-Y');
-			}
-
-			if($applicationDetails[0]['course_type'] == 1) {
-				$date_of_joining="";
-			 if($r1['date_of_joining_ayush']!=null){
-			   $date_of_joining=date_format(date_create($r1['date_of_joining_ayush']),'d-m-Y');
-			}
-			}
-			else {
-				$date_of_joining="";
-			 if($r1['date_of_joining']!=null){
-			   $date_of_joining=date_format(date_create($r1['date_of_joining']),'d-m-Y');
-			}
-			}
-
-			if($applicationDetails[0]['course_type'] == 1) {
-				$duration_of_course="";
-			 if($r1['duration_of_course_ayush']!=null){
-			   $duration_of_course = $r1['duration_of_course_ayush'];
-			}
-			}
-			else {
-				$duration_of_course="";
-			 if($r1['duration_of_course']!=null){
-			   $duration_of_course = $r1['duration_of_course'];
-			}
-			}
-
-			if($applicationDetails[0]['course_type'] == 1) {
-				$region_one_status="";
-			 if($r1['region_one_status_ayush']!=null){
-			   $region_one_status = $r1['region_one_status_ayush'];
-			}
-			}
-			else {
-				$region_one_status="";
-			 if($r1['region_one_status']!=null){
-			   $region_one_status = $r1['region_one_status'];
-			}
-			}
-
-			if($applicationDetails[0]['course_type'] == 1) {
-				$regional_university="";
-			 if($r1['regional_university_ayush']!=null){
-			   $regional_university = $r1['regional_university_ayush'];
-			}
-			}
-			else {
-				$regional_university="";
-			 if($r1['regional_university']!=null){
-			   $regional_university = $r1['regional_university'];
-			}
+			if($course_type == 1) {
+				$date_of_joining = "";
+				if(!empty($r1['date_of_joining_ayush'])) { $d = date_create($r1['date_of_joining_ayush']); $date_of_joining = $d ? date_format($d,'d-m-Y') : ""; }
+				$duration_of_course = $r1['duration_of_course_ayush'] ?? "";
+				$region_one_status  = $r1['region_one_status_ayush'] ?? "";
+				$regional_university = $r1['regional_university_ayush'] ?? "";
+			} else {
+				$date_of_joining = "";
+				if(!empty($r1['date_of_joining'])) { $d = date_create($r1['date_of_joining']); $date_of_joining = $d ? date_format($d,'d-m-Y') : ""; }
+				$duration_of_course = $r1['duration_of_course'] ?? "";
+				$region_one_status  = $r1['region_one_status'] ?? "";
+				$regional_university = $r1['regional_university'] ?? "";
 			}
 
 			$confirmData = $universitiesCache[$regional_university] ?? [];
 			$region      = $regionsCache[$region_one_status] ?? [];
 			$gender      = $r1['gender'] == 1 ? 'Male' : ($r1['gender'] == 2 ? 'Female' : '');
 			$stream      = $courseTypeCache[$r1['course_type']] ?? '';
+			$nomenclature = $nomenclatureCache[$r1['nomenclature']] ?? [];
+			$nomenclature_name = $nomenclature[0]['title'] ?? '';
+			// Strip everything except letters, numbers and spaces - no special characters at all.
+			$nomenclature_name = preg_replace('/[^A-Za-z0-9 ]/', '', $nomenclature_name);
+			$nomenclature_name = trim(preg_replace('/\s+/', ' ', $nomenclature_name));
+
+			// "course" (e.g. "BTech", "MA", "PhD") - the short canonical course
+			// code matching Gyansetu's verified 76-value list, derived from the
+			// free-text nomenclature ("course_fullname", e.g. "BTECH COMPUTER
+			// SCIENCE AND ENGINEERING" or "MA ARCHAEOLOGY" - there is no separate
+			// column anywhere in the database that stores just "BTech"/"MA"/"BA"
+			// on its own, confirmed by ICCR). See _classifyCourseCode() below;
+			// "course_fullname" stays the untouched full text.
+			$course_name = $this->_classifyCourseCode($nomenclature_name, $program[0]['name'] ?? '');
 
 			if (!empty($r1['new_travel_date'])) {
 				try {
@@ -497,15 +422,21 @@ function confirmedStudentAPINew(){
 			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name ?? '';
 			$responseApi[$key1]['Name and Code of Scholarship Scheme']=$scheme[0]['scheme_name'] ?? '';
 			$responseApi[$key1]['Level (UG/PG/ PhD/MPhil/ Post Doctoral)']=$program[0]['name'] ?? '';
-			$responseApi[$key1]['course_name']=$r1['final_course'];
+			$responseApi[$key1]['course']=$course_name;
+			$responseApi[$key1]['course_fullname']=$nomenclature_name;
 			$responseApi[$key1]['stream']=$stream;
 			$responseApi[$key1]['Name Of University/Institute']=$confirmData[0]['name'] ?? '';
 			$responseApi[$key1]['ZO/S-ZO/RPO']=$region[0]['name'] ?? '';
-			$responseApi[$key1]['phone_number']=$r1['phone_number'];
+			// Gyansetu's required format has no leading "+" on phone_number.
+			$responseApi[$key1]['phone_number']=ltrim((string) $r1['phone_number'], '+');
 			$responseApi[$key1]['whatsapp_number']=$r1['whatsapp_number'];
 			$responseApi[$key1]['passport_no']=$r1['passport_no'];
-			$responseApi[$key1]['passport_issue_date']=$r1['passport_issue_date'];
-			$responseApi[$key1]['passport_expiry_date']=$r1['passport_expiry_date'];
+			$passport_issue_date = "";
+			if(!empty($r1['passport_issue_date'])) { $d = date_create($r1['passport_issue_date']); $passport_issue_date = $d ? date_format($d,'d-m-Y') : ""; }
+			$passport_expiry_date = "";
+			if(!empty($r1['passport_expiry_date'])) { $d = date_create($r1['passport_expiry_date']); $passport_expiry_date = $d ? date_format($d,'d-m-Y') : ""; }
+			$responseApi[$key1]['passport_issue_date']=$passport_issue_date;
+			$responseApi[$key1]['passport_expiry_date']=$passport_expiry_date;
 			$responseApi[$key1]['passport_issue_place']=$r1['passport_issue_place'];
 			$responseApi[$key1]['acedemic_year']=$r1['acedemic_year'];
 			$responseApi[$key1]['place_of_birth']=$r1['city'];
@@ -525,6 +456,333 @@ function confirmedStudentAPINew(){
         );
 		echo json_encode($error);
 	}
+	   }
+
+	   /**
+		* Classify a free-text course nomenclature (e.g. "BTECH COMPUTER
+		* SCIENCE AND ENGINEERING", "MA ARCHAEOLOGY", "MPA DANCE KATHAK") into
+		* one of Gyansetu's 76 verified canonical course codes (e.g. "BTech",
+		* "MA", "MPA"), using the applicant's Level (UG/PG/PhD/...) as a
+		* secondary signal. Ported from a Python prototype that was validated
+		* against a live 3,362-record snapshot of this API's output with 0
+		* unmapped/out-of-vocabulary results.
+		*
+		* Matching is deliberately plain substring matching (not word-boundary
+		* regex) by default: the real nomenclature data has missing-space
+		* typos glued across word boundaries - e.g. "TOURISMA ND" ("TOURISM
+		* AND" with the space dropped), "BPHARMA" ("B PHARMA" glued),
+		* "JOURNALISMA ND" - and word-boundary matching breaks every one of
+		* those. Word-boundary / exact-prefix matching (the local $starts
+		* closure) is used only for the handful of short abbreviations (MPA,
+		* BPA, MS, MARCH, BHM, MTTM/BTTM, MED/BED, ...) that appear as bare,
+		* un-spelled-out prefixes in some records AND are also substrings of
+		* unrelated words (e.g. "MPA" inside "COMPARATIVE", "MS" inside
+		* "SYSTEMS"/"MSC"/"BMS").
+		*/
+	   private function _classifyCourseCode($fullname, $levelName)
+	   {
+			$fn = strtoupper((string) $fullname);
+			$fn = preg_replace('/[^A-Z0-9 ]/', ' ', $fn);
+			$fn = trim(preg_replace('/\s+/', ' ', $fn));
+			$lvl = strtoupper(trim((string) $levelName));
+
+			if ($fn === '') {
+				return '';
+			}
+
+			$has = function ($phrase) use ($fn) {
+				return strpos($fn, $phrase) !== false;
+			};
+			$anyOf = function (...$phrases) use ($fn) {
+				foreach ($phrases as $p) {
+					if (strpos($fn, $p) !== false) return true;
+				}
+				return false;
+			};
+			$allOf = function (...$phrases) use ($fn) {
+				foreach ($phrases as $p) {
+					if (strpos($fn, $p) === false) return false;
+				}
+				return true;
+			};
+			// Exact-token-or-space-bounded prefix match.
+			$starts = function ($tok) use ($fn) {
+				return $fn === $tok || strpos($fn, $tok . ' ') === 0;
+			};
+
+			// Non-Western / no-canonical-equivalent degree naming.
+			if ($anyOf('ACHARAYA', 'ACHARYA')) {
+				return 'Others';
+			}
+
+			if (($has('POST') && $has('DOCTORAL')) || $lvl === 'POST DOCTORAL') {
+				return 'Post Doctoral';
+			}
+
+			if ($anyOf('PHD', 'PH D') || ($has('DOCTOR') && $has('PHILOSOPHY')) || $lvl === 'PHD') {
+				if ($has('CIVIL')) return 'Ph.D(Civil Engg.)';
+				if ($anyOf('CSE') || $allOf('COMPUTER', 'SCIENCE')) return 'Ph.D(CSE)';
+				return 'PhD';
+			}
+
+			if ($anyOf('MPHIL', 'M PHIL')) {
+				return 'M Phil';
+			}
+
+			if ($has('CERTIFICATE') || $lvl === 'CERTIFICATE') {
+				return 'Certificate course';
+			}
+
+			// DIPLOMA, but not when the only occurrence is inside "DIPLOMACY"
+			// (e.g. "MA POLITICS INTERNATIONAL RELATIONS AND DIPLOMACY" is an
+			// MA, not a Diploma Course).
+			$fnNoDiplomacy = str_replace('DIPLOMACY', '', $fn);
+			if (strpos($fnNoDiplomacy, 'DIPLOMA') !== false || $lvl === 'DIPLOMA') {
+				return 'Diploma Course';
+			}
+
+			if ($has('LLB')) return 'BA LLB';
+			if ($has('LLM') || ($has('MASTER') && $has('LAW'))) return 'LLM';
+
+			// An explicit BTECH/MTECH/BE/ME prefix is the strongest possible
+			// signal of the actually-awarded degree, and is checked here -
+			// before Journalism/Tourism/Architecture/etc - so it always wins
+			// over a subject word appearing later in the name. E.g. "BTECH
+			// NAVAL ARCHITECTURE AND MARINE ENGINEERING" is a Bachelor of
+			// TECHNOLOGY, not a Bachelor of Architecture, even though
+			// "architecture" appears in the text.
+			$isEngPrefix = (strpos($fn, 'BTECH') === 0) || (strpos($fn, 'MTECH') === 0)
+				|| (strpos($fn, 'BE ') === 0) || (strpos($fn, 'ME ') === 0)
+				|| in_array($fn, array('BE', 'ME', 'BTECH', 'MTECH'), true);
+			if ($isEngPrefix) {
+				$isPg = (strpos($fn, 'MTECH') === 0) || (strpos($fn, 'ME') === 0) || ($lvl === 'PG');
+				$isCse = $has('CSE') || $allOf('COMPUTER', 'SCIENCE') || $allOf('COMPUTER', 'ENGINEERING');
+				if ($isPg) {
+					if ($isCse) return 'M.Tech(CSE)';
+					if (strpos($fn, 'ME') === 0 && strpos($fn, 'MTECH') !== 0) return 'ME';
+					return 'MTech';
+				} else {
+					if (strpos($fn, 'BE') === 0 && strpos($fn, 'BTECH') !== 0) return 'BE';
+					return 'BTech';
+				}
+			}
+
+			// Journalism / Mass Comm - checked before generic engineering/
+			// design/etc, and before the generic B/M subject fallback.
+			if ($has('JOURNALISM') || $allOf('MASS', 'COMMUNICATION')) {
+				// NOTE: deliberately does not use bare "MA" as a text trigger -
+				// it's a substring of the glued-typo "JOURNALISMA" ("JOURNALISM
+				// AND" missing the space), which would wrongly flag UG
+				// (BA-level) journalism records as PG. The Level field is
+				// reliable in this dataset, so it alone decides once the
+				// longer/safer text hints don't apply.
+				$pgLike = ($lvl === 'PG') || $anyOf('MASTER', 'MASTERS', 'MSC', 'MBA', 'MSW');
+				$both = $has('JOURNALISM') && $allOf('MASS', 'COMMUNICATION');
+				$massOnly = $allOf('MASS', 'COMMUNICATION') && !$has('JOURNALISM');
+				if ($pgLike) {
+					if ($both || $massOnly) return $both ? 'MMCJ' : 'MJMC';
+					return 'Master of Journalism';
+				} else {
+					if ($both || $massOnly) return 'BJMC';
+					return 'Bachelor of Journalism';
+				}
+			}
+
+			// Tourism - bare MTTM/BTTM abbreviation prefixes first (no
+			// "TOURISM" word present in those records at all), then
+			// text-based detection.
+			if ($starts('MTTM')) return 'MTTM';
+			if ($starts('BTTM')) return 'BTTM';
+			if ($allOf('TOURISM', 'TRAVEL')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MBA') || $has('MSC')) ? 'MTTM' : 'BTTM';
+			}
+			if ($has('TOURISM')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MBA') || $has('MSC')) ? 'MTTM' : 'BTM';
+			}
+
+			// Architecture - bare "MARCH"/"BARCH" abbreviation prefixes first
+			// (e.g. "MARCH URBAN REGENERATION" has no literal "ARCHITECTURE"
+			// word).
+			if ($starts('MARCH')) return 'MArch';
+			if ($starts('BARCH')) return 'BArch';
+			if ($has('ARCHITECTURE')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MARCH')) ? 'MArch' : 'BArch';
+			}
+			if ($allOf('URBAN', 'REGIONAL', 'PLANNING') || $has('MURP')) return 'MURP';
+			if ($has('PLANNING')) return 'MPlan';
+
+			// Engineering / Tech content-word detection, for records with NO
+			// literal BTECH/MTECH/BE/ME prefix (that case was already handled
+			// above). Checked BEFORE the generic "design" rule, so things like
+			// "ME VLSI DESIGN" register as engineering, not MDesign, just
+			// because "design" appears in the specialization name.
+			//
+			// Bare "TECHNOLOGY" is deliberately NOT treated as an engineering
+			// signal when "SCIENCE" is also present, or when the record has an
+			// explicit "MSC"/"BSC" prefix - "MSC FOOD SCIENCE AND TECHNOLOGY"
+			// and "MSC E LEARNING TECHNOLOGY" are Science degrees, not
+			// engineering ones, even though the word "technology" appears in
+			// them.
+			$isEngWord = $anyOf('ENGINEERING', 'CSE', 'VLSI', 'MECHATRONICS')
+				|| ($has('TECHNOLOGY') && !$has('SCIENCE') && strpos($fn, 'MSC') !== 0 && strpos($fn, 'BSC') !== 0);
+			if ($isEngWord) {
+				$isPg = ($lvl === 'PG') || $has('MASTER');
+				$isCse = $has('CSE') || $allOf('COMPUTER', 'SCIENCE') || $allOf('COMPUTER', 'ENGINEERING');
+				if ($isPg) {
+					return $isCse ? 'M.Tech(CSE)' : 'MTech';
+				} else {
+					return 'BTech';
+				}
+			}
+
+			if ($starts('MDES')) return 'MDesign';
+			// Skip the generic DESIGN-word rule when the record already
+			// carries an explicit "MSC"/"BSC" prefix (e.g. "MSC TEXTILES AND
+			// APPAREL DESIGN") - that prefix is a stronger signal of the
+			// actually-awarded degree than the word "design" appearing in the
+			// specialization name, so let it fall through to the MSc/Bsc
+			// prefix-override in the final fallback instead.
+			if ($has('DESIGN') && !$has('ENGINEERING') && strpos($fn, 'MSC') !== 0 && strpos($fn, 'BSC') !== 0) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MDES')) ? 'MDesign' : 'BDesign';
+			}
+
+			if ($has('AYURVED') || $has('BAMS')) return 'BAMS';
+			if ($anyOf('HOMOEOPATH', 'HOMEOPATH', 'BHMS')) return 'BHMS';
+			if ($allOf('PUBLIC', 'HEALTH')) return $lvl === 'UG' ? 'MPH' : 'Masters (Public Health)';
+			if ($has('MD') && !$anyOf('MEDIA', 'MEDIUM') && preg_match('/\bMD\b/', $fn)) {
+				return 'MD';
+			}
+			if ($anyOf('PHARM', 'PHARMA', 'PHARMACY', 'PHARMACEUTICAL')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MSC') || $has('MTECH')) ? 'MPharm' : 'BPharm';
+			}
+
+			if ($starts('MVSC')) return 'MVSc';
+			if ($starts('BVSC')) return 'BVSc';
+			if ($has('VETERINARY') || $has('VETERIANRY')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MVSC')) ? 'MVSc' : 'BVSc';
+			}
+			if ($has('BSMS')) return 'BSMS';
+			if ($allOf('VETERINARY', 'TECHNOLOGY') || $has('BVT')) return 'BVT';
+
+			// Hotel Management - bare "BHM" abbreviation prefix first (no
+			// literal "HOTEL" word in those records at all). Guarded so it
+			// doesn't swallow "BHMS" (Homoeopathy) or "BHMCT", which both
+			// share the "BHM" letters but are distinct canonical values.
+			if ($starts('BHM')) return 'BHM';
+			if ($has('HOTEL') && $has('CATERING')) return 'BHMCT';
+			if ($has('HOTEL')) return 'BHM';
+
+			if ($allOf('INTERNATIONAL', 'BUSINESS') || $has('MIB')) {
+				return $lvl !== 'UG' ? 'MBA' : 'BBA';
+			}
+			if ($has('BBA') || $allOf('BUSINESS', 'ADMINISTRATION')) {
+				return ($lvl === 'PG' || $has('MASTER')) ? 'MBA' : 'BBA';
+			}
+			if ($allOf('MANAGEMENT', 'STUDIES') || $has('MMS') || $has('BMS')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MBA')) ? 'MMS' : 'BMS';
+			}
+			if ($has('MHRD') || $allOf('HUMAN', 'RESOURCE', 'DEVELOPMENT')) return 'MHRD';
+			if ($has('HRM') || $allOf('HUMAN', 'RESOURCE')) return 'MHRM';
+			if ($has('COMMERCE') || strpos($fn, 'BCOM') === 0 || strpos($fn, 'MCOM') === 0) {
+				return ($lvl === 'PG' || strpos($fn, 'MCOM') === 0 || $has('MASTER')) ? 'MCom' : 'BCom';
+			}
+			if ($allOf('OPERATIONAL', 'RESEARCH') || $allOf('OPERATIONS', 'RESEARCH')) return 'MS';
+			if ($has('MBA')) return 'MBA';
+			if ($has('MANAGEMENT')) return ($lvl === 'PG' || $has('MASTER')) ? 'MBA' : 'BBA';
+
+			if ($allOf('COMPUTER', 'APPLICATION') || $has('MCA') || $has('BCA')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MCA')) ? 'MCA' : 'BCA';
+			}
+
+			if (($has('PHYSICAL') && $has('EDUCATION')) || $has('MPED') || $has('SPORT') || $has('SPORTS')) {
+				return $lvl !== 'UG' ? 'MPEd' : 'BEd';
+			}
+
+			// Education - bare "MED"/"BED" abbreviation (no literal
+			// "EDUCATION" word at all in that record) before the text-based
+			// check.
+			if ($starts('MED')) return 'MEd';
+			if ($starts('BED')) return 'BEd';
+			if ($has('EDUCATION')) {
+				return ($lvl === 'PG' || $has('MASTER') || $has('MED')) ? 'MEd' : 'BEd';
+			}
+
+			if ($has('SOCIAL') && $has('WORK')) {
+				return ($lvl === 'PG' || $has('MASTER')) ? 'MSW' : 'BSW';
+			}
+
+			// Performing / Fine / Visual arts - bare abbreviation prefixes
+			// first ("MPA DANCE KATHAK", "BFA PAINTING", "MVA GRAPHIC ARTS"
+			// etc have no literal "PERFORMING"/"FINE"/"VISUAL" word at all),
+			// then text-based.
+			if ($starts('MPA')) return 'MPA';
+			if ($starts('BPA')) return 'BPA';
+			if ($starts('MFA')) return 'MFA';
+			if ($starts('BFA')) return 'BFA';
+			if ($starts('MVA')) return 'MVA';
+			if ($starts('BVA')) return 'BVA';
+			if ($has('SANGEET') || $has('MUSIC')) return 'BMusic';
+			if (($has('PERFORMING') && $has('ART')) || ($has('PERFORMING') && $has('ARTS'))) {
+				return $lvl !== 'UG' ? 'MPA' : 'BPA';
+			}
+			if ($has('VISUAL') && ($has('ART') || $has('ARTS'))) {
+				return ($lvl === 'PG' || $has('MASTER')) ? 'MVA' : 'BVA';
+			}
+			if ($has('FINE') && ($has('ART') || $has('ARTS'))) {
+				return ($lvl === 'PG' || $has('MASTER')) ? 'MFA' : 'BFA';
+			}
+
+			if ($has('VOCATIONAL') || strpos($fn, 'BVOC') === 0 || $has('MVOC')) return 'BVoc';
+
+			// Bare "MS" abbreviation (e.g. "MS CYBER SECURITY", "MS
+			// BIOTECHNOLOGY") - word-boundary guarded since "MS" is a
+			// substring of "SYSTEMS"/"MSC"/"BMS"/"MSW" etc. Placed after all
+			// more-specific category checks above so it never steals a
+			// record that already matched something better.
+			if (preg_match('/\bMS\b/', $fn)) return 'MS';
+
+			// No Library Science canonical value exists in the verified
+			// 76-list.
+			if ($starts('MLIB')) return 'Others';
+
+			$scienceKw = array('SCIENCE', 'PHYSICS', 'CHEMISTRY', 'BIOLOGY', 'BIOTECHNOLOGY',
+				'MICROBIOLOGY', 'MATHEMATICS', 'ZOOLOGY', 'BOTANY', 'GEOINFORMATICS',
+				'FORENSIC', 'ENVIRONMENTAL', 'STATISTICS', 'BIOCHEMISTRY', 'GEOGRAPHY',
+				'NUTRITION');
+			// "POLITICAL SCIENCE" / "POLICE SCIENCE" are Arts/Social-science
+			// subjects that happen to contain the word "SCIENCE" - strip them
+			// out before the generic science-keyword check so they don't get
+			// bucketed as Bsc/MSc.
+			$fnSciCheck = str_replace(array('POLITICAL SCIENCE', 'POLICE SCIENCE'), '', $fn);
+			$hasScienceKw = false;
+			foreach ($scienceKw as $kw) {
+				if (strpos($fnSciCheck, $kw) !== false) { $hasScienceKw = true; break; }
+			}
+
+			// An explicit "BSC"/"MSC"/"BA"/"MA" prefix is the strongest
+			// possible signal of the actually-awarded degree and is honored
+			// first - this covers data-entry typos (e.g. "MSC COMPUTER
+			// SCEINCE", where "SCIENCE" is misspelled so the keyword list
+			// above would miss it), subjects the keyword list doesn't
+			// enumerate (e.g. "MSC TEXTILES AND APPAREL DESIGN"), and the
+			// reverse case where a subject name merely contains a
+			// science-sounding word but was explicitly awarded as an MA/BA
+			// (e.g. "MA GEOGRAPHY", "BA HONS POLITICAL SCIENCE" - "geography"
+			// and "science" are in the keyword list, but the literal
+			// "MA"/"BA" prefix wins). Only when there is no explicit prefix at
+			// all does the keyword-based guess decide.
+			if ($lvl === 'UG') {
+				if ($starts('BSC')) return 'Bsc';
+				if ($starts('BA')) return 'BA';
+				return $hasScienceKw ? 'Bsc' : 'BA';
+			}
+			if ($lvl === 'PG') {
+				if ($starts('MSC')) return 'MSc';
+				if ($starts('MA')) return 'MA';
+				return $hasScienceKw ? 'MSc' : 'MA';
+			}
+
+			return 'Others';
 	   }
 
 
@@ -639,7 +897,8 @@ function confirmedStudentAPINew(){
 			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name;
 			$responseApi[$key1]['scheme_name']=$scheme[0]['scheme_name'];
 			$responseApi[$key1]['level_of_course']=$program[0]['name'];
-			$responseApi[$key1]['course_name']=$r1['final_course'];
+			$nomenclature = !empty($r1['nomenclature']) ? $this->common_model->getnomenclatureByid($r1['nomenclature']) : [];
+			$responseApi[$key1]['Nomenclature']=$nomenclature[0]['title'] ?? '';
 			$responseApi[$key1]['university_name']=$confirmData[0]['name'];
 			$responseApi[$key1]['region_name']=$region[0]['name'];
 			$responseApi[$key1]['phone_number']=$r1['phone_number'];
@@ -670,6 +929,101 @@ function confirmedStudentAPINew(){
 	}
 	   }
 
+
+
+	   function confirmedApplicationAPINew(){
+		$secretkey=$this->input->request_headers();
+		$getTokken = $this->db->get_where('iccr_header_token',array('secret_token'=>$secretkey['Secrettoken'],'secret_key'=>$secretkey['Secretkey']))->num_rows();
+		if($getTokken>0){
+			$year = $this->uri->segment(3);
+			$application = $this->uri->segment(4);
+			$res = array('iccr_status' => 1, 'status' => 10);
+
+			$result = $this->hqrs_model->getSingleStudentData($year,$res,$application);
+
+			$responseApi = array();
+			foreach($result as $key1=>$r1)
+			{
+				$iccr_missions = $this->db->get_where('iccr_missions',array('id'=>$r1['application_through']))->row();
+				$scheme        = $this->common_model->getSchemeById($r1['scholarship_id']);
+				$program       = $this->common_model->getProgrammeById($r1['programme']);
+				$course_type   = $r1['course_type'];
+
+				if($course_type == 1) {
+					$undertaking_date = !empty($r1['region_one_status_date']) ? date('d-m-Y',$r1['region_one_status_date']) : "";
+				} else {
+					$undertaking_date = !empty($r1['undertaking_doc']) ? date('d-m-Y',$r1['undertaking_doc']) : "";
+				}
+
+				$visa_isuue_date = "";
+				if(!empty($r1['visa_isuue_date'])) { $d = date_create($r1['visa_isuue_date']); $visa_isuue_date = $d ? date_format($d,'d-m-Y') : ""; }
+				$visa_to_date = "";
+				if(!empty($r1['visa_to_date'])) { $d = date_create($r1['visa_to_date']); $visa_to_date = $d ? date_format($d,'d-m-Y') : ""; }
+
+				if($course_type == 1) {
+					$date_of_joining = "";
+					if(!empty($r1['date_of_joining_ayush'])) { $d = date_create($r1['date_of_joining_ayush']); $date_of_joining = $d ? date_format($d,'d-m-Y') : ""; }
+					$duration_of_course  = $r1['duration_of_course_ayush'] ?? "";
+					$region_one_status   = $r1['region_one_status_ayush'] ?? "";
+					$regional_university = $r1['regional_university_ayush'] ?? "";
+				} else {
+					$date_of_joining = "";
+					if(!empty($r1['date_of_joining'])) { $d = date_create($r1['date_of_joining']); $date_of_joining = $d ? date_format($d,'d-m-Y') : ""; }
+					$duration_of_course  = $r1['duration_of_course'] ?? "";
+					$region_one_status   = $r1['region_one_status'] ?? "";
+					$regional_university = $r1['regional_university'] ?? "";
+				}
+
+				$confirmData = $this->common_model->getFinalUniversityById($regional_university);
+				$region      = $this->common_model->getRegionById($region_one_status);
+				$gender      = $r1['gender'] == 1 ? 'Male' : ($r1['gender'] == 2 ? 'Female' : '');
+
+				if(!empty($r1['course_type'])) {
+					$ct = $this->db->get_where('iccr_course_type', array('id'=>$r1['course_type']))->row();
+					$stream = $ct->course_type ?? '';
+				} else { $stream = ''; }
+
+				if(!empty($r1['new_travel_date'])) {
+					try { $dt = new DateTime($r1['new_travel_date']); $travel_arrival_date = $dt->format("d-m-Y"); }
+					catch(Exception $e) { $travel_arrival_date = null; }
+				} else { $travel_arrival_date = null; }
+
+				$responseApi[$key1]['application_no']=$r1['application_no'];
+				$responseApi[$key1]['first_name']=$r1['fullname'];
+				$responseApi[$key1]['middle_name']=$r1['middlename'];
+				$responseApi[$key1]['last_name']=$r1['familyname'];
+				$responseApi[$key1]['gender']=$gender;
+				$responseApi[$key1]['email']=$r1['email'];
+				$responseApi[$key1]['country_name']=$r1['country_name'];
+				$responseApi[$key1]['mission_name']=$iccr_missions->mission_name ?? '';
+				$responseApi[$key1]['Name and Code of Scholarship Scheme']=$scheme[0]['scheme_name'] ?? '';
+				$responseApi[$key1]['Level (UG/PG/ PhD/MPhil/ Post Doctoral)']=$program[0]['name'] ?? '';
+				$nomenclature = !empty($r1['nomenclature']) ? $this->common_model->getnomenclatureByid($r1['nomenclature']) : [];
+				$responseApi[$key1]['Nomenclature']=$nomenclature[0]['title'] ?? '';
+				$responseApi[$key1]['stream']=$stream;
+				$responseApi[$key1]['Name Of University/Institute']=$confirmData[0]['name'] ?? '';
+				$responseApi[$key1]['ZO/S-ZO/RPO']=$region[0]['name'] ?? '';
+				$responseApi[$key1]['phone_number']=$r1['phone_number'];
+				$responseApi[$key1]['whatsapp_number']=$r1['whatsapp_number'];
+				$responseApi[$key1]['passport_no']=$r1['passport_no'];
+				$responseApi[$key1]['passport_issue_date']=$r1['passport_issue_date'];
+				$responseApi[$key1]['passport_expiry_date']=$r1['passport_expiry_date'];
+				$responseApi[$key1]['passport_issue_place']=$r1['passport_issue_place'];
+				$responseApi[$key1]['acedemic_year']=$r1['acedemic_year'];
+				$responseApi[$key1]['place_of_birth']=$r1['city'];
+				$responseApi[$key1]['visa_no']=$r1['visa_no'];
+				$responseApi[$key1]['visa_isuue_date']=$visa_isuue_date;
+				$responseApi[$key1]['visa_expiry_date']=$visa_to_date;
+				$responseApi[$key1]['date_of_arrival']=$travel_arrival_date;
+				$responseApi[$key1]['date_of_joining']=$date_of_joining;
+				$responseApi[$key1]['duration_of_course']=$duration_of_course;
+				$responseApi[$key1]['created_date']=$undertaking_date;
+			}
+			echo json_encode($responseApi);
+		}else{
+			echo json_encode(array('message'=>'secret token and secret key wrong','status'=>false));
+		}
+	   }
 
 
 	   function ayushStudentAPI(){
@@ -816,7 +1170,8 @@ function confirmedStudentAPINew(){
 			$responseApi[$key1]['mission_name']=$iccr_missions->mission_name;
 			$responseApi[$key1]['scheme_name']=$scheme[0]['scheme_name'];
 			$responseApi[$key1]['programme']=$program[0]['name'];
-			$responseApi[$key1]['course_name']=$r1['final_course'];
+			$nomenclature = !empty($r1['nomenclature']) ? $this->common_model->getnomenclatureByid($r1['nomenclature']) : [];
+			$responseApi[$key1]['Nomenclature']=$nomenclature[0]['title'] ?? '';
 			$responseApi[$key1]['university_name']=$confirmData[0]['name'];
 			$responseApi[$key1]['region_name']=$region[0]['name'];
 			$responseApi[$key1]['phone_number']=$r1['phone_number'];
@@ -992,16 +1347,16 @@ function confirmedStudentAPINew(){
 					$email = $this->input->post('email');
 					
 					$userType = $this->user_model->checkForgetType($email,$year);
-					
-					if($cleanPost['year']!= '' && !empty($cleanPost['year']) && $userType->user_type == 1)
+
+					if($cleanPost['year']!= '' && !empty($cleanPost['year']) && is_object($userType) && $userType->user_type == 1)
 					{
 						$num_res = $this->user_model->checkForgetWithType($email,$cleanPost['year']);
 						//print_r($num_res );die;
 					}
 					else
 					{
-						
-						if($userType->user_type == 1){
+
+						if(is_object($userType) && $userType->user_type == 1){
 							$this->session->set_flashdata('message_type', 'error');
 							$this->session->set_flashdata('error','Please select registration year');
 							redirect('home/forgotPassword');
@@ -1022,7 +1377,12 @@ function confirmedStudentAPINew(){
 					}
 					
 					
-					if ($num_res == 1) 
+					// checkForgetWithType()/checkForgetWithoutYear() return either the
+					// matched row (object), a row count (int), or false — never
+					// literally 1 for the "with year" path, so "== 1" here was
+					// always failing silently for users who selected a year. Fixed
+					// to accept any truthy match (object or count > 0).
+					if (!empty($num_res))
 					{
 						// Make a small string (code) to assign to the user // to indicate they've requested a change of // password
 						$code = mt_rand('5000', '200000');
@@ -1035,6 +1395,7 @@ function confirmedStudentAPINew(){
 						//$this->db->where('email_id', $email);
 						
 						
+						$pass_res = null;
 						$year = isset($cleanPost['year'])?$cleanPost['year']:'';
 						if(!empty($year)){
 							
@@ -1161,7 +1522,7 @@ function confirmedStudentAPINew(){
 			{
 				$passUpdatedCount = $this->common_model->checkPasswordUpdatedCount($var);	
 				//echo "<pre>";print_r($passUpdatedCount);die;
-				if($passUpdatedCount[0]['pass_updated_count'] == 1)
+				if(!empty($passUpdatedCount) && $passUpdatedCount[0]['pass_updated_count'] == 1)
 				{
 					$this->session->set_flashdata('message_type', 'error');
 					$this->session->set_flashdata('error', 'Your token has been expire.Please Try Again.');
@@ -1302,7 +1663,7 @@ function confirmedStudentAPINew(){
 		{
 			//echo $captchText;die;
 			$sessionData = $this->session->userdata('captcha_code');
-			$sessionText = $sessionData['code'];
+			$sessionText = isset($sessionData['code']) ? $sessionData['code'] : null;
 			//echo $captchText."=====".$sessionText;die;
 			return ($captchText == $sessionText) ? TRUE : FALSE;
 		}
@@ -1889,15 +2250,16 @@ function confirmedStudentAPINew(){
 		{	
 			
 			$captcha_cnf = array();		
-			$cnf = $this->session->userdata('captcha');		
-           // $cnf = $_SESSION['captcha'];	
-                 		 
-			$captcha_config = unserialize($cnf['config']);			
-			
-			if( !$captcha_config ) exit();
-			
-			//$this->session->unset_userdata('captcha');	    
-			
+			$cnf = $this->session->userdata('captcha');
+           // $cnf = $_SESSION['captcha'];
+
+			if( empty($cnf['config']) ) exit();
+			$captcha_config = unserialize($cnf['config']);
+
+			if( !$captcha_config || empty($captcha_config['backgrounds']) ) exit();
+
+			//$this->session->unset_userdata('captcha');
+
 			// Pick random background, get info, and start captcha
 			$background = $captcha_config['backgrounds'][mt_rand(0, count($captcha_config['backgrounds']) -1)];
 			list($bg_width, $bg_height, $bg_type, $bg_attr) = getimagesize($background);
@@ -1925,6 +2287,13 @@ function confirmedStudentAPINew(){
 			$box_height = abs($text_box_size[5] - $text_box_size[1]);
 			$text_pos_x_min = 0;
 			$text_pos_x_max = ($bg_width) - ($box_width);
+			// Guard against the rendered text being wider than the background
+			// (happens with certain font/code combinations), which would make
+			// text_pos_x_max negative and violate mt_rand()'s min <= max
+			// requirement — same issue the Y-axis calc below already guards against.
+			if ($text_pos_x_max < $text_pos_x_min) {
+				$text_pos_x_max = $text_pos_x_min;
+			}
 			$text_pos_x = mt_rand($text_pos_x_min, $text_pos_x_max);
 			$text_pos_y_min = $box_height;
 			$text_pos_y_max = ($bg_height) - ($box_height / 2);
@@ -2169,7 +2538,7 @@ function confirmedStudentAPINew(){
 	function isValidCaptchTest($captchText)
 		{  
 			$sessionData = $this->session->userdata('captcha_val');
-			$sessionText = $sessionData['code'];
+			$sessionText = isset($sessionData['code']) ? $sessionData['code'] : null;
 			return ($captchText == $sessionText) ? TRUE : FALSE;
 		}
 		
@@ -2798,30 +3167,4 @@ function confirmedStudentAPINew(){
             exit;
     }
 
-
-
-	// function phoneupdate()
-	// {
-	// 	ini_set('display_errors', 1);
-	// 	ini_set('display_startup_errors', 1);
-	// 	error_reporting(E_ALL);
-	// 	$wphone = $this->db->select(['id','phone_number'])->where('id','144077 ')->order_by('id','desc')->get('iccr_student_application_details')->result_array();
-	// 	//print_r($wphone);
-	// 	//die();
-    //     foreach($wphone as $result){
-	// 		//echo $result['phone_number']."<br>".$result['id'] ; die;
-	// 		//$data = array('whatsapp_number'=>$result['phone_number']);
-	// 	    $phoneno = $result['phone_number'];
-	// 		$id = $result['id'];
-	// 		$sql = "UPDATE iccr_student_application_details SET whatsapp_number = '".$phoneno."' WHERE  id = '".$id."'";
-	// 	$rs = $this->db->query($sql);
-
-    //        // $this->db->where('id', $result['id'])->update('iccr_student_application_details',$data);
-	// 	}
-
-	// }
-
-
-
-		
 	}

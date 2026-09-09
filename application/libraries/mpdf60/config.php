@@ -573,10 +573,10 @@ $this->fontsizes = array('XX-SMALL'=>0.7, 'X-SMALL'=>0.77, 'SMALL'=>0.86, 'MEDIU
 
 // CHARACTER PATTERN MATCHES TO DETECT LANGUAGES
 	// pattern used to detect RTL characters -> force RTL
-	$this->pregRTLchars = "\x{0590}-\x{06FF}\x{0700}-\x{085F}\x{FB00}-\x{FDFD}\x{FE70}-\x{FEFF}";		// 085F to include Mandaic
+	$this->pregRTLchars = "\x[0590]-\x{06FF}\x[0700]-\x{085F}\x{FB00}-\x{FDFD}\x{FE70}-\x{FEFF}";		// 085F to include Mandaic
 
 	// Chars which distinguish CJK but not between different
-	$this->pregCJKchars = "\x{1100}-\x{11FF}\x{2E80}-\x{A4CF}\x{A800}-\x{D7AF}\x{F900}-\x{FAFF}\x{FE30}-\x{FE6F}\x{FF00}-\x{FFEF}\x{20000}-\x{2FA1F}";
+	$this->pregCJKchars = "\x[1100]-\x{11FF}\x{2E80}-\x{A4CF}\x{A800}-\x{D7AF}\x{F900}-\x{FAFF}\x{FE30}-\x{FE6F}\x{FF00}-\x{FFEF}\x[20000]-\x{2FA1F}";
 
 	// For CJK Line-breaking - References:
 	// http://en.wikipedia.org/wiki/Line_breaking_rules_in_East_Asian_languages
@@ -589,20 +589,20 @@ $this->fontsizes = array('XX-SMALL'=>0.7, 'X-SMALL'=>0.77, 'SMALL'=>0.86, 'MEDIU
 	// http://www.ecma-international.org/publications/standards/Ecma-376.htm
 
 	//Leading characters - Not allowed at end of line
-	$this->CJKleading = "\$\(\*\[\{\x{00a3}\x{00a5}\x{00ab}\x{00b7}\x{2018}\x{201c}\x{2035}\x{3005}\x{3007}\x{3008}\x{300a}\x{300c}\x{300e}\x{3010}\x{3014}\x{3016}\x{3018}\x{301d}\x{fe34}\x{fe35}\x{fe37}\x{fe39}\x{fe3b}\x{fe3d}\x{fe3f}\x{fe41}\x{fe43}\x{fe57}\x{fe59}\x{fe5b}\x{fe5d}\x{ff04}\x{ff08}\x{ff0e}\x{ff3b}\x{ff5b}\x{ff5f}\x{ff62}\x{ffe1}\x{ffe5}\x{ffe6}";
+	$this->CJKleading = "\$\(\*\[\{\x{00a3}\x{00a5}\x{00ab}\x{00b7}\x[2018]\x{201c}\x[2035]\x[3005]\x[3007]\x[3008]\x{300a}\x{300c}\x{300e}\x[3010]\x[3014]\x[3016]\x[3018]\x{301d}\x{fe34}\x{fe35}\x{fe37}\x{fe39}\x{fe3b}\x{fe3d}\x{fe3f}\x{fe41}\x{fe43}\x{fe57}\x{fe59}\x{fe5b}\x{fe5d}\x{ff04}\x{ff08}\x{ff0e}\x{ff3b}\x{ff5b}\x{ff5f}\x{ff62}\x{ffe1}\x{ffe5}\x{ffe6}";
 
 	// Following characters - Not allowed at start
-	$this->CJKfollowing = "!%\),\.:;>\?\]\}\x{00a2}\x{00a8}\x{00b0}\x{00b7}\x{00bb}\x{02c7}\x{02c9}\x{2010}\x{2013}-\x{2016}\x{2019}\x{201d}-\x{201f}\x{2020}-\x{2022}\x{2025}-\x{2027}\x{2030}\x{2032}\x{2033}\x{203a}\x{203c}\x{2047}-\x{2049}\x{2103}\x{2236}\x{2574}\x{3001}-\x{3003}\x{3005}\x{3006}\x{3009}\x{300b}\x{300d}\x{300f}\x{3011}\x{3015}\x{3017}\x{3019}\x{301c}\x{301e}\x{301f}\x{303b}\x{3041}\x{3043}\x{3045}\x{3047}\x{3049}\x{3063}\x{3083}\x{3085}\x{3087}\x{308e}\x{3095}\x{3096}\x{309b}-\x{309e}\x{30a0}\x{30a1}\x{30a3}\x{30a5}\x{30a7}\x{30a9}\x{30c3}\x{30e3}\x{30e5}\x{30e7}\x{30ee}\x{30f5}\x{30f6}\x{30fb}-\x{30fd}\x{30fe}\x{31f0}-\x{31ff}\x{fe30}\x{fe31}-\x{fe34}\x{fe36}\x{fe38}\x{fe3a}\x{fe3c}\x{fe3e}\x{fe40}\x{fe42}\x{fe44}\x{fe4f}\x{fe50}-\x{fe58}\x{fe5a}\x{fe5c}-\x{fe5e}\x{ff01}\x{ff02}\x{ff05}\x{ff07}\x{ff09}\x{ff0c}\x{ff0e}\x{ff1a}\x{ff1b}\x{ff1f}\x{ff3d}\x{ff40}\x{ff5c}-\x{ff5e}\x{ff60}\x{ff61}\x{ff63}-\x{ff65}\x{ff9e}\x{ff9f}\x{ffe0}";
+	$this->CJKfollowing = "!%\),\.:;>\?\]\}\x{00a2}\x{00a8}\x{00b0}\x{00b7}\x{00bb}\x{02c7}\x{02c9}\x[2010]\x[2013]-\x[2016]\x[2019]\x{201d}-\x{201f}\x[2020]-\x[2022]\x[2025]-\x[2027]\x[2030]\x[2032]\x[2033]\x{203a}\x{203c}\x[2047]-\x[2049]\x[2103]\x[2236]\x[2574]\x[3001]-\x[3003]\x[3005]\x[3006]\x[3009]\x{300b}\x{300d}\x{300f}\x[3011]\x[3015]\x[3017]\x[3019]\x{301c}\x{301e}\x{301f}\x{303b}\x[3041]\x[3043]\x[3045]\x[3047]\x[3049]\x[3063]\x[3083]\x[3085]\x[3087]\x{308e}\x[3095]\x[3096]\x{309b}-\x{309e}\x{30a0}\x{30a1}\x{30a3}\x{30a5}\x{30a7}\x{30a9}\x{30c3}\x{30e3}\x{30e5}\x{30e7}\x{30ee}\x{30f5}\x{30f6}\x{30fb}-\x{30fd}\x{30fe}\x{31f0}-\x{31ff}\x{fe30}\x{fe31}-\x{fe34}\x{fe36}\x{fe38}\x{fe3a}\x{fe3c}\x{fe3e}\x{fe40}\x{fe42}\x{fe44}\x{fe4f}\x{fe50}-\x{fe58}\x{fe5a}\x{fe5c}-\x{fe5e}\x{ff01}\x{ff02}\x{ff05}\x{ff07}\x{ff09}\x{ff0c}\x{ff0e}\x{ff1a}\x{ff1b}\x{ff1f}\x{ff3d}\x{ff40}\x{ff5c}-\x{ff5e}\x{ff60}\x{ff61}\x{ff63}-\x{ff65}\x{ff9e}\x{ff9f}\x{ffe0}";
 
 	// Characters which are allowed to overflow the right margin (from CSS3 http://www.w3.org/TR/2012/WD-css3-text-20120814/#hanging-punctuation)
-	$this->CJKoverflow = "\.,\x{ff61}\x{ff64}\x{3001}\x{3002}\x{fe50}-\x{fe52}\x{ff0c}\x{ff0e}";
+	$this->CJKoverflow = "\.,\x{ff61}\x{ff64}\x[3001]\x[3002]\x{fe50}-\x{fe52}\x{ff0c}\x{ff0e}";
 
 	// mPDF 6
 	// Used for preventing letter-spacing in cursive scripts
 	// NB The following scripts in Unicode 6 are considered to be cursive scripts,
 	// and do not allow expansion opportunities between their letters:
 	// Arabic, Syriac, Mandaic, Mongolian, N'Ko, Phags Pa
-	$this->pregCURSchars = "\x{0590}-\x{083E}\x{0900}-\x{0DFF}\x{FB00}-\x{FDFD}\x{FE70}-\x{FEFF}";
+	$this->pregCURSchars = "\x[0590]-\x{083E}\x[0900]-\x{0DFF}\x{FB00}-\x{FDFD}\x{FE70}-\x{FEFF}";
 
 
 $this->allowedCSStags = 'DIV|P|H1|H2|H3|H4|H5|H6|FORM|IMG|A|BODY|TABLE|HR|THEAD|TFOOT|TBODY|TH|TR|TD|UL|OL|LI|PRE|BLOCKQUOTE|ADDRESS|DL|DT|DD';

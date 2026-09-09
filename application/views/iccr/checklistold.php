@@ -11,7 +11,7 @@
 <section class="meacontent">
 	<div  class="container">
 	<div class="field-item even" property="content:encoded">
-	<form id="form-one-application" action="<?php echo site_url();?>mission/approve_application?appno=<?php echo $_GET['appno']; ?>" method="post">
+	<form id="form-one-application" action="<?php echo site_url();?>mission/approve_application?appno=<?php echo html_escape($_GET['appno']); ?>" method="post">
 		<h2>CHECK LIST FOR MISSION</h2>
 		<ul class="list-group">
 			<li class="list-group-item "><input type="checkbox" class="tweaked-margin" name="checklist_1" id="checklist_2"/> Duly filled in application form with photograph and signature.</li>

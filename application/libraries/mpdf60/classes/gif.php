@@ -26,7 +26,10 @@ class CGIFLZW
 	///////////////////////////////////////////////////////////////////////////
 
 	// CONSTRUCTOR
-	function CGIFLZW()
+	// Renamed from the old PHP4-style same-as-class-name constructor to
+	// __construct() - PHP 8 no longer calls the former automatically,
+	// which left these properties unset and broke GIF image decoding.
+	function __construct()
 	{
 		$this->MAX_LZW_BITS = 12;
 		unSet($this->Next);
@@ -431,7 +434,7 @@ class CGIFIMAGEHEADER
 			return false;
 		}
 
-		$b = ord($lpData{8});
+		$b = ord($lpData[8]);
 		$this->m_bLocalClr  = ($b & 0x80) ? true : false;
 		$this->m_bInterlace = ($b & 0x40) ? true : false;
 		$this->m_bSorted    = ($b & 0x20) ? true : false;
