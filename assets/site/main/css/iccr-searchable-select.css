@@ -26,81 +26,158 @@ select.iccr-ss-native {
     position: relative;
     width: 100%;
     font-family: inherit;
+    text-align: left;
 }
 
-/* The closed control - looks like a Bootstrap 3 .form-control. */
-.iccr-ss-toggle {
+/* Own box sizing, so the field is the same height on every page whatever
+   the page's CSS does. */
+.iccr-ss,
+.iccr-ss *,
+.iccr-ss *::before,
+.iccr-ss *::after {
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+/* The visible control: a search field styled like a Bootstrap 3
+   .form-control, with a magnifier on the left so it reads as "search". */
+.iccr-ss-lead {
+    position: absolute;
+    top: 0;
+    left: 11px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.iccr-ss-lead svg {
+    display: block;
+}
+
+input.iccr-ss-input {
     position: relative;
     display: block;
     width: 100%;
-    min-height: 34px;
-    padding: 6px 60px 6px 12px;
+    height: 36px;
+    margin: 0;
+    padding: 6px 60px 6px 36px;
     font-size: 14px;
     line-height: 1.42857143;
     color: #24303f;
-    text-align: left;
     background: #fff;
-    border: 1px solid #ccc;
+    border: 1px solid #b9c4d0;
     border-radius: 4px;
     box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
     text-overflow: ellipsis;
+    cursor: text;
+    -webkit-appearance: none;
+    appearance: none;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.iccr-ss-toggle:hover {
-    border-color: #9fb3c8;
+input.iccr-ss-input::placeholder {
+    color: #6f7b8a;
+    opacity: 1;
 }
 
-.iccr-ss-toggle:focus,
-.iccr-ss.is-open .iccr-ss-toggle {
+input.iccr-ss-input::-webkit-input-placeholder {
+    color: #6f7b8a;
+}
+
+input.iccr-ss-input::-ms-input-placeholder {
+    color: #6f7b8a;
+}
+
+input.iccr-ss-input:hover {
+    border-color: #8fa5bc;
+}
+
+input.iccr-ss-input:focus,
+.iccr-ss.is-open input.iccr-ss-input {
     outline: none;
     border-color: #4a90d9;
     box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 0 3px rgba(74, 144, 217, .18);
 }
 
-.iccr-ss-toggle.is-placeholder {
-    color: #8a94a3;
-}
-
-/* Magnifier + chevron on the right, so it is obvious the field is searchable. */
-.iccr-ss-icons {
+/* Chevron on the right: click it to see the whole list. */
+.iccr-ss-arrow {
     position: absolute;
-    top: 50%;
-    right: 10px;
+    top: 1px;
+    right: 1px;
+    width: 30px;
+    height: 34px;
+    padding: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transform: translateY(-50%);
-    pointer-events: none;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    z-index: 2;
 }
 
-.iccr-ss-icons svg {
+.iccr-ss-arrow:hover {
+    background: #f1f4f7;
+}
+
+.iccr-ss-arrow svg {
     display: block;
-}
-
-.iccr-ss.is-open .iccr-ss-chevron {
-    transform: rotate(180deg);
 }
 
 .iccr-ss-chevron {
     transition: transform .15s ease;
 }
 
-.iccr-ss.is-disabled .iccr-ss-toggle {
+.iccr-ss.is-open .iccr-ss-chevron {
+    transform: rotate(180deg);
+}
+
+/* "x" to clear what was typed. */
+.iccr-ss-clear {
+    position: absolute;
+    top: 6px;
+    right: 32px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 22px;
+    color: #6b7686;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.iccr-ss-clear:hover {
+    background: #e9edf2;
+    color: #24303f;
+}
+
+.iccr-ss-clear[hidden] {
+    display: none !important;
+}
+
+.iccr-ss.is-disabled input.iccr-ss-input {
     background: #eee;
     color: #8a94a3;
     cursor: not-allowed;
 }
 
-.iccr-ss.is-invalid .iccr-ss-toggle {
+.iccr-ss.is-disabled .iccr-ss-arrow {
+    cursor: not-allowed;
+}
+
+.iccr-ss.is-invalid input.iccr-ss-input {
     border-color: #d9534f;
     box-shadow: 0 0 0 3px rgba(217, 83, 79, .18);
 }
 
-/* The open panel. */
+/* The results panel under the field. */
 .iccr-ss-panel {
     position: absolute;
     top: calc(100% + 4px);
@@ -113,6 +190,7 @@ select.iccr-ss-native {
     border-radius: 6px;
     box-shadow: 0 10px 28px rgba(16, 24, 40, .18);
     overflow: hidden;
+    text-align: left;
 }
 
 .iccr-ss-panel[hidden] {
@@ -122,69 +200,6 @@ select.iccr-ss-native {
 .iccr-ss.opens-up .iccr-ss-panel {
     top: auto;
     bottom: calc(100% + 4px);
-}
-
-.iccr-ss-searchbox {
-    position: relative;
-    padding: 10px;
-    background: #f6f8fa;
-    border-bottom: 1px solid #e2e6ea;
-}
-
-.iccr-ss-searchbox svg {
-    position: absolute;
-    top: 50%;
-    left: 21px;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.iccr-ss-search {
-    display: block;
-    width: 100%;
-    height: 38px;
-    padding: 6px 34px 6px 36px;
-    /* 16px stops phones from zooming the page when the box is focused. */
-    font-size: 16px;
-    color: #24303f;
-    background: #fff;
-    border: 1px solid #c9d3de;
-    border-radius: 4px;
-    box-shadow: none;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.iccr-ss-search:focus {
-    outline: none;
-    border-color: #4a90d9;
-    box-shadow: 0 0 0 3px rgba(74, 144, 217, .18);
-}
-
-.iccr-ss-clear {
-    position: absolute;
-    top: 50%;
-    right: 18px;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    font-size: 18px;
-    line-height: 22px;
-    color: #6b7686;
-    background: transparent;
-    border: 0;
-    border-radius: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-}
-
-.iccr-ss-clear:hover {
-    background: #e9edf2;
-    color: #24303f;
-}
-
-.iccr-ss-clear[hidden] {
-    display: none !important;
 }
 
 .iccr-ss-count {
@@ -204,7 +219,26 @@ select.iccr-ss-native {
     -webkit-overflow-scrolling: touch;
 }
 
-.iccr-ss-group {
+/* Reset for the site's global list rules (e.g. "ul li { display: inline }"
+   in mea-portal.css), which would otherwise run the results together. */
+.iccr-ss .iccr-ss-list > li {
+    display: block;
+    float: none;
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    border: 0;
+    list-style: none;
+    background-image: none;
+    text-indent: 0;
+}
+
+.iccr-ss .iccr-ss-list > li::before {
+    content: none;
+}
+
+.iccr-ss .iccr-ss-list > .iccr-ss-group {
     padding: 8px 12px 4px;
     font-size: 11.5px;
     font-weight: 700;
@@ -214,7 +248,7 @@ select.iccr-ss-native {
     cursor: default;
 }
 
-.iccr-ss-option {
+.iccr-ss .iccr-ss-list > .iccr-ss-option {
     padding: 8px 12px;
     font-size: 14px;
     line-height: 1.35;
@@ -224,11 +258,11 @@ select.iccr-ss-native {
     word-break: break-word;
 }
 
-.iccr-ss-option.is-active {
+.iccr-ss .iccr-ss-list > .iccr-ss-option.is-active {
     background: #eaf2fc;
 }
 
-.iccr-ss-option.is-selected {
+.iccr-ss .iccr-ss-list > .iccr-ss-option.is-selected {
     font-weight: 700;
     color: #17579b;
 }
@@ -240,7 +274,7 @@ select.iccr-ss-native {
     color: #1f6fc4;
 }
 
-.iccr-ss-option.is-disabled {
+.iccr-ss .iccr-ss-list > .iccr-ss-option.is-disabled {
     color: #b3bbc6;
     cursor: not-allowed;
 }
@@ -252,7 +286,7 @@ select.iccr-ss-native {
     border-radius: 2px;
 }
 
-.iccr-ss-empty {
+.iccr-ss .iccr-ss-list > .iccr-ss-empty {
     padding: 16px 12px;
     font-size: 13.5px;
     color: #6b7686;
@@ -260,6 +294,11 @@ select.iccr-ss-native {
 }
 
 @media (max-width: 767px) {
+    /* 16px stops phones from zooming the page when the field is focused. */
+    input.iccr-ss-input {
+        font-size: 16px;
+    }
+
     .iccr-ss-panel {
         min-width: 0;
     }

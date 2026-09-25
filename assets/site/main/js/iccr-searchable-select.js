@@ -3,11 +3,16 @@
  *
  * Usage: add  data-searchable="true"  to a <select> and include this file
  * (plus css/iccr-searchable-select.css). Selects added or rewritten later are
- * handled automatically.
+ * handled automatically. Optional: data-search-placeholder="Search ..." sets
+ * the text shown in the empty search field.
+ *
+ * The visible control is a search field (magnifier on the left): the user
+ * clicks it and types, and the matching options are listed underneath.
  *
  * Design rule: the original <select> is never replaced. It stays in the form,
  * visually hidden, and remains the single source of truth:
  *   - it is what gets submitted, and "required" still blocks an empty submit;
+ *     the search field has no name, so it is never submitted itself;
  *   - scripts that rewrite its options (e.g. $('.nomenclature').html(...)) are
  *     picked up by a MutationObserver;
  *   - value changes made by scripts, form reset, disable/enable are picked up
@@ -16,7 +21,8 @@
  *     events, so existing jQuery handlers ($(...).change, $(document).on)
  *     run exactly as they did with the plain dropdown.
  *
- * Written in ES5 on purpose so it also runs on older browsers.
+ * Written in ES5 and pure ASCII on purpose, so it runs on older browsers and
+ * cannot be broken by a server or upload tool that changes the file encoding.
  * ------------------------------------------------------------------------- */
 (function (window, document) {
     'use strict';
@@ -29,18 +35,19 @@
     var uid = 0;
     var instances = [];
 
-    var ICON_SEARCH = '<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#6b7686" stroke-width="2.2"/><path d="M15.5 15.5L21 21" stroke="#6b7686" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    var ICON_SEARCH = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#4d5b6c" stroke-width="2.4"/><path d="M15.5 15.5L21 21" stroke="#4d5b6c" stroke-width="2.4" stroke-linecap="round"/></svg>';
     var ICON_CHEVRON = '<svg class="iccr-ss-chevron" width="12" height="8" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5l5 5 5-5" fill="none" stroke="#6b7686" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     // Lower-case, strip accents and punctuation, collapse spaces, so that
     // "phd yoga" finds "Ph.D Yoga" and "m.d." finds "MD (Ayurveda)".
+    // (\u0300-\u036f = combining accents, \u0900-\u097f = Devanagari.)
     var canNormalize = typeof ''.normalize === 'function';
     function fold(text) {
         var s = String(text == null ? '' : text).toLowerCase();
         if (canNormalize) {
-            s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+            s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         }
-        return s.replace(/[^a-z0-9ऀ-ॿ]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return s.replace(/[^a-z0-9\u0900-\u097f]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
     function squash(text) {
         return fold(text).replace(/ /g, '');
@@ -64,6 +71,19 @@
             }
         }
         return true;
+    }
+
+    // Order results by closeness, keeping the list order within each rank:
+    // 0 exact name, 1 name starts with the search, 2 every word matches a
+    // whole word or the start of one, 3 anything else that matched.
+    function rank(item, query, words) {
+        if (item.folded === query || item.squashed === query.replace(/ /g, '')) { return 0; }
+        if (item.folded.indexOf(query) === 0) { return 1; }
+        var padded = ' ' + item.folded + ' ';
+        for (var i = 0; i < words.length; i++) {
+            if (padded.indexOf(' ' + words[i]) === -1) { return 3; }
+        }
+        return 2;
     }
 
     // Highlight the typed text when it appears literally in the label.
@@ -110,6 +130,24 @@
         el.dispatchEvent(ev);
     }
 
+    // Text of the field's label: <label for="id">, else the first <label> in
+    // the surrounding form row (these pages mostly use label for="inputEmail3").
+    function fieldLabel(select) {
+        var label = null;
+        if (select.id) {
+            label = document.querySelector('label[for="' + select.id + '"]');
+        }
+        var node = select.parentNode;
+        for (var depth = 0; !label && node && depth < 3; depth++) {
+            if (node.querySelector) {
+                var found = node.querySelector('label');
+                if (found && !found.contains(select)) { label = found; }
+            }
+            node = node.parentNode;
+        }
+        return label ? label.textContent.replace(/[*:]/g, '').replace(/\s+/g, ' ').trim() : '';
+    }
+
     function SearchSelect(select) {
         this.select = select;
         this.id = 'iccr-ss-' + (++uid);
@@ -117,6 +155,7 @@
         this.visible = [];
         this.activeIndex = -1;
         this.isOpen = false;
+        this.typed = false; // true once the user has typed since opening
         this.lastValue = null;
         this.lastDisabled = null;
         this.build();
@@ -129,17 +168,19 @@
         var self = this;
         var select = this.select;
 
+        var labelText = fieldLabel(select);
+        this.emptyPlaceholder = select.getAttribute('data-search-placeholder') ||
+            (labelText && labelText.length <= 40 ? 'Search ' + labelText + ' - type here...' : 'Type here to search...');
+
         var wrap = document.createElement('div');
         wrap.className = 'iccr-ss';
         wrap.innerHTML =
-            '<button type="button" class="iccr-ss-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="' + this.id + '-list"></button>' +
-            '<span class="iccr-ss-icons">' + ICON_SEARCH + ICON_CHEVRON + '</span>' +
+            '<span class="iccr-ss-lead">' + ICON_SEARCH + '</span>' +
+            '<input type="text" class="iccr-ss-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ' +
+                'role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="' + this.id + '-list">' +
+            '<button type="button" class="iccr-ss-clear" tabindex="-1" aria-label="Clear search" hidden>&times;</button>' +
+            '<button type="button" class="iccr-ss-arrow" tabindex="-1" aria-label="Show all options">' + ICON_CHEVRON + '</button>' +
             '<div class="iccr-ss-panel" hidden>' +
-                '<div class="iccr-ss-searchbox">' + ICON_SEARCH +
-                    '<input type="text" class="iccr-ss-search" autocomplete="off" spellcheck="false" ' +
-                        'placeholder="Type to search..." aria-label="Search" aria-controls="' + this.id + '-list">' +
-                    '<button type="button" class="iccr-ss-clear" aria-label="Clear search" hidden>&times;</button>' +
-                '</div>' +
                 '<div class="iccr-ss-count" aria-live="polite"></div>' +
                 '<ul class="iccr-ss-list" id="' + this.id + '-list" role="listbox"></ul>' +
             '</div>';
@@ -150,81 +191,106 @@
         select.setAttribute('aria-hidden', 'true');
 
         this.wrap = wrap;
-        this.toggle = wrap.querySelector('.iccr-ss-toggle');
-        this.panel = wrap.querySelector('.iccr-ss-panel');
-        this.search = wrap.querySelector('.iccr-ss-search');
+        this.input = wrap.querySelector('.iccr-ss-input');
         this.clearBtn = wrap.querySelector('.iccr-ss-clear');
+        this.arrow = wrap.querySelector('.iccr-ss-arrow');
+        this.panel = wrap.querySelector('.iccr-ss-panel');
         this.count = wrap.querySelector('.iccr-ss-count');
         this.list = wrap.querySelector('.iccr-ss-list');
 
-        // Label the control like the original field, for screen readers.
-        if (select.id) {
-            var label = document.querySelector('label[for="' + select.id + '"]');
-            if (label) {
-                this.toggle.setAttribute('aria-label', label.textContent.replace(/\*/g, '').trim());
-            }
+        if (labelText) {
+            this.input.setAttribute('aria-label', labelText);
         }
 
-        this.toggle.addEventListener('click', function () {
-            if (self.isOpen) { self.close(true); } else { self.open(''); }
-        });
-
-        // Start typing on the closed control = open and search straight away.
-        this.toggle.addEventListener('keydown', function (e) {
-            if (self.select.disabled) { return; }
-            var key = keyOf(e);
-            if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
-                e.preventDefault();
-                self.open('');
-            } else if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                e.preventDefault();
-                self.open(key);
+        // Clicking the field opens the full list; typing filters it. (click,
+        // not mousedown, so the text selection made on open is not undone by
+        // the mouse button being released.)
+        this.input.addEventListener('click', function () {
+            if (!self.isOpen) {
+                self.open();
             }
         });
 
-        var timer = null;
-        this.search.addEventListener('input', function () {
-            self.clearBtn.hidden = self.search.value === '';
-            clearTimeout(timer);
-            timer = setTimeout(function () { self.render(); }, 60);
+        // Tabbing into the field selects its text, so typing replaces it.
+        this.input.addEventListener('focus', function () {
+            if (!self.isOpen) {
+                try { self.input.select(); } catch (err) { /* ignore */ }
+            }
         });
 
-        this.search.addEventListener('keydown', function (e) {
+        // Results are redrawn shortly after typing stops; flush() draws them
+        // at once, so a quick Enter / arrow key acts on the up-to-date list.
+        var timer = null;
+        function flush() {
+            if (timer !== null) {
+                clearTimeout(timer);
+                timer = null;
+                if (self.isOpen) { self.render(); }
+            }
+        }
+        this.input.addEventListener('input', function () {
+            self.typed = true;
+            if (!self.isOpen) {
+                self.open();
+            }
+            self.clearBtn.hidden = self.input.value === '';
+            clearTimeout(timer);
+            timer = setTimeout(function () { timer = null; self.render(); }, 60);
+        });
+
+        this.input.addEventListener('keydown', function (e) {
             var key = keyOf(e);
-            if (key === 'ArrowDown') {
+            flush();
+            if (key === 'Enter') {
+                // The field is a text box inside the form: never let Enter
+                // submit the form from here.
                 e.preventDefault();
-                self.move(1);
-            } else if (key === 'ArrowUp') {
-                e.preventDefault();
-                self.move(-1);
-            } else if (key === 'PageDown') {
-                e.preventDefault();
-                self.move(8);
-            } else if (key === 'PageUp') {
-                e.preventDefault();
-                self.move(-8);
-            } else if (key === 'Enter') {
-                // Never let Enter submit the surrounding form from the search box.
-                e.preventDefault();
-                if (self.activeIndex > -1) {
+                if (self.isOpen && self.activeIndex > -1) {
                     self.choose(self.visible[self.activeIndex]);
+                } else if (!self.isOpen) {
+                    self.open();
                 }
-            } else if (key === 'Escape') {
+                return;
+            }
+            if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'PageDown' || key === 'PageUp') {
                 e.preventDefault();
-                self.close(true);
+                if (!self.isOpen) {
+                    self.open();
+                    return;
+                }
+                self.move(key === 'ArrowDown' ? 1 : key === 'ArrowUp' ? -1 : key === 'PageDown' ? 8 : -8);
+            } else if (key === 'Escape') {
+                if (self.isOpen) {
+                    e.preventDefault();
+                    self.close(true);
+                }
             } else if (key === 'Tab') {
                 self.close(false);
             }
         });
 
+        this.clearBtn.addEventListener('mousedown', function (e) { e.preventDefault(); });
         this.clearBtn.addEventListener('click', function () {
-            self.search.value = '';
+            self.input.value = '';
+            self.typed = true;
             self.clearBtn.hidden = true;
+            if (!self.isOpen) { self.open(); }
             self.render();
-            self.search.focus();
+            self.input.focus();
         });
 
-        // mousedown (not click) so the search box keeps focus while picking.
+        this.arrow.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        this.arrow.addEventListener('click', function () {
+            if (self.select.disabled) { return; }
+            if (self.isOpen) {
+                self.close(true);
+            } else {
+                self.input.focus();
+                self.open();
+            }
+        });
+
+        // mousedown (not click) so the field keeps focus while picking.
         this.list.addEventListener('mousedown', function (e) {
             var li = closestOption(e.target, self.list);
             if (!li) { return; }
@@ -245,11 +311,11 @@
         });
 
         // Browser validation ("required") fires on the hidden select - show it
-        // on the visible control instead and bring it into view.
+        // on the visible field instead and bring it into view.
         select.addEventListener('invalid', function () {
             self.wrap.classList.add('is-invalid');
             try { self.wrap.scrollIntoView({ block: 'center' }); } catch (err) { /* old browsers */ }
-            self.toggle.focus();
+            self.input.focus();
         });
 
         select.addEventListener('change', function () {
@@ -271,8 +337,8 @@
                 text: text,
                 group: group,
                 disabled: o.disabled || (o.parentNode && o.parentNode.disabled),
-                // The empty "Select ..." entry is shown as the placeholder, not
-                // as a result - except when it is the only thing to show.
+                // The empty "Select ..." entry is not listed as a result; the
+                // empty search field plays its part.
                 placeholder: o.value === '',
                 folded: fold(text + ' ' + group),
                 squashed: squash(text + ' ' + group)
@@ -289,29 +355,29 @@
         return i > -1 && this.items[i] ? this.items[i] : null;
     };
 
+    // Show the select's current value in the field (only while closed, so
+    // what the user is typing is never overwritten).
     SearchSelect.prototype.syncLabel = function () {
         var item = this.selectedItem();
-        var text;
-        var placeholder = !item || item.placeholder;
-        if (item && item.text) {
-            text = item.text;
-        } else {
-            var first = this.items.length && this.items[0].placeholder ? this.items[0].text : '';
-            text = first || 'Select';
-        }
-        this.toggle.textContent = text;
-        this.toggle.setAttribute('title', placeholder ? '' : text);
-        setClass(this.toggle, 'is-placeholder', placeholder);
+        var hasValue = !!(item && !item.placeholder && item.text);
         this.lastValue = this.select.value;
 
-        if (!placeholder) {
+        if (!this.isOpen) {
+            this.input.value = hasValue ? item.text : '';
+            this.input.setAttribute('placeholder', this.emptyPlaceholder);
+            this.clearBtn.hidden = true;
+        }
+        this.input.setAttribute('title', hasValue ? item.text : '');
+        setClass(this.wrap, 'has-value', hasValue);
+
+        if (hasValue) {
             this.wrap.classList.remove('is-invalid');
         }
 
         var disabled = !!this.select.disabled;
         if (disabled !== this.lastDisabled) {
             this.lastDisabled = disabled;
-            this.toggle.disabled = disabled;
+            this.input.disabled = disabled;
             setClass(this.wrap, 'is-disabled', disabled);
             if (disabled && this.isOpen) {
                 this.close(false);
@@ -344,32 +410,35 @@
         return true;
     };
 
-    SearchSelect.prototype.open = function (initialQuery) {
+    SearchSelect.prototype.open = function () {
         if (this.select.disabled || this.isOpen) {
             return;
         }
         closeAll(this);
         this.isOpen = true;
         this.wrap.classList.add('is-open');
-        this.toggle.setAttribute('aria-expanded', 'true');
+        this.input.setAttribute('aria-expanded', 'true');
         this.panel.hidden = false;
 
         // Open upwards when there is not enough room below.
         this.wrap.classList.remove('opens-up');
-        var rect = this.toggle.getBoundingClientRect();
+        var rect = this.input.getBoundingClientRect();
         var below = (window.innerHeight || document.documentElement.clientHeight) - rect.bottom;
         if (below < 360 && rect.top > below) {
             this.wrap.classList.add('opens-up');
         }
 
-        this.search.value = initialQuery || '';
-        this.clearBtn.hidden = this.search.value === '';
+        if (!this.typed) {
+            // Opened by click / arrow key: list everything and select the
+            // current text, so the first key typed starts a fresh search.
+            var item = this.selectedItem();
+            if (item && !item.placeholder) {
+                this.input.setAttribute('placeholder', item.text);
+            }
+            try { this.input.select(); } catch (err) { /* ignore */ }
+        }
+        this.clearBtn.hidden = !this.typed || this.input.value === '';
         this.render();
-        this.search.focus();
-        try {
-            var end = this.search.value.length;
-            this.search.setSelectionRange(end, end);
-        } catch (err) { /* ignore */ }
     };
 
     SearchSelect.prototype.close = function (returnFocus) {
@@ -377,19 +446,22 @@
             return;
         }
         this.isOpen = false;
+        this.typed = false;
         this.wrap.classList.remove('is-open');
-        this.toggle.setAttribute('aria-expanded', 'false');
+        this.input.setAttribute('aria-expanded', 'false');
+        this.input.removeAttribute('aria-activedescendant');
         this.panel.hidden = true;
         this.list.innerHTML = '';
         this.visible = [];
         this.activeIndex = -1;
+        this.syncLabel(); // put the chosen value back in the field
         if (returnFocus) {
-            this.toggle.focus();
+            this.input.focus();
         }
     };
 
     SearchSelect.prototype.render = function () {
-        var raw = this.search.value;
+        var raw = this.typed ? this.input.value : '';
         var query = fold(raw);
         var words = query === '' ? [] : query.split(' ');
         var selected = this.selectedItem();
@@ -402,6 +474,16 @@
             total++;
             if (words.length === 0 || matches(it, words)) {
                 results.push(it);
+            }
+        }
+        if (words.length > 0) {
+            var ranked = [];
+            for (var r = 0; r < results.length; r++) {
+                ranked.push({ item: results[r], rank: rank(results[r], query, words), order: r });
+            }
+            ranked.sort(function (a, b) { return a.rank - b.rank || a.order - b.order; });
+            for (var k = 0; k < ranked.length; k++) {
+                results[k] = ranked[k].item;
             }
         }
 
@@ -426,12 +508,14 @@
                 (item.disabled ? ' aria-disabled="true"' : '') + '>' + highlight(item.text, raw) + '</li>');
         }
         if (shown.length === 0) {
-            html.push('<li class="iccr-ss-empty" role="presentation">No match for &ldquo;' + escapeHtml(raw.trim()) + '&rdquo;. Try fewer or different words.</li>');
+            html.push('<li class="iccr-ss-empty" role="presentation">' +
+                (total === 0 ? 'No options available.' : 'No match for &ldquo;' + escapeHtml(raw.trim()) + '&rdquo;. Try fewer or different words.') +
+                '</li>');
         }
         this.list.innerHTML = html.join('');
 
         if (words.length === 0) {
-            this.count.textContent = total + ' options - type to search';
+            this.count.textContent = total + (total === 1 ? ' option' : ' options') + ' - type in the box above to search';
         } else if (results.length > shown.length) {
             this.count.textContent = results.length + ' matches - showing first ' + shown.length + ', keep typing to narrow down';
         } else {
@@ -450,13 +534,13 @@
         if (prev) { prev.classList.remove('is-active'); }
         this.activeIndex = idx;
         if (idx < 0) {
-            this.search.removeAttribute('aria-activedescendant');
+            this.input.removeAttribute('aria-activedescendant');
             return;
         }
         var li = this.list.querySelector('[data-index="' + idx + '"]');
         if (!li) { return; }
         li.classList.add('is-active');
-        this.search.setAttribute('aria-activedescendant', li.id);
+        this.input.setAttribute('aria-activedescendant', li.id);
         if (scroll) {
             var top = li.offsetTop;
             var bottom = top + li.offsetHeight;
@@ -488,8 +572,7 @@
         }
         var changed = this.select.selectedIndex !== item.index;
         this.select.selectedIndex = item.index;
-        this.syncLabel();
-        this.close(true);
+        this.close(true); // also shows the chosen text in the field
         if (changed) {
             fireEvent(this.select, 'input');
             fireEvent(this.select, 'change');
@@ -519,10 +602,22 @@
         if (!select || select.tagName !== 'SELECT' || select.multiple || select.iccrSearchSelect) {
             return select && select.iccrSearchSelect ? select.iccrSearchSelect : null;
         }
-        var inst = new SearchSelect(select);
-        select.iccrSearchSelect = inst;
-        instances.push(inst);
-        return inst;
+        try {
+            var inst = new SearchSelect(select);
+            select.iccrSearchSelect = inst;
+            instances.push(inst);
+            return inst;
+        } catch (err) {
+            // Never leave a field unusable: fall back to the normal dropdown.
+            select.iccrSearchSelect = { failed: true };
+            select.classList.remove('iccr-ss-native');
+            select.removeAttribute('aria-hidden');
+            select.removeAttribute('tabindex');
+            var broken = select.nextSibling;
+            if (broken && broken.className === 'iccr-ss') { broken.parentNode.removeChild(broken); }
+            if (window.console && window.console.error) { window.console.error('iccr-searchable-select:', err); }
+            return null;
+        }
     }
 
     function enhanceAll(root) {
@@ -532,14 +627,18 @@
         }
     }
 
-    // Close when clicking anywhere else.
-    document.addEventListener('mousedown', function (e) {
+    // Close when clicking or tabbing anywhere else. Leaving the field is not
+    // treated as closing, so dragging the list's scrollbar keeps it open.
+    function closeOutside(e) {
         for (var i = 0; i < instances.length; i++) {
             if (instances[i].isOpen && !instances[i].wrap.contains(e.target)) {
                 instances[i].close(false);
             }
         }
-    });
+    }
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('touchstart', closeOutside, { passive: true });
+    document.addEventListener('focusin', closeOutside);
 
     // Keep labels in step with changes no event reports; also enhance any
     // searchable select added to the page later.
@@ -550,7 +649,7 @@
         enhanceAll(document);
     }, 400);
 
-    window.IccrSearchSelect = { enhance: enhance, enhanceAll: enhanceAll };
+    window.IccrSearchSelect = { enhance: enhance, enhanceAll: enhanceAll, version: '2' };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { enhanceAll(document); });
