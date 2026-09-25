@@ -2579,5 +2579,5 @@ var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
 <?php
 // Searchable Nomenclature dropdown - see assets/site/main/js/iccr-searchable-select.js.
 ?>
-<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925">
-<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925"></script>
+<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925b">
+<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925b"></script>
