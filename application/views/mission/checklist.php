@@ -2373,7 +2373,7 @@ else{echo "NA";}
 					<div class="form-group col-xs-5">
 					    <label class="control-label">Nomenclature:<span class="text-red">*</span></label>
 					    <div class="">
-					     			 <select class="form-control" id="nomenclature" name="nomenclature" required="true" >		
+					     			 <select class="form-control" id="nomenclature" name="nomenclature" required="true" data-searchable="true">		
 						<option value="">Select</option>			
 						<?php
 						
@@ -2615,4 +2615,10 @@ else{echo "NA";}
 		    	
 	}
 	
-</script>	
+</script>
+
+<?php
+// Searchable Nomenclature dropdown - see assets/site/main/js/iccr-searchable-select.js.
+?>
+<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925">
+<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925"></script>

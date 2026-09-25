@@ -451,6 +451,33 @@ class Headquarter extends CI_Controller {
         }
     }
 
+    /**
+     * AYUSH admin: AYUSH 2026-27 applications the Mission has finished
+     * processing (Medical Fitness Certificate and Undertaking Form uploaded).
+     * Same access rule as the other AYUSH pages - AYUSH login only.
+     */
+    public function ayush_confirmation_from_mission_2026() {
+        try {
+            $user_data = $this->session->userdata('user_data');
+            $division = $user_data['state'];
+
+            if ($division == -20) {
+                $data['ayush_applications'] = $this->common_model->getHQRSAYUSHConfirmedByMission2026();
+                $this->load->view('iccr/header_mission');
+                $this->load->view('iccr/ayush_confirmation_from_mission_2026', $data);
+                $this->load->view('iccr/footer');
+            } else {
+                $this->load->view('iccr/header_mission');
+                $this->load->view('errors/html/error_403');
+                $this->load->view('iccr/footer');
+            }
+        } catch (Exception $e) {
+            $this->session->set_flashdata('message_type', 'error');
+            $this->session->set_flashdata('error', 'Internal Server Error. Please Try After Some Time!');
+            redirect(site_url() . 'headquarter/dashboard');
+        }
+    }
+
     public function ayush_sfs_applications() {
         try {
             $user_data = $this->session->userdata('user_data');

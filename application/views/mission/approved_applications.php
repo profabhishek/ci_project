@@ -277,6 +277,8 @@ marquee{
 				<th>University</th>
 				<th>Scheme</th>
 				<th>University Letter</th>
+				<th>Medical Fitness Certificate</th>
+				<th>Undertaking Form</th>
 				<th>View</th>
 				<th>Date of Registration</th>
 				<th>Status</th>
@@ -395,6 +397,34 @@ marquee{
                                 }
                                ?>
                         </td>
+                        <?php
+                        // Medical Fitness Certificate and Undertaking Form, uploaded by
+                        // the Mission on the process screen and stored under
+                        // assets/site/main/mission_documents/ (see
+                        // Mission::applicaitonAgreeProcess). Only link when the file
+                        // is really on disk.
+                        $missionDocCells = array('mission_medical_fitness', 'mission_undertaking_form');
+                        foreach ($missionDocCells as $docKey) {
+                            $docName = isset($app[$docKey]) ? trim((string) $app[$docKey]) : '';
+                            ?>
+                            <td>
+                            <?php
+                            if ($docName === '') {
+                                echo 'Not uploaded';
+                            } elseif (file_exists(FCPATH.'assets/site/main/mission_documents/'.$docName)) {
+                                ?>
+                                <a target="_blank" href="<?php echo site_url(); ?>assets/site/main/mission_documents/<?php echo rawurlencode($docName); ?>"><span class="label label-success">Download</span></a>
+                                <?php
+                            } else {
+                                ?>
+                                <span class="label label-warning" title="Expected file: <?php echo htmlspecialchars($docName, ENT_QUOTES); ?>">File not found</span>
+                                <?php
+                            }
+                            ?>
+                            </td>
+                            <?php
+                        }
+                        ?>
 
 						<!--<td><a target="_blank" href="<?php echo site_url();?>mission/viewfullApplication/<?php echo base64_encode($app['application_no']);?>" class="form-control sbmt1"> View</a></td>
 						-->

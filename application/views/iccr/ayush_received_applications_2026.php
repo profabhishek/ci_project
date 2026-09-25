@@ -145,10 +145,15 @@
                         <!---<td><?php echo $app['mission_status_date']; ?></td>--->				
 						
 						<td>
-							<?php 
+							<?php
+							// The AYUSH admin can always open the process screen, including
+							// for an application already forwarded once - that is how a
+							// university letter or the course details get corrected and
+							// re-uploaded. Previously an already-processed row showed a
+							// disabled "Processed" button with no way back in.
 							if($app['iccr_status'] == 1){
 							?>
-								<a href="#" title="Already Processed" class="form-control sbmt btn btn-block btn-default disabled">Processed</a>	
+								<a href="<?php echo site_url();?>headquarter/ayushprocess/<?php echo $app['application_no'];?>" title="Already processed - open again to update the university letter or details" class="form-control sbmt">Re-process</a>
 							<?php
 							}
 							else

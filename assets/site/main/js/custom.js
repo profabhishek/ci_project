@@ -2294,7 +2294,24 @@ $(document).on('change', '.nomenclature', function () {
 				// silently and the page just sat there with the loader
 				// spinning, which looked like the form had hung.
 				$("#loader").hide();
-				BootstrapDialog.show({ type: BootstrapDialog.TYPE_DANGER, title: "Not submitted", message: "The server did not accept the submission. Nothing has been saved. Please try again, and report this if it keeps happening.", buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); } }] });
+				// Say what actually came back. The status code separates the
+				// usual causes: 413 = files too large for the web server,
+				// 500/502/504 = server error or timeout, 0 = no connection,
+				// 403 = session expired (log in again). The message is not
+				// promised to mean "nothing saved": the failure can happen
+				// after part of the work was written.
+				var reason = (jqXHR && jqXHR.status) ? 'HTTP ' + jqXHR.status + (jqXHR.statusText ? ' ' + jqXHR.statusText : '') : 'no response from the server';
+				// A 500/403 with nothing logged by the application usually means the
+				// server's security filter (ModSecurity) refused the upload. That
+				// filter can mistake bytes inside a PDF or image for a multipart
+				// boundary, so re-saving the file often gets past it.
+				var hint = (jqXHR && (jqXHR.status === 500 || jqXHR.status === 403)) ? ' If it keeps failing, re-save the PDF files (for example with "Print to PDF") and upload the signature as a fresh image, then try again.' : '';
+				// HTTP 200 that is not a result = the server sent back a whole page,
+				// almost always the login page after the session expired.
+				if (jqXHR && jqXHR.status === 200) {
+					hint = ' This usually means your login session expired while the page was open. Reload the page (press F5), log in again if asked, and submit again.';
+				}
+				BootstrapDialog.show({ type: BootstrapDialog.TYPE_DANGER, title: "Not submitted", message: "The server could not complete the submission (" + reason + "). Please check the application's status before trying again, and report this message if it keeps happening." + hint, buttons: [{ label: 'OK', action: function (dialogItself) { dialogItself.close(); } }] });
 			}
 		});
 		return false;

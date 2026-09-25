@@ -1276,7 +1276,7 @@ foreach($univercitie_fourth as $univercity1)
               		<div class="form-group col-xs-3">
 					    <label for="inputEmail3" class="col-sm-5">Nomenclature<span class="text-red">*</span></label>
 					    <div class="col-sm-7">
-					      <select id="nomenclature" name="nomenclature" class="form-control" required="true">
+					      <select id="nomenclature" name="nomenclature" class="form-control" required="true" data-searchable="true">
 					      	<option value="">Select</option>
 							  <?php					      	 
 								$applicationId = $this->uri->segment(3);
@@ -1618,3 +1618,9 @@ if(is_accepct == 1)
 
     });
 </script>
+
+<?php
+// Searchable Nomenclature dropdown - see assets/site/main/js/iccr-searchable-select.js.
+?>
+<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925">
+<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925"></script>

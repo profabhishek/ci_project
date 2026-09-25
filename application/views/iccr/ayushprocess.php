@@ -377,11 +377,11 @@ $dirdata = $userd->dir;
 										<tbody>
 											<tr>
 
-												<td><?php $course_first = $this->common_model->getCoursesById($applicaitonStepOne[0]['course']); echo $course_first[0]['title'];?></td>
-												<td><?php $course_second =  $this->common_model->getCoursesById($applicaitonStepOne[0]['course_two']);echo $course_second[0]['title'];?></td>
-												<td><?php $course_three = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_three']); echo $course_three[0]['title'];?></td>
-												<td><?php $course_fourth = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_fourth']); echo $course_fourth[0]['title'];?></td>
-												<td><?php $course_fifth = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_fifth']); echo $course_fifth[0]['title'];?></td>
+												<td><?php $course_first = $this->common_model->getCoursesById($applicaitonStepOne[0]['course']); echo $course_first[0]['title'] ?? 'NA';?></td>
+												<td><?php $course_second =  $this->common_model->getCoursesById($applicaitonStepOne[0]['course_two']);echo $course_second[0]['title'] ?? 'NA';?></td>
+												<td><?php $course_three = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_three']); echo $course_three[0]['title'] ?? 'NA';?></td>
+												<td><?php $course_fourth = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_fourth']); echo $course_fourth[0]['title'] ?? 'NA';?></td>
+												<td><?php $course_fifth = $this->common_model->getCoursesById($applicaitonStepOne[0]['course_fifth']); echo $course_fifth[0]['title'] ?? 'NA';?></td>
 											</tr>
 										</tbody>
 									</table>
@@ -824,7 +824,7 @@ $dirdata = $userd->dir;
 					<div class="form-group col-xs-9">
 					    <label for="inputEmail3" class="col-sm-2">Nomenclature</label>
 					    <div class="col-sm-8">
-					      <select id="course" name="course" class="form-control" required="true">
+					      <select id="course" name="course" class="form-control" required="true" data-searchable="true">
 					      	<option value="">Select</option>
 					      <option value="93">Ph.D Yoga</option>
 						  <option value="93">Ph.D Yoga</option>
@@ -843,7 +843,7 @@ $dirdata = $userd->dir;
 						<div class="form-group col-xs-9">
 					    <label for="inputEmail3" class="col-sm-2">Nomenclature</label>
 					    <div class="col-sm-8">
-					      <select id="course" name="course" class="form-control" required="true">
+					      <select id="course" name="course" class="form-control" required="true" data-searchable="true">
 					      	<option value="">Select</option>
 					      	<?php
 					      	// Lists the complete nomenclature list, not only the entries
@@ -879,7 +879,7 @@ $dirdata = $userd->dir;
 					      	<?php
 					      
 					        $schemes = $this->common_model->getSchemeById($mappingData[0]['scholarship_id']);
-					        $scheme = $schemes[0]['scheme_name'];
+					        $scheme = $schemes[0]['scheme_name'] ?? '';
 					      	if(!empty($scheme))
 					      	{					      		
 					      											
@@ -933,8 +933,9 @@ $dirdata = $userd->dir;
 	
 	</div>
 </section>
-	
-	
 
-
-	
+<?php
+// Searchable Nomenclature dropdown - see assets/site/main/js/iccr-searchable-select.js.
+?>
+<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925">
+<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925"></script>

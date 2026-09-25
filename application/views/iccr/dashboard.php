@@ -211,6 +211,8 @@ switch ($division) {
                     <li><a href="<?php echo site_url(); ?>headquarter/applicantAyushAcceptance">Acceptence & Undertaking
                             of Applicant from Missions<span class="pull-right fltright">
                             </span></a></li>
+                    <li><a href="<?php echo site_url(); ?>headquarter/ayush_confirmation_from_mission_2026">Confirmation from Mission
+                            (2026-2027)<img src="<?php echo site_url(); ?>assets/site/main/images/newnotification.gif.png" alt="new gif Image"> <span class="pull-right fltright"></span></a></li>
                     <?php
         break;
     case "1":

@@ -77,8 +77,8 @@
 						<td><?php echo $app['application_no'];?></td>
 						<td><?php echo $app['fullname'].' '.$app['middlename'].' '.$app['familyname'];?></td>						
 						<td><?php echo $app['email'];?></td>
-						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo $course[0]['title'];?></td>
-						<td><?php $schem = $this->common_model->getSchemeById($app['scholarship_id']); echo $schem[0]['scheme_name'];?></td>
+						<td><?php $course = $this->common_model->getCoursesById($app['course']);echo $course[0]['title'] ?? '';?></td>
+						<td><?php $schem = $this->common_model->getSchemeById($app['scholarship_id']); echo $schem[0]['scheme_name'] ?? 'NA';?></td>
 						<td><?php echo $app['country_name'];?></td>
 						<td><a target="_blank"  href="<?php echo site_url();?>headquarter/applicationForm/<?php echo $app['application_no'];?>">Download</a></td>
 						<td><a target="_blank" href="<?php echo site_url();?>headquarter/contactForm/<?php echo $app['application_no'];?>">Download</a></td>
@@ -200,7 +200,7 @@
                                     ?>
 
                                 </td>
-						<!----<td><?php echo date("Y-m-d", strtotime($array['date1']));?></td>-->	
+						<!---- Date column disabled -->	
 						<td>Processed</td>				
 						</tr>
 						<?php	

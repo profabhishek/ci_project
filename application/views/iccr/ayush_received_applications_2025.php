@@ -101,7 +101,7 @@
 						if($app['programme'] == 3 || $app['programme'] == 4 || $app['programme'] == 8)
 						{
 							$course = $this->common_model->getProgrammeById($app['programme']);
-							echo $course[0]['name'].' '.$app['course_subject'];
+							echo ($course[0]['name'] ?? '').' '.($app['course_subject'] ?? '');
 						}
 						else
 						{
@@ -111,11 +111,11 @@
 							$course3 = $this->common_model->getCoursesById($app['course_fourth']);
 							$course4 = $this->common_model->getCoursesById($app['course_fifth']);
 							//print_r($course3);
-							echo $course[0]['title'].' '.$app['course_option_name'].'<br/>';
-							echo $course1[0]['title'].' '.$app['course_option_name_two'].'<br/>';
-							echo $course2[0]['title'].' '.$app['course_option_name_three'].'<br/>';
-							echo $course3[0]['title'].'<br/>';
-							echo $course4[0]['title'].'<br/>';
+							echo ($course[0]['title'] ?? '').' '.($app['course_option_name'] ?? '').'<br/>';
+							echo ($course1[0]['title'] ?? '').' '.($app['course_option_name_two'] ?? '').'<br/>';
+							echo ($course2[0]['title'] ?? '').' '.($app['course_option_name_three'] ?? '').'<br/>';
+							echo ($course3[0]['title'] ?? '').'<br/>';
+							echo ($course4[0]['title'] ?? '').'<br/>';
 						}?></td>
 						<td><?php 
 						$schem = $this->common_model->getSchemeById($app['scholarship_id']); 
@@ -143,7 +143,7 @@
 							<?php 
 							if($app['iccr_status'] == 1){
 							?>
-								<a href="#" title="Already Processed" class="form-control sbmt btn btn-block btn-default disabled">Processed</a>	
+								<a href="<?php echo site_url();?>headquarter/ayushprocess/<?php echo $app['application_no'];?>" title="Already processed - open again to update the university letter or details" class="form-control sbmt">Re-process</a>	
 							<?php
 							}
 							else

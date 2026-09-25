@@ -52,9 +52,20 @@ class Mission extends CI_Controller {
         $this->load->model('mission_model');      
         $this->load->helper('file');
          
-        $userdata = $this->session->userdata('user_data');     	
+        $userdata = $this->session->userdata('user_data');
         if(!$this->session->userdata('user_data'))
 	    {
+			// A background (AJAX) request cannot follow a redirect to the login
+			// page: the browser fetched the home page instead, could not read it
+			// as a result, and staff saw a meaningless "HTTP 200 OK" error after
+			// their session expired (sess_expiration = 2 hours) on a page left
+			// open. Answer those requests with a plain message instead.
+			if ($this->input->is_ajax_request())
+			{
+				header('Content-Type: application/json; charset=utf-8');
+				echo json_encode(array('status' => FALSE, 'message' => 'Your login session has expired, so nothing was submitted. Please reload the page (press F5), log in again if asked, and submit again.'));
+				exit;
+			}
 	    	redirect('home');
 	    }
 	    else
@@ -675,34 +686,25 @@ class Mission extends CI_Controller {
 				} */
 				
 				
-					 // The Process button is enabled ONLY for CONFIRMED AYUSH applications.
-					//   course_type 1  = AYUSH
-					//   status      10 = the university has been confirmed - set by
-					//                    Headquarter.php when it forwards the
-					//                    application (ConfirmationForwardToMissionByHqrs)
-					//
-					// This used to enable the button for ANY row with status 10,
-					// including non-AYUSH applications, and separately for EVERY
-					// AYUSH row via a course_type-only branch - which let staff
-					// open AYUSH applications no university had confirmed yet.
-					// Both are now closed: every other row is disabled.
-					if((isset($r['course_type']) && (int) $r['course_type'] === 1) && (isset($r['status']) && (int) $r['status'] === 10))
-				{ 
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Process this confirmed AYUSH application" href="'.site_url().'mission/viewApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt">Process</a>';
+					 // Process button rules on this Mission screen:
+					//   - AYUSH (course_type 1): the Mission can only process once
+					//     the AYUSH admin has uploaded the university letter at
+					//     headquarter/ayushprocess/<application_no>. Until then
+					//     there is no allotted university to process against, so
+					//     the button stays disabled.
+					//   - every non-AYUSH application: always enabled.
+					$isAyush = (isset($r['course_type']) && (int) $r['course_type'] === 1);
+					$ayushLetterUploaded = $isAyush
+						? $this->common_model->hasAyushUniversityLetter($applicationDetails[0]['application_no'])
+						: FALSE;
+
+					if($isAyush && !$ayushLetterUploaded)
+				{
+					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "This button will be enabled once the AYUSH admin uploads the university letter." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
 				}
-				 // AYUSH, but the university has not been confirmed yet - disabled,
-					// with a tooltip saying what is being waited on.
-					elseif(isset($r['course_type']) && (int) $r['course_type'] === 1)
-				{ 
-					
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "This button will be enabled once admission is confirmed by University." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
-				}
-				// Not an AYUSH application - cannot be processed from this screen
-				// at all, so say that rather than implying it is waiting on a
-				// university confirmation that will never enable it.
 				else
 				{
-					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Only confirmed AYUSH applications can be processed from this screen." href="javascript:void(0);" class="btn btn-block btn-default sbmt disabled">Process</a>';
+					$output[] = '<a style="float:left;margin-right:7px;width:104px;" title = "Process this application" href="'.site_url().'mission/viewApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt">Process</a>';
 				}
 				
 				$output[] = '<a style="float:left;width:104px;" href="'.site_url().'mission/viewfullApplication/'.$applicationDetails[0]['application_no'].'" class="form-control sbmt1" target = "__blank" >View</a>';
@@ -3701,9 +3703,25 @@ die;
 			//echo "";die;
 			$applicationId = $this->uri->segment(3);
 			//echo $applicationId;die;
+			// Same rule as the Process button on mission/new_applications: an
+			// AYUSH application can only be processed once the AYUSH admin has
+			// uploaded its university letter at
+			// headquarter/ayushprocess/<application_no>. Checked here as well so
+			// the screen cannot be reached by typing the URL.
+			$applicantRow = $this->common_model->getApplicationStepOneByAppno($applicationId);
+			$isAyushApplication = (!empty($applicantRow) && isset($applicantRow[0]['course_type']) && (int) $applicantRow[0]['course_type'] === 1);
+			if($isAyushApplication && !$this->common_model->hasAyushUniversityLetter($applicationId)){
+				$this->session->set_flashdata('message_type', 'error');
+				$this->session->set_flashdata('error', 'This application cannot be processed yet - the AYUSH admin has not uploaded the university letter.');
+				redirect(site_url().'mission/dashboard');
+				return false;
+			}
 			$response = $this->common_model->getconfirmationDataforHqrs($applicationId);
 			//echo "<pre>";print_r($response);die;
-			if($response[0]['confirmed_to_mission'] == 1){
+			// getconfirmationDataforHqrs() returns an empty array when the
+			// application has no university response row yet, so guard the
+			// index before reading it.
+			if(!empty($response) && $response[0]['confirmed_to_mission'] == 1){
 				$this->session->set_flashdata('message_type', 'error');
 				$this->session->set_flashdata('error', 'You have already uploaded!');
 				redirect(site_url().'mission/dashboard');
@@ -4090,7 +4108,136 @@ $html = $content;
 		}		
 	}
 	
+	/**
+	 * Entry point for the Mission "Submit Application" button
+	 * (assets/site/main/js/custom.js -> #form-process-application-agree).
+	 *
+	 * The browser parses the reply as JSON. Anything else in the reply - a PHP
+	 * warning, a stray echo, an uncaught error page, or nothing at all - makes
+	 * it fail with the generic "The server did not accept the submission"
+	 * dialog and hides the real reason. So the real work happens in
+	 * _applicaitonAgreeProcess(), whose output is captured here and reduced
+	 * to exactly one JSON object. Method names starting with an underscore are
+	 * not routable in CodeIgniter, so the inner method is not a public URL.
+	 */
+	/** Set once applicaitonAgreeProcess() has sent its JSON reply. */
+	private $_agreeReplied = FALSE;
+
 	public function applicaitonAgreeProcess()
+	{
+		// The handler sends mail and moves uploads; give it room so a slow
+		// step ends in a reply rather than a max_execution_time fatal (500).
+		@set_time_limit(180);
+
+		// A POST larger than PHP's post_max_size arrives with $_POST and $_FILES
+		// completely empty. The handler then matched no case and printed nothing,
+		// which the browser reported as the generic error. Say what happened.
+		$contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+		if (empty($_POST) && empty($_FILES) && $contentLength > 0) {
+			log_message('error', 'Mission process: request of ' . $contentLength . ' bytes exceeds post_max_size (' . ini_get('post_max_size') . ') - nothing received.');
+			$this->_agreeProcessReply(json_encode(array('status' => FALSE, 'message' => 'The files are too large for the server to accept (' . round($contentLength / 1048576, 1) . ' MB sent, server limit ' . ini_get('post_max_size') . '). Please upload smaller PDFs and try again.')));
+			return;
+		}
+
+		$obLevel = ob_get_level();
+		ob_start();
+
+		// CodeIgniter stops the request with exit() for some failures -
+		// show_error() on a database error when db_debug is on, or a view or
+		// library that cannot be loaded. exit() skips the try/catch below and
+		// the browser got a bare HTTP 500. Shutdown functions still run after
+		// exit() and before output is sent, so turn that case into a JSON reply
+		// that carries CodeIgniter's own error text.
+		$self = $this;
+		register_shutdown_function(function () use ($self, $obLevel) {
+			if ($self->_agreeProcessReplied()) {
+				return;
+			}
+			$captured = '';
+			while (ob_get_level() > $obLevel) {
+				$captured = ob_get_clean() . $captured;
+			}
+			// Tags become spaces so "<h1>Heading</h1><p>Detail</p>" reads
+			// "Heading Detail" rather than "HeadingDetail".
+			$reason = trim(preg_replace('/\s+/', ' ', html_entity_decode(preg_replace('/<[^>]*>/', ' ', $captured), ENT_QUOTES)));
+			$last = error_get_last();
+			if ($reason === '' && $last !== NULL) {
+				$reason = $last['message'] . ' at ' . basename($last['file']) . ':' . $last['line'];
+			}
+			if ($reason === '') {
+				$reason = 'the request stopped without a result';
+			}
+			$reason = substr($reason, 0, 400);
+			log_message('error', 'Mission process (' . $self->input->post('appid') . ') stopped early - ' . $reason);
+			if (!headers_sent()) {
+				http_response_code(200);
+			}
+			$self->_agreeProcessReplyPublic(json_encode(array('status' => FALSE, 'message' => 'The application could not be submitted: ' . $reason . '. Please report this message.')));
+		});
+
+		$failure = '';
+		try {
+			$this->_applicaitonAgreeProcess();
+		} catch (Throwable $e) {
+			// Includes PHP Errors (TypeError etc.), which the inner catch(Exception) does not.
+			$failure = get_class($e) . ': ' . $e->getMessage() . ' at ' . basename($e->getFile()) . ':' . $e->getLine();
+			log_message('error', 'Mission process (' . $this->input->post('appid') . ') failed - ' . $failure);
+		}
+		$printed = ob_get_clean();
+
+		if ($failure !== '') {
+			$this->_agreeProcessReply(json_encode(array('status' => FALSE, 'message' => 'The application could not be submitted because of a server error (' . $failure . '). Please report this message.')));
+			return;
+		}
+
+		// Keep only the JSON object; drop any warning text printed before it.
+		$start = strpos($printed, '{"status"');
+		if ($start !== FALSE) {
+			$candidate = substr($printed, $start);
+			// The handler answers once; trim anything printed after the object.
+			$decoded = json_decode($candidate, TRUE);
+			if ($decoded === NULL) {
+				$end = strpos($candidate, '}');
+				$candidate = $end !== FALSE ? substr($candidate, 0, $end + 1) : $candidate;
+				$decoded = json_decode($candidate, TRUE);
+			}
+			if (is_array($decoded)) {
+				if ($start > 0) {
+					log_message('error', 'Mission process (' . $this->input->post('appid') . '): unexpected output before the reply was discarded: ' . substr(trim($printed), 0, $start > 500 ? 500 : $start));
+				}
+				$this->_agreeProcessReply(json_encode($decoded));
+				return;
+			}
+		}
+
+		// No usable reply at all - typically the form type did not match any case.
+		log_message('error', 'Mission process (' . $this->input->post('appid') . '): handler produced no JSON reply. type=' . $this->input->post('type') . ' output=' . substr(trim($printed), 0, 300));
+		$this->_agreeProcessReply(json_encode(array('status' => FALSE, 'message' => 'The server did not return a result for this submission. Please check the application status before trying again.')));
+	}
+
+	/** Sends the JSON reply for applicaitonAgreeProcess(). */
+	private function _agreeProcessReply($json)
+	{
+		$this->_agreeReplied = TRUE;
+		if (!headers_sent()) {
+			header('Content-Type: application/json; charset=utf-8');
+		}
+		echo $json;
+	}
+
+	// Used by the shutdown closure above. Underscore-prefixed, so CodeIgniter
+	// does not route them as URLs.
+	public function _agreeProcessReplied()
+	{
+		return $this->_agreeReplied;
+	}
+
+	public function _agreeProcessReplyPublic($json)
+	{
+		$this->_agreeProcessReply($json);
+	}
+
+	private function _applicaitonAgreeProcess()
 	{
 	//echo "-------------------";die;
 		try{
@@ -4349,14 +4496,25 @@ $html = $content;
 							
 						}	
 						else
-							
-							$no = 0;
+						{
+						// This else used to have no braces, so it only covered
+						// "$no = 0;" - everything below also ran after a REJECTION,
+						// overwriting mission_status 2 with 1 and echoing a second
+						// JSON object that the browser could not parse.
 						$no = (int)$last[0]->appid + 1;
 						$rand = $this->random_num(3);
 						$referenceNumber = $applicationData[0]['country']."-" .date('Y')."-".$data['xss_data']['schloarship_name']."-".$rand."-".$no; 
 						$update['ref_no'] = $referenceNumber;						
 						$update['mission_status'] = 1;
-						$update['status'] = 4;
+						// Never move an application backwards. AYUSH applications
+						// reach this screen already at status 10 (university
+						// confirmed); forcing 4 dropped them out of the "Ayush
+						// Processed Applications" list, which requires a later stage.
+						$currentMapping = $this->common_model->getMappingData($this->input->post('appid'));
+						$currentStatus  = !empty($currentMapping) ? (int) $currentMapping[0]['status'] : 0;
+						if ($currentStatus < 4) {
+							$update['status'] = 4;
+						}
 						$update['mission_status_date'] = $data['xss_data']['mission_date'];
 						$update['mission_person_name'] = $data['xss_data']['mission_name'];		
 						$update['mission_person_designation'] = $data['xss_data']['mission_desg'];		
@@ -4390,12 +4548,17 @@ $html = $content;
 							echo json_encode(array('status'=>TRUE,"message"=>"Approved",'ref'=>$referenceNumber));
 							}
 						else
-							echo json_encode(array('status'=>FALSE,"message"=>"Error"));	
-					}	
-					
+							echo json_encode(array('status'=>FALSE,"message"=>"Error"));
+						}
+					}
+
 					else
 					{
-						echo "2";die;
+						// Every checklist item was ticked - the normal case. A leftover
+						// debug line (echo "2"; die;) used to stop here, so the
+						// uploaded documents were written to disk but the application
+						// was never marked as processed.
+						$data['xss_data']['checklist_ids'] = '';
 						$no = 0;
 						$no = (int)$last[0]->appid + 1;
 						$rand = $this->random_num(3);
@@ -4428,12 +4591,14 @@ $html = $content;
 						$status = $this->common_model->updateMissionStatus($update,$userId,$data['xss_data']['application_number']);
 					
 				  //var_dump($mailsend);die;
-						if($status)
-							if($mailsend){
+						// $mailsend is never set on this path, so the old
+						// "if($status) if($mailsend)" sent back no response at all
+						// after a successful save.
+						if($status){
 							echo json_encode(array('status'=>TRUE,"message"=>"Approved",'ref'=>$referenceNumber));
-							}
+						}
 						else
-							echo json_encode(array('status'=>FALSE,"message"=>"Error"));	
+							echo json_encode(array('status'=>FALSE,"message"=>"Error"));
 					}
 				break;
 			}

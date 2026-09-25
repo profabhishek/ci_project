@@ -5977,8 +5977,27 @@ function getVisaConveyedoldApplicatgion($missionId) {
         }
         return $this->db->get()->result_array();
     }
+	/**
+	 * Has the AYUSH admin (Headquarter) already uploaded a university letter
+	 * for this application?
+	 *
+	 * Headquarter::forwardAyuushtohqrs() inserts a row into
+	 * iccr_university_response_by_hqrs carrying the uploaded letter in
+	 * region_one_doc. A row with an empty region_one_doc means the form was
+	 * submitted without a file, which does not count as uploaded.
+	 */
+	function hasAyushUniversityLetter($appno) {
+		if ($appno === NULL || $appno === '') {
+			return FALSE;
+		}
+		$this->db->from('iccr_university_response_by_hqrs');
+		$this->db->where('application_id', $appno);
+		$this->db->where("region_one_doc IS NOT NULL AND region_one_doc <> ''", NULL, FALSE);
+		return $this->db->count_all_results() > 0;
+	}
+
 	function getMissionsAyushProcessedApplications($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_status_mapping.mission_medical_fitness,iccr_status_mapping.mission_undertaking_form,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
@@ -6001,20 +6020,40 @@ function getVisaConveyedoldApplicatgion($missionId) {
     }
 
 	function getMissionsAyushProcessedApplications25($missionid) {
-        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_university_response_by_hqrs.region_one_doc,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
+        // The university letter used to come from an INNER JOIN on
+        // iccr_university_response_by_hqrs. That dropped every processed
+        // application with no row there, and listed an application once per
+        // row when it had several. A subquery keeps exactly one row per
+        // application and leaves the letter empty when there is none.
+        // ORDER BY h.id DESC so a letter uploaded later (a correction) wins
+        // over the original one.
+        $this->db->select("(SELECT h.region_one_doc FROM iccr_university_response_by_hqrs h WHERE h.application_id = iccr_status_mapping.application_no AND h.region_one_doc IS NOT NULL AND h.region_one_doc <> '' ORDER BY h.id DESC LIMIT 1) AS region_one_doc", FALSE);
+        $this->db->select('iccr_status_mapping.status,iccr_status_mapping.scholar_acceptance,iccr_status_mapping.mission_medical_fitness,iccr_status_mapping.mission_undertaking_form,iccr_status_mapping.mission_person_signature,iccr_student_application_details.application_no,iccr_student_details.created,iccr_student_application_details.course_type,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.mission_status,iccr_student_application_details.course,iccr_student_application_details.course_two,iccr_student_application_details.course_three,iccr_student_application_details.course_fourth,iccr_student_application_details.course_fifth,iccr_student_application_details.course_option_name,iccr_student_application_details.course_option_name_three,iccr_student_application_details.course_option_name_two,iccr_student_application_details.programme,iccr_student_application_details.universty_choice,iccr_student_application_details.universty_choice_two,iccr_status_mapping.scholarship_id,iccr_student_application_details.universty_choice_three,iccr_student_application_details.course_subject,iccr_status_mapping.mission_status_date,iccr_status_mapping.nomenclature');
         $this->db->from('iccr_status_mapping');
         $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
         $this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
-        $this->db->join('iccr_university_response_by_hqrs', 'iccr_university_response_by_hqrs.application_id = iccr_status_mapping.application_no');
         $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
         $this->db->where_in('iccr_student_other_details.application_through', $missionid);
         //$this->db->where_in('iccr_status_mapping.status', array(4, 5));
-		$this->db->where('iccr_status_mapping.status >=', 10);
+		// mission_status = 1 alone does NOT mean processed: AYUSH applications
+		// can carry mission_status = 1 before the Mission has acted (e.g.
+		// VJ0424729572359 - status 10, mission_status 1, no processing date).
+		// Every real submission of the Mission process screen
+		// (Mission::applicaitonAgreeProcess / applicaitonProcess) writes
+		// mission_status_date, so require it as well.
+		// The old "status >= 10" also hid applications the process screen had
+		// reset to status 4.
+		$this->db->where('iccr_status_mapping.status >=', 4);
 		$this->db->where('iccr_status_mapping.mission_status', 1);
+		$this->db->where("iccr_status_mapping.mission_status_date IS NOT NULL AND iccr_status_mapping.mission_status_date <> ''", NULL, FALSE);
 		$this->db->where(array('iccr_student_application_details.course_type =' => 1));
 		//$this->db->where(array('iccr_status_mapping.created >='=> 1615749687));
-		$this->db->where(array('iccr_status_mapping.created >=' => 1735689600));
+		// 2026 cycle only - same window as Mission_model::getMissionApplications()
+		// uses for mission/new_applications/2026. The old ">= 1735689600"
+		// (1 Jan 2025) also pulled in the 2025 cycle.
+		$this->db->where('iccr_status_mapping.created >=', 1772150400);
+		$this->db->where('iccr_status_mapping.created <=', 1798761599);
 		//$this->db->order_by('iccr_status_mapping.mission_status_date','asc');
 		$this->db->order_by('iccr_status_mapping.id', 'DESC');
         $code = $this->db->error();
@@ -6774,6 +6813,45 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         return $this->db->get()->result_array();
     }
 	
+    /**
+     * AYUSH 2026-27 applications the Mission has finished processing, for the
+     * AYUSH admin's "Confirmation from Mission (2026-2027)" page.
+     *
+     * "Processed by the Mission" means the Mission submitted the process
+     * screen (Mission::applicaitonAgreeProcess): mission_status = 1 with a
+     * processing date, AND both documents it requires - the Medical Fitness
+     * Certificate and the Undertaking Form - are recorded. Rows marked
+     * processed without those documents (older records, or ones cleared by a
+     * rollback) are deliberately left out.
+     *
+     * Uses the same 2026 window as getHQRSAYUSHReceivedApplication2026(), so
+     * every row here also appears on the AYUSH Received (2026-27) page.
+     */
+    function getHQRSAYUSHConfirmedByMission2026() {
+        // Latest university letter uploaded by the AYUSH admin
+        // (Headquarter::forwardAyuushtohqrs), one per application.
+        $this->db->select("(SELECT h.region_one_doc FROM iccr_university_response_by_hqrs h WHERE h.application_id = iccr_status_mapping.application_no AND h.region_one_doc IS NOT NULL AND h.region_one_doc <> '' ORDER BY h.id DESC LIMIT 1) AS region_one_doc", FALSE);
+        $this->db->select('iccr_status_mapping.status,iccr_student_application_details.created,iccr_student_application_details.application_no,iccr_student_application_details.fullname,iccr_student_application_details.middlename,iccr_student_application_details.familyname,iccr_student_application_details.email,iccr_countries.country_name,iccr_status_mapping.scholarship_id,iccr_student_application_details.programme,iccr_student_application_details.course_subject,iccr_student_application_details.nomenclature,iccr_student_application_details.nomenclature_two,iccr_student_application_details.nomenclature_three,iccr_student_application_details.nomenclature_fourth,iccr_student_application_details.nomenclature_fifth,iccr_status_mapping.mission_status_date,iccr_status_mapping.mission_person_name,iccr_status_mapping.mission_person_designation,iccr_status_mapping.ref_no,iccr_status_mapping.mission_medical_fitness,iccr_status_mapping.mission_undertaking_form');
+        // Confirmed course, recorded on the mapping row. Aliased because
+        // iccr_student_application_details also has a nomenclature column.
+        $this->db->select('iccr_status_mapping.nomenclature AS confirmed_nomenclature', FALSE);
+        $this->db->from('iccr_status_mapping');
+        $this->db->join('iccr_student_application_details', 'iccr_student_application_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_student_details', 'iccr_student_details.uid = iccr_status_mapping.uid');
+        $this->db->join('iccr_student_other_details', 'iccr_student_other_details.application_no = iccr_status_mapping.application_no');
+        $this->db->join('iccr_countries', 'iccr_student_application_details.nationality = iccr_countries.id');
+        $this->db->where('iccr_student_application_details.course_type', 1);
+        $this->db->where('iccr_status_mapping.mission_status', 1);
+        $this->db->where("iccr_status_mapping.mission_status_date IS NOT NULL AND iccr_status_mapping.mission_status_date <> ''", NULL, FALSE);
+        $this->db->where("iccr_status_mapping.mission_medical_fitness IS NOT NULL AND iccr_status_mapping.mission_medical_fitness <> ''", NULL, FALSE);
+        $this->db->where("iccr_status_mapping.mission_undertaking_form IS NOT NULL AND iccr_status_mapping.mission_undertaking_form <> ''", NULL, FALSE);
+        $this->db->where('iccr_status_mapping.created >=', 1767149344);
+        $this->db->where('iccr_status_mapping.created <=', 1798761599);
+        $this->db->order_by('iccr_status_mapping.id', 'DESC');
+        $q_ = $this->db->get();
+        return $q_ ? $q_->result_array() : array();
+    }
+
     function getHQRSAYUSHReceivedApplication2026() {
         // Includes the nomenclature columns so the listing can show the full
         // nomenclature titles. The earlier years select only the short course

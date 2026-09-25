@@ -1842,7 +1842,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course <span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -1909,7 +1909,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course <span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -1975,7 +1975,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course <span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -2041,7 +2041,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course <span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -2107,7 +2107,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course <span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -2170,7 +2170,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
             <label>Nomenclature of Course<span style="color:red;">*</span></label>
 
             <select name="nomenclature[]"
-                    class="form-control nomenclature">
+                    class="form-control nomenclature" data-searchable="true">
 
                 <option value="">Select Nomenclature</option>
                 <?php
@@ -2575,3 +2575,9 @@ $(document).ready(function () {
 var csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
 var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
 </script>
+
+<?php
+// Searchable Nomenclature dropdown - see assets/site/main/js/iccr-searchable-select.js.
+?>
+<link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925">
+<script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925"></script>

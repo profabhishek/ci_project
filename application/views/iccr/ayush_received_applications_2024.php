@@ -143,7 +143,7 @@
 							<?php 
 							if($app['iccr_status'] == 1){
 							?>
-								<a href="#" title="Already Processed" class="form-control sbmt btn btn-block btn-default disabled">Processed</a>	
+								<a href="<?php echo site_url();?>headquarter/ayushprocess/<?php echo $app['application_no'];?>" title="Already processed - open again to update the university letter or details" class="form-control sbmt">Re-process</a>	
 							<?php
 							}
 							else
