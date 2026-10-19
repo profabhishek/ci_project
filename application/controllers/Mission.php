@@ -6069,6 +6069,41 @@ else
 			redirect(site_url().'mission/dashboard');
 		}
 	}
+	/**
+	 * Student Status Tracker (read-only)
+	 * URL: mission/student_tracker            -> current academic year (2026-27)
+	 *      mission/student_tracker/2025       -> 2025-26, and so on
+	 * Shows every student who applied through this Mission, the current stage in
+	 * plain words, and who must act next. Uses $this->ids (worked out in the
+	 * constructor from the logged-in Mission's e-mail), so a Mission only ever
+	 * sees its own students. Nothing is written to the database.
+	 */
+	public function student_tracker()
+	{
+		try {
+			$this->load->model('mission_tracker_model');
+			$years = $this->mission_tracker_model->yearWindows();
+			$year  = (int) $this->uri->segment(3);
+			if (!isset($years[$year])) {
+				$year = 2026;
+			}
+			$user_data = $this->session->userdata('user_data');
+			$data['misionData'] = $this->common_model->getMissionInfo($user_data['user_country']);
+			$data['years']    = $years;
+			$data['year']     = $year;
+			$data['students'] = $this->mission_tracker_model->buildTracker($this->ids, $year);
+			$this->load->view('mission/header_mission');
+			$this->load->view('mission/student_tracker', $data);
+			$this->load->view('mission/footer');
+		}
+		catch (Exception $e)
+		{
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', 'The Student Status Tracker could not be loaded. Please try again after some time.');
+			redirect(site_url().'mission/dashboard');
+		}
+	}
+
 		public function __destruct() {
     $this->db->close();
     }
