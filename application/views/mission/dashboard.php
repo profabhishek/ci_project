@@ -104,6 +104,13 @@ if(!empty($notifications))
 	</div>	
 	
 	<div  class="container" style="min-height:410px;padding-top:20px;padding-bottom: 20px;">
+	<!-- Student Status Tracker shortcut (plain-language status of every student) -->
+	<a href="<?php echo site_url(); ?>mission/student_tracker" style="display:flex;align-items:center;gap:14px;background:#fff4e5;border:1px solid #fbd9a8;border-left:6px solid #f18f2e;border-radius:10px;padding:14px 18px;margin:0 0 18px;color:#1d2733;text-decoration:none;">
+		<i class="fa fa-search" style="font-size:26px;color:#02335c;" aria-hidden="true"></i>
+		<span style="flex:1;"><b style="color:#02335c;font-size:17px;">Student Status Tracker</b><br>
+		<span style="font-size:14px;">See where each of your students is (university, award, visa, travel) in simple words, and which cases need your Mission's action.</span></span>
+		<span style="background:#02335c;color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;white-space:nowrap;">Open tracker &rarr;</span>
+	</a>
 	
 	
 	<div id="sidebar-wrapper">       
