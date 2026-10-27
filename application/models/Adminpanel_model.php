@@ -514,8 +514,8 @@ class Adminpanel_model extends CI_Model
         if (!$this->general_audit_ready()) {
             return;
         }
-        if (in_array($action, array('login', 'logout'), TRUE)) {
-            return; // sign-ins are in the Admin Panel log and "Sign-in attempts"; audit_log is for data changes
+        if (in_array($action, array('login', 'logout', 'export'), TRUE)) {
+            return; // sign-ins and downloads are in the Admin Panel log only; audit_log is for data changes
         }
         $event = $this->sql_event($action, $column);
         $triggers = $this->audit_triggers();

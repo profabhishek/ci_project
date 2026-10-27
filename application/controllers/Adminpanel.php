@@ -880,4 +880,90 @@ class Adminpanel extends CI_Controller
                       'tables' => $this->ap->general_audit_tables(), 'ready' => $this->ap->general_audit_ready());
         $this->render('general_audit', $data, 'general_audit');
     }
+
+    /* ==============================================================
+       Gyan Setu export  (added 26 Oct 2026; data built by libraries/Gyansetu_export.php)
+       ============================================================== */
+
+    /** Reads the form and returns [year, appNos, idsText, hide, format].
+     *  The form uses GET: it only reads data, and GET avoids stale CSRF tokens after a file download. */
+    private function gyansetu_input()
+    {
+        $p = $this->input->get(NULL, FALSE);
+        if (!is_array($p)) { $p = array(); }
+        $year = preg_replace('/\D/', '', isset($p['year']) ? (string) $p['year'] : '');
+        if (strlen($year) !== 4) { $year = date('Y'); }
+        $idsText = isset($p['ids']) ? trim((string) $p['ids']) : '';
+        preg_match_all('/[A-Za-z]{2}\d{13}/', $idsText, $m);
+        $appNos = array_values(array_unique(array_map('strtoupper', $m[0])));
+        $hide = !empty($p['hide']);
+        $format = (isset($p['format']) && $p['format'] === 'csv') ? 'csv' : 'xlsx';
+        return array($year, $appNos, $idsText, $hide, $format);
+    }
+
+    public function gyansetu()
+    {
+        $this->load->library('gyansetu_export', NULL, 'gs');
+        $data = array('year' => date('Y'), 'ids_text' => '', 'hide' => FALSE, 'format' => 'xlsx',
+                      'rows' => NULL, 'missing' => array(), 'columns' => $this->gs->columns);
+
+        if (in_array($this->input->get('do'), array('preview', 'download'), TRUE)) {
+            list($year, $appNos, $idsText, $hide, $format) = $this->gyansetu_input();
+            @set_time_limit(300);
+            @ini_set('memory_limit', '512M');
+            $rows = $this->gs->build_rows($year, $appNos);
+
+            $columns = $this->gs->columns;
+            if ($hide) {
+                $columns = array_values(array_diff($columns, $this->gs->sensitive));
+            }
+            $found = array();
+            foreach ($rows as $r) { $found[$r['application_no']] = true; }
+            $missing = array_values(array_filter($appNos, function ($a) use ($found) { return !isset($found[$a]); }));
+
+            if ($this->input->get('do') === 'download') {
+                $this->ap->audit($this->admin, 'export', 'gyansetu_export', $year, '', NULL, (string) count($rows),
+                    ($appNos ? 'IDs: ' . implode(',', $appNos) : 'All students') . ($hide ? ' (personal details left out)' : ''));
+                $this->gyansetu_send($rows, $columns, $year, $format);
+                return;
+            }
+            $data = array_merge($data, array('year' => $year, 'ids_text' => $idsText, 'hide' => $hide, 'format' => $format,
+                                             'rows' => $rows, 'missing' => $missing, 'columns' => $columns));
+        }
+        $this->render('gyansetu', $data, 'gyansetu');
+    }
+
+    /** Sends the rows as .xlsx (written by the library, no PHPExcel) or .csv. Every cell is text so phone numbers keep their digits. */
+    private function gyansetu_send($rows, $columns, $year, $format)
+    {
+        $name = 'Gyan_Setu_' . $year . '_' . count($rows) . '_students_' . date('d-m-Y');
+
+        if ($format === 'xlsx') {
+            $path = $this->gs->write_xlsx($columns, $rows);
+            if ($path !== FALSE) {
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment; filename="' . $name . '.xlsx"');
+                header('Content-Length: ' . filesize($path));
+                header('Cache-Control: no-store');
+                readfile($path);
+                @unlink($path);
+                exit;
+            }
+            // No ZipArchive on this server: fall through and send CSV instead
+        }
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $name . '.csv"');
+        header('Cache-Control: no-store');
+        $fh = fopen('php://output', 'w');
+        fwrite($fh, "\xEF\xBB\xBF"); // so Excel reads UTF-8 names correctly
+        fputcsv($fh, $columns);
+        foreach ($rows as $r) {
+            $line = array();
+            foreach ($columns as $c) { $line[] = (string) $r[$c]; }
+            fputcsv($fh, $line);
+        }
+        fclose($fh);
+        exit;
+    }
 }

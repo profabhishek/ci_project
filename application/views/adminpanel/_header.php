@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
-$titles = array('dashboard' => 'Dashboard', 'announcements' => 'Announcements', 'nav' => 'Header menu', 'students' => 'Students',
+$titles = array('dashboard' => 'Dashboard', 'announcements' => 'Announcements', 'nav' => 'Header menu', 'students' => 'Students', 'gyansetu' => 'Gyan Setu export',
                 'missions' => 'Missions', 'universities' => 'Universities', 'accounts' => 'Accounts', 'audit' => 'Admin audit log', 'general_audit' => 'General audit log',
                 'trash' => 'Trash', 'logins' => 'Sign-in attempts');
 $page_title = isset($titles[$active]) ? $titles[$active] : 'Admin';
@@ -12,6 +12,7 @@ $menu = array(
     array('key' => 'nav', 'url' => 'adminpanel/nav', 'icon' => 'fa-sitemap', 'label' => 'Header menu'),
     array('sec' => 'Scholarship data'),
     array('key' => 'students', 'url' => 'adminpanel/students', 'icon' => 'fa-users', 'label' => 'Students'),
+    array('key' => 'gyansetu', 'url' => 'adminpanel/gyansetu', 'icon' => 'fa-file-excel-o', 'label' => 'Gyan Setu export'),
     array('key' => 'missions', 'url' => 'adminpanel/entity/missions', 'icon' => 'fa-flag', 'label' => 'Missions'),
     array('key' => 'universities', 'url' => 'adminpanel/entity/universities', 'icon' => 'fa-university', 'label' => 'Universities'),
     array('sec' => 'Security'),
