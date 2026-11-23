@@ -261,6 +261,8 @@ function blockSpecialChar(e) {
 	return ((k > 64 && k < 91) || (k > 96 && k < 123) || k == 8 || k == 32 || (k >= 48 && k <= 57));
 }
 function timerIncrement() {
+	// Replaced by assets/site/main/js/a2a-session.js (30 min inactivity, shared across tabs)
+	if (window.A2A_SESSION_MANAGED || window.A2A_SESSION_LOADER) { return; }
 	idleTime = idleTime + 1;
 	if (idleTime > 25) { // 20 minutes          
 		if (isLogin == 'true') {
@@ -5499,5 +5501,12 @@ function validateDob() {
 
 }
 
-
-
+// ---- A2A session manager: sign out after 30 minutes of inactivity (all tabs) ----
+(function () {
+	if (window.A2A_SESSION_MANAGED || window.A2A_SESSION_LOADER || typeof baseURL === 'undefined') { return; }
+	window.A2A_SESSION_LOADER = true;
+	var s = document.createElement('script');
+	s.src = baseURL + 'assets/site/main/js/a2a-session.js?v=1';
+	s.async = true;
+	(document.head || document.documentElement).appendChild(s);
+})();

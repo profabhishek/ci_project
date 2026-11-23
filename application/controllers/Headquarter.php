@@ -809,6 +809,7 @@ public function forwardtohqrssfs() {
             );
             $sts = $this->common_model->ForwardToHqrsFourthOption($data, $appno);
             if ($sts > 0) {
+                $this->common_model->releaseHqLetterToMission($sts, $appno);
                 $data1 = array(
                     'iccr_status' => 1,
                     'status' => 10,
@@ -859,6 +860,7 @@ public function forwardtohqrssfs() {
             );
             $sts = $this->common_model->ForwardToHqrsFourthOption($data, $appno);
             if ($sts > 0) {
+                $this->common_model->releaseHqLetterToMission($sts, $appno);
                 $data1 = array(
                     'iccr_status' => 1,
                     'status' => 10
@@ -907,6 +909,7 @@ public function forwardAyuushtohqrs() {
             );
             $sts = $this->common_model->ForwardToHqrsFourthOption($data, $appno);
             if ($sts > 0) {
+                $this->common_model->releaseHqLetterToMission($sts, $appno);
                 $data1 = array(
                     'iccr_status' => 1,
                     'status' => 10,

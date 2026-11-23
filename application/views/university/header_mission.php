@@ -176,11 +176,14 @@ if(!$this->session->userdata('user_data'))
 									else
 									{
 									?>
-										<li><a href="<?php echo site_url();?>university/dashboard" class="active">Home</a></li>										
-									<?php	
+										<li><a href="<?php echo site_url();?>university/dashboard" class="active">Home</a></li>
+									<?php
 									}
 							  		?>
 
+								<?php $mc_ud = $this->session->userdata('user_data'); if (!empty($mc_ud['email']) && $mc_ud['email'] === 'a2a_demo_univ@iccr.com') { ?>
+								<li><a href="<?php echo site_url();?>university/myCourses">My Courses</a></li>
+								<?php } ?>
 
 								<li class="navbar-item aboutus">
 								<a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">About us<b class="caret"></b></a>

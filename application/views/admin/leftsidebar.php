@@ -17,6 +17,7 @@
 
         <!-- sidebar menu: : style can be found in sidebar.less -->
         <ul class="sidebar-menu">
+            <li><a href="<?php echo site_url();?>adminpanel" style="background:#0f2d5c;color:#fff;font-weight:600"><i class="fa fa-star" style="color:#f2b134"></i> <span>New Admin Panel</span></a></li>
 
             <li class="active treeview">
                 <a href="#">

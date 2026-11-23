@@ -1,3 +1,4 @@
+<?php if (!function_exists('a2a_t')) { $this->load->helper('a2a_i18n'); } ?>
 <span id="meacontent" class="meacontent"></span>
 <script src="<?php echo base_url();?>assets/site/main/js/jquery.vticker-min.js"></script>
 <style>
@@ -238,192 +239,159 @@
 
 		
 		
-<section class="meacontent" style="margin: 0px; padding-top: 0px;">
-			<div  class="container" style="border-left:1px solid #cecece;border-right:1px solid #cecece;padding-top:10px;">
-			 <?php $todate = date('Y-m-d');?>
-			<?php $notifications = $this->common_model->getActiveNotification($todate);?>
-			
-				<div class="marqHold">
-			Welcome to Indian Council for Cultural Relations Scholarship Portal
-		
-			<!----<img src="<?php echo base_url();?>assets/site/main/images/new2019.gif" alt="new gif Image" ><a href="<?php echo base_url();?>assets/site/docs/A2A_Portal_Admission_2019-20.pdf" target = "_blank" >Admissions Through A2A Portal 2019-2O20</a>--->
-		
-			</div>
-			
+<section class="meacontent a2a-home" style="margin:0;padding-top:0;">
+	<?php $todate = date('Y-m-d'); ?>
+	<?php $notifications = $this->common_model->getActiveNotification($todate); ?>
 
-   <div class="marqWrap">
-	 <?php 
-		if(!empty($notifications)){
-			?>
-	<div class="lower-menu marquee">
-	<ul class="ml-auto">
-	
-		<!-- <li style="font-size: 14px;">
-			<img src="<?php echo base_url();?>assets/site/main/images/newnotification.gif" alt="Image" ><a href="<?php echo site_url('home/newnotification');?>">Stipend/ Joining Report of students who joined in Academic Year 2023-24.</a>
-		</li> -->
-
-	<?php 
-		
-		foreach($notifications as $notval){?>
-		
-		 <li style="font-size: 14px;">
-		<img src="<?php echo base_url();?>assets/site/main/images/newnotification.gif" alt="new gif Image" ><a href="<?php echo site_url('home/notificationList/'.$notval['id']);?>"><?php echo $notval['title']?></a>
-		</li>
-		<?php  
-		}
-		?>
-		
-	</ul>
-
-	
-</div>
-<?php }  ?>	
-<!-- <button class="form-control sbmt allnotification" onclick="location.href='<?php echo site_url();?>home/getAllActiveNotification/'">View All Notifications</button> -->
-<!-- <marquee style="color: #fff!important; font-weight: normal; padding: 0px!important; font-size:14px; height: auto;">In case of any issue while applying for ICCR scholarship, please contact Mr. Manoj Saini (email: saini.manoj@velocis.co.in) and Mr. Arvind Srivastav (email: ccd2.iccr@gov.in).</marquee> -->
-</div>
-				
-	</div>		
-				
-				<?php
-	    	if($this->session->flashdata('message_type') == "success")
-	    	{
-			?>
-			<div class="alert alert-success" role="alert">
-			  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-			  <strong>Success!</strong> <?php echo $this->session->flashdata('success');?>
+	<!-- Announcements -->
+	<div class="a2a-announce" role="region" aria-label="<?php echo a2a_e('a2a_announcements'); ?>">
+		<div class="a2a-wrap">
+			<span class="a2a-announce__label"><span class="a2a-dot" aria-hidden="true"></span><span class="a2a-label-text"><?php echo a2a_e('a2a_announcements'); ?></span></span>
+			<div class="a2a-announce__track marqWrap">
+				<?php if(!empty($notifications)){ ?>
+				<div class="lower-menu marquee">
+					<ul>
+						<?php foreach($notifications as $notval){
+							// Hidden from the admin panel (status 0) -> not shown on the home page
+							if (isset($notval['status']) && (string)$notval['status'] === '0') { continue; } ?>
+						<li><a href="<?php echo site_url('home/notificationList/'.$notval['id']);?>"><?php echo $notval['title']?></a></li>
+						<?php } ?>
+					</ul>
+				</div>
+				<?php } else { ?>
+				<span class="a2a-announce__welcome"><?php echo a2a_e('a2a_welcome'); ?></span>
+				<?php } ?>
 			</div>
-			<?php	
-			}
-			if($this->session->flashdata('message_type') == "error")
-	    	{
-			?>
-			<div class="alert alert-error" role="alert">
-			  <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-			  <strong>Error!</strong> <?php echo $this->session->flashdata('error');?>
+		</div>
+	</div>
+
+	<?php if($this->session->flashdata('message_type') == "success") { ?>
+	<div class="a2a-alert a2a-alert--success" role="status">
+		<i class="fa fa-check-circle" aria-hidden="true"></i>
+		<div><strong>Success.</strong> <?php echo $this->session->flashdata('success');?></div>
+		<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	</div>
+	<?php } ?>
+	<?php if($this->session->flashdata('message_type') == "error") { ?>
+	<div class="a2a-alert a2a-alert--error" role="alert">
+		<i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+		<div><strong>Could not sign in.</strong> <?php echo $this->session->flashdata('error');?></div>
+		<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	</div>
+	<?php } ?>
+
+	<?php
+	$user = $this->session->userdata('user_data');
+	if($user == '' || $user['user_type'] < 1)
+	{
+		$ldocs = site_url().'assets/site/docs/';
+	?>
+	<div class="a2a-login" id="myLogin">
+
+		<!-- Left: welcome panel -->
+		<aside class="a2a-login__aside">
+			<span class="a2a-eyebrow"><i class="fa fa-university" aria-hidden="true"></i> <?php echo a2a_e('a2a_eyebrow'); ?></span>
+			<h1><?php echo a2a_t('a2a_hero_title'); ?></h1>
+			<p><?php echo a2a_e('a2a_hero_text'); ?></p>
+			<ul class="a2a-steps">
+				<li><span class="a2a-step-ico"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></span><span><strong><?php echo a2a_e('a2a_j1_t'); ?></strong><?php echo a2a_e('a2a_j1_d'); ?></span></li>
+				<li><span class="a2a-step-ico"><i class="fa fa-search" aria-hidden="true"></i></span><span><strong><?php echo a2a_e('a2a_track'); ?></strong><?php echo a2a_e('a2a_track_d'); ?></span></li>
+				<li><span class="a2a-step-ico"><i class="fa fa-check-circle-o" aria-hidden="true"></i></span><span><strong><?php echo a2a_e('a2a_j4_t'); ?></strong><?php echo a2a_e('a2a_j4_d'); ?></span></li>
+			</ul>
+			<div class="a2a-quicklinks">
+				<a href="<?php echo $ldocs;?>Policy_Guidelines.pdf" target="_blank" rel="noopener"><i class="fa fa-file-pdf-o" aria-hidden="true"></i> <?php echo a2a_e('a2a_guidelines'); ?></a>
+				<a href="<?php echo $ldocs;?>Timeline-AY-2026-27.pdf" target="_blank" rel="noopener"><i class="fa fa-calendar" aria-hidden="true"></i> <?php echo a2a_e('a2a_q_timeline'); ?></a>
+				<a href="<?php echo site_url();?>home/contactus"><i class="fa fa-life-ring" aria-hidden="true"></i> <?php echo a2a_e('a2a_help'); ?></a>
 			</div>
-			<?php	
-			}
-	    	
-	    	?>
-			<?php 
-			$user = $this->session->userdata('user_data');			
-			if($user == '' || $user['user_type'] < 1)
-			{
-			?>
-			<div class="httext text-left loginhead" style="background:#F18F2E;color:#fff;text-align:center;">ICCR SCHOLARSHIP PORTAL LOGIN</div>
-				<div class="col-xs-12 col-sm-6 col-md-12 pdleft pdright">
-					<div class="loginarea" style="width:50%;margin:0 auto; padding: 27px;" id="myLogin">
-						<form action="<?php echo site_url();?>user/login" enctype="multipart/form-data" method="post">
-						<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
-						
-						<div class="form-group">
-							<label>Login ID</label>
-							<div class="input-rig">
-							<input type="text" required name="username" id="username" class="form-control" Placeholder="Email Id" maxlength="50" />
-							</div>
-						</div>
-						<div class="form-group">
-							<label>Password</label>
-							<div class="input-rig">
-							<input type="password" name="pass" id="pass" required class="form-control" Placeholder="Password" maxlength="50" />
-							</div>
-						</div>
-						<div class="form-group options">
-							<label>Are you an applicant?</label>
-							<div class="input-rig">
-							<label class="radio-inline"><input type="radio" id = "app_r" name="optradio" value = "1" style="margin:10px 0 0 -20px" >Yes</label>
-							<label class="radio-inline"><input type="radio" style="margin:10px 0 0 -20px" value = "2" name="optradio" checked>No</label>
-							</div>
-						</div>
-						<div id = "app_div" style="display:none">
-						<div class="form-group">
-							<label>Apply For</label>
-							<div class="input-rig">
-							<select id="courses_types" name="courses_types" class="form-control">
-							<option value="">Select</option>
-							<option value="1">UG(Ayush Scholarship)</option>
-							<option value="2">PG(Ayush Scholarship)</option>
-							<option value="4">PhD</option>
-							<option value="8">PhD(Ayush Scholarship)</option>
-							<!--<option value="10">Ayush Scholarship Scheme (UG/PG/PHD)</option>-->
-							<option value="12">Diploma (only for Languages and Performing Arts) </option>
-							<option value="13">Certificate (only for Languages and Performing Arts) </option>
-							<!----<option value="2017">2017-2018</option>
-							<option value="2018">2018-2019</option>--->
-							<!-----<option value="2019">2019-2020</option>----->
-							<!-- <option value="2">UG(Under all Scholarship Schemes for ICCR)</option>
-							<option value="1">PG(Under all Scholarship Schemes for ICCR)</option>
-							<option value="1">Ph.D(Under all Scholarship Schemes for ICCR)</option>
-							<option value = "1">M.Phil(Under all Scholarship Schemes for ICCR)</option>
-							<option value = "1">Dance and Music(with Gurus)</option> -->
-							<!-----<option value = "1">Music (with Guru's)</option>--->
-							<!-- <option value = "1">Cetificate Course</option> -->
-							<!----<option value="2">Ayush Scholarship Scheme(UG/PG/PHD in Ayuerveda,Yoga,Unani,Siddha and Homoeopathy)</option>
-							<option value="2">SFS(Self Finance Student) Under Ayush Scholarship Scheme</option>--->
-							</select>
-							</div>
-						</div>
-						<div class="form-group">
-							<label>Registration Year</label>
-							<div class="input-rig">
-							<select id="year" name="year" class="form-control">
-							<option value="">Select</option>
-							<!----<option value="2017">2017-2018</option>
-							<option value="2018">2018-2019</option>--->
-							<!-----<option value="2019">2019-2020</option>----->
-							<!-----<option value="2020">2020-2021</option>---->
-							<!-- <option value="2021">2021-22</option>
-							<option value="2022">2022-23</option>
-							<option value="2023">2023-24</option> -->
-							<!-- <option value="2024">2024-25</option> -->
-							<option value="2026">2026-27</option>
-							</select>
-							</div>
-						</div>
-						</div>
-						<div class="form-group">
-						   <label>Captcha</label>
-						   <div class="captcha input-rig">
-							 <!-- <img alt="captcha" src="<?php echo $captcha['image_src']; ?>"/> -->
-							 <img id="captid" alt="captcha"  src="<?php echo $captcha['image_src']; ?>"/>
-                             <a href="javascript:void(0);" id="refreshImg" class="reload-captcha">&nbsp;<i class="fa fa-refresh" aria-hidden="true"></i></a>
-							 <input type="text" required id="captchatext" name="captchatext"  class="form-control" maxlength="7" />
-							</div>
-						</div>
-						<div class="form-group btn-sec">
-						    <div class="submit-sec input-rig">
-							<input type="submit" class="form-control sbmt" value="Submit" onclick="getPass();" />
-							<input type="button" class="form-control sbmt" onclick="refresh_login();" value="Reset" />
-							</div>
-						</div>
-						<br/>
-						<div class="col-xs-12 col-sm-6 col-md-6 pdleft text-left">
-							<a title="Sign Up" href="<?php echo site_url();?>home/register" onclick ="reg()";>Don't have account? Please Sign Up here.</a>
-							<!-------<a title="Sign Up" href="#" onclick ="reg()";>Don't have account? Please Sign Up here.</a>---->
-						</div>
-						<div class="col-xs-12 col-sm-6 col-md-6 pdleft text-right">
-							<a title="Forgot Password" href="<?php echo site_url();?>home/forgotPassword">Forgot Password</a>
-						</div>
-						
-						</form>
+		</aside>
+
+		<!-- Right: sign-in form (field names and ids unchanged; used by custom.js and User::login) -->
+		<div class="a2a-login__form">
+			<h2><?php echo a2a_e('a2a_signin'); ?></h2>
+			<p class="a2a-sub"><?php echo a2a_e('a2a_signin_sub'); ?></p>
+
+			<form action="<?php echo site_url();?>user/login" enctype="multipart/form-data" method="post" id="a2aLoginForm">
+				<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
+
+				<div class="a2a-field">
+					<label for="username"><?php echo a2a_e('a2a_email_id'); ?></label>
+					<div class="a2a-control">
+						<i class="fa fa-envelope-o" aria-hidden="true"></i>
+						<input type="email" required name="username" id="username" class="form-control a2a-input" placeholder="name@example.com" maxlength="50" autocomplete="username" inputmode="email" />
 					</div>
 				</div>
-					<div class="footerlogo text-center">
+
+				<div class="a2a-field">
+					<label for="pass"><?php echo a2a_e('a2a_password'); ?></label>
+					<div class="a2a-control">
+						<i class="fa fa-lock" aria-hidden="true"></i>
+						<input type="password" name="pass" id="pass" required class="form-control a2a-input a2a-input--pw" placeholder="<?php echo a2a_e('a2a_pw_ph'); ?>" maxlength="50" autocomplete="current-password" />
+						<button type="button" class="a2a-reveal" id="a2aReveal" aria-controls="pass" aria-pressed="false" data-show="<?php echo a2a_e('a2a_show'); ?>" data-hide="<?php echo a2a_e('a2a_hide'); ?>"><?php echo a2a_e('a2a_show'); ?></button>
 					</div>
-			<?php	
-			}	
-			else
-			{
-				
-			?>
-				<div class="footerlogo">
 				</div>
-			<?php	
-			}		
-			?>
-				
-			
-			</section>		
+
+				<div class="a2a-field options">
+					<span class="a2a-label" id="a2aApplicantLabel"><?php echo a2a_e('a2a_are_applicant'); ?></span>
+					<div class="a2a-segment" role="radiogroup" aria-labelledby="a2aApplicantLabel">
+						<input type="radio" id="app_r" name="optradio" value="1">
+						<label for="app_r"><?php echo a2a_e('a2a_yes'); ?></label>
+						<input type="radio" id="app_no" name="optradio" value="2" checked>
+						<label for="app_no"><?php echo a2a_e('a2a_no'); ?></label>
+					</div>
+					<span class="a2a-hint"><?php echo a2a_e('a2a_applicant_hint'); ?></span>
+				</div>
+
+				<div id="app_div" style="display:none">
+					<div class="a2a-applicant">
+						<div class="a2a-field">
+							<label for="courses_types"><?php echo a2a_e('a2a_apply_for'); ?></label>
+							<select id="courses_types" name="courses_types" class="form-control a2a-input">
+								<option value=""><?php echo a2a_e('a2a_select'); ?></option>
+								<option value="1">UG(Ayush Scholarship)</option>
+								<option value="2">PG(Ayush Scholarship)</option>
+								<option value="4">PhD</option>
+								<option value="8">PhD(Ayush Scholarship)</option>
+								<option value="12">Diploma (only for Languages and Performing Arts) </option>
+								<option value="13">Certificate (only for Languages and Performing Arts) </option>
+							</select>
+						</div>
+						<div class="a2a-field">
+							<label for="year"><?php echo a2a_e('a2a_reg_year'); ?></label>
+							<select id="year" name="year" class="form-control a2a-input">
+								<option value=""><?php echo a2a_e('a2a_select'); ?></option>
+								<option value="2026">2026-27</option>
+							</select>
+						</div>
+					</div>
+				</div>
+
+				<div class="a2a-field">
+					<label for="captchatext"><?php echo a2a_e('a2a_captcha'); ?></label>
+					<div class="a2a-captcha">
+						<img id="captid" alt="Captcha: characters to type in the next box" width="150" height="50" src="<?php echo $captcha['image_src']; ?>"/>
+						<button type="button" id="refreshImg" class="a2a-iconbtn reload-captcha" title="<?php echo a2a_e('a2a_captcha_new'); ?>" aria-label="<?php echo a2a_e('a2a_captcha_new'); ?>"><i class="fa fa-refresh" aria-hidden="true"></i></button>
+						<input type="text" required id="captchatext" name="captchatext" class="form-control a2a-input" maxlength="7" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Captcha" aria-describedby="a2aCaptHelp" />
+					</div>
+					<span class="a2a-hint" id="a2aCaptHelp"><?php echo a2a_e('a2a_captcha_help'); ?></span>
+				</div>
+
+				<div class="a2a-form-actions">
+					<button type="submit" class="a2a-submit"><i class="fa fa-sign-in" aria-hidden="true"></i>&nbsp; <?php echo a2a_e('a2a_signin'); ?></button>
+					<button type="button" class="a2a-reset" onclick="refresh_login();"><?php echo a2a_e('a2a_reset'); ?></button>
+				</div>
+
+				<div class="a2a-login__links">
+					<span class="a2a-login__new"><?php echo a2a_e('a2a_new_here'); ?></span>
+					<a class="a2a-btnlink a2a-btnlink--primary" href="<?php echo site_url();?>home/register"><i class="fa fa-user-plus" aria-hidden="true"></i> <?php echo a2a_e('a2a_create_account'); ?></a>
+					<a class="a2a-btnlink" href="<?php echo site_url();?>home/forgotPassword"><i class="fa fa-key" aria-hidden="true"></i> <?php echo a2a_e('a2a_forgot'); ?></a>
+				</div>
+				<div class="a2a-secure"><i class="fa fa-shield" aria-hidden="true"></i> <?php echo a2a_e('a2a_secure'); ?></div>
+			</form>
+		</div>
+	</div>
+	<?php $this->load->view('site/home_public'); ?>
+	<?php } ?>
+</section>
 
 		
 		
@@ -472,8 +440,29 @@ function getPass()
 }
 
 $('#refreshImg').click(function() {
+        var $b = $(this).addClass('is-spinning');
+        setTimeout(function(){ $b.removeClass('is-spinning'); }, 650);
         refreshCapt();
     })
+
+// Hash the password only when the form is really being submitted
+// (after the browser's required-field checks pass). Previously this ran on
+// the button click, so a failed check left the hash in the box and a second
+// click hashed it again.
+$('#a2aLoginForm').on('submit', function() {
+    $('#pass').attr('type', 'password');
+    $('#a2aReveal').text($('#a2aReveal').data('show')).attr('aria-pressed', 'false');
+    getPass();
+});
+
+// Show / hide password
+$('#a2aReveal').on('click', function() {
+    var $p = $('#pass');
+    var show = $p.attr('type') === 'password';
+    $p.attr('type', show ? 'text' : 'password');
+    $(this).text(show ? $(this).data('hide') : $(this).data('show')).attr('aria-pressed', show ? 'true' : 'false');
+    $p.trigger('focus');
+});
 
 
     function refreshCapt() {
@@ -487,4 +476,4 @@ $('#refreshImg').click(function() {
     }
 
 </script>
-	
+	

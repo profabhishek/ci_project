@@ -178,8 +178,11 @@ if(!$this->session->userdata('user_data'))
 									<?php	
 									}
 							  		?>	
+									<?php if($user != '') { ?>
+										<li><a href="<?php echo site_url();?>mission/student_tracker"><i class="fa fa-search"></i> Student Status Tracker</a></li>
+									<?php } ?>
 							  		<!-- <li><a href="<?php echo site_url();?>mission/instructions">Mission Portal</a></li> -->
-							  		<li><a href="<?php echo site_url();?>assets/site/downloads/ICCR_UserManual.pdf">User Manual</a></li>
+							  		<li><a href="<?php echo site_url();?>assets/site/docs/ICCR_UserManual.pdf" target="_blank">User Manual</a></li>
 									<!-- <li><a href="<?php echo site_url();?>assets/site/docs/A2A_Mission_User Manual.docx">User Manual</a></li> -->
 							  		<li>
 							  		<a href="#" class="dropdown-toggle" data-toggle="dropdown">Guidelines &nbsp; <b class="caret"></b></a>

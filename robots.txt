@@ -1,0 +1,20 @@
+# A2A scholarship portal - rules for search engines
+# Public pages may be indexed. Logged-in areas and system folders may not.
+User-agent: *
+Disallow: /application/
+Disallow: /system/
+Disallow: /admin
+Disallow: /adminpanel
+Disallow: /applicant
+Disallow: /mission
+Disallow: /university
+Disallow: /headquarter
+Disallow: /regional
+Disallow: /sfs
+Disallow: /user/
+Disallow: /session_ping
+Disallow: /lang/
+Disallow: /home/search
+Allow: /
+
+Sitemap: https://a2ascholarships.iccr.gov.in/sitemap.xml

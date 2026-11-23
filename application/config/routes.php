@@ -39,6 +39,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | provided in the URL cannot be matched to a valid route.
 |
 |	$route['translate_uri_dashes'] = FALSE;
+// Admin Panel - separate sign-in (controllers/Adminlogin.php)
+$route['adminpanel/login'] = 'adminlogin/index';
+$route['adminpanel/login/captcha'] = 'adminlogin/captcha';
+$route['adminpanel/login/captcha_refresh'] = 'adminlogin/captcha_refresh';
+$route['adminpanel/logout'] = 'adminlogin/logout';
+
 |
 | This is not exactly a route, but allows you to automatically route
 | controller and method names that contain dashes. '-' isn't a valid
@@ -54,7 +60,8 @@ $route['default_controller'] = 'home';
 //$route['admin'] = "admin/login";
 $route['404_override'] = 'home/not_found';
 $route['translate_uri_dashes'] = FALSE;
-$route['seo/sitemap\.xml'] = "seo/sitemap";
+$route['seo/sitemap\.xml'] = "seo/xml";
+$route['sitemap\.xml'] = "seo/xml";
 
 //======================Added by Rahul dey 24-01-2019==================================
 

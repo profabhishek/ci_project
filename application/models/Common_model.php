@@ -5374,6 +5374,60 @@ function isAnyUniversityResponseConfirmedOrNotAccepted($appno,$is_accept) {
             return FALSE;
     }
 
+    /**
+     * HQ letter upload fix: after HQ forwards a university choice (row in
+     * iccr_university_response_by_hqrs), release it to the Mission so it shows
+     * up wherever iccr_university_response.confirmed_to_mission = 1 is read.
+     *
+     * @param int    $hqId  id of the iccr_university_response_by_hqrs row just inserted
+     * @param string $appno application number
+     * @return bool
+     */
+    function releaseHqLetterToMission($hqId, $appno) {
+        $hqRow = $this->db->get_where('iccr_university_response_by_hqrs', array('id' => $hqId, 'application_id' => $appno))->row_array();
+        if (empty($hqRow)) {
+            return FALSE;
+        }
+        $universityId = $hqRow['regional_university'];
+
+        $this->db->trans_start();
+
+        // 1. Mark the HQ row as confirmed to mission
+        $this->db->where('id', $hqId);
+        $this->db->update('iccr_university_response_by_hqrs', array('confirmed_to_mission' => 1));
+
+        // 2. Un-confirm every other university for this application
+        $this->db->where('application_id', $appno);
+        $this->db->where('regional_university !=', $universityId);
+        $this->db->update('iccr_university_response', array('confirmed_to_mission' => 0));
+
+        // 3. Insert or update the matching iccr_university_response row
+        $responseData = array(
+            'region_one_status' => $hqRow['region_one_status'],
+            'region_one_status_date' => $hqRow['region_one_status_date'],
+            'region_one_doc' => $hqRow['region_one_doc'],
+            'university_is_accept' => 1,
+            'confirmed_to_mission' => 1
+        );
+        if (isset($hqRow['course']) && $hqRow['course'] !== '' && $hqRow['course'] !== NULL) {
+            $responseData['course'] = $hqRow['course'];
+        }
+
+        $existing = $this->db->get_where('iccr_university_response', array('application_id' => $appno, 'regional_university' => $universityId))->row_array();
+        if (!empty($existing)) {
+            $this->db->where('id', $existing['id']);
+            $this->db->update('iccr_university_response', $responseData);
+        } else {
+            $responseData['application_id'] = $appno;
+            $responseData['regional_university'] = $universityId;
+            $responseData['status'] = $hqRow['status'];
+            $this->db->insert('iccr_university_response', $responseData);
+        }
+
+        $this->db->trans_complete();
+        return $this->db->trans_status();
+    }
+
     function ForwardToHqrsFourthOption($data, $appno) {
         $q = $this->db->insert_string('iccr_university_response_by_hqrs', $data);
         $this->db->query($q);
@@ -7224,6 +7278,8 @@ where iccr_status_mapping.status IN(13,14,-14,15) and `iccr_status_mapping`.`cre
         $this->db->from('iccr_notifications');
 
         $this->db->where('validated_upto >=', $todate);
+        // Drafts and unpublished announcements (status 0) never reach the public site
+        $this->db->where("(status IS NULL OR status <> '0')", NULL, FALSE);
         $this->db->order_by('id', "ASC");
         $code = $this->db->error();
         if ($code['code'] > 0) {

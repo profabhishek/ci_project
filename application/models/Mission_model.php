@@ -12,6 +12,7 @@ class Mission_model extends CI_Model {
         // Call the Model constructor
         parent::__construct();
         $this->load->database();
+        $this->load->helper('name_search');
         $this->status = $this->config->item('status');
         $this->roles = $this->config->item('roles');
     }
@@ -48,7 +49,9 @@ class Mission_model extends CI_Model {
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }
         if ($vars['Mail'] != "") {
             $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
@@ -170,7 +173,9 @@ class Mission_model extends CI_Model {
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }
         if ($vars['Mail'] != "") {
             $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
@@ -288,7 +293,9 @@ class Mission_model extends CI_Model {
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }
         if ($vars['Mail'] != "") {
             $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
@@ -343,7 +350,9 @@ class Mission_model extends CI_Model {
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }
         if ($vars['Mail'] != "") {
             $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);
@@ -482,7 +491,9 @@ return $this->db->query($sql)->result_array();
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }       
         if($vars['Mail'] != "") {
             // iccr_student_application_details.email is stored with an older
@@ -557,7 +568,9 @@ return $this->db->query($sql)->result_array();
             // instead of returning results. Converting the column to utf8mb3 and
             // explicitly setting the collation for just this comparison fixes the
             // mismatch without touching the actual column/table definition.
-            $this->db->where("CONVERT(iccr_student_application_details.fullname USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['ApplicantName']).'%'), NULL, FALSE);
+            // Name search: any word, in any order, across first/middle/family name (helpers/name_search_helper.php).
+            // Falls back to the old first-name-only search if the text is not a plain name or the new SQL fails.
+            $this->db->where(a2a_name_search_sql($this->db, $vars['ApplicantName']), NULL, FALSE);
         }
         if ($vars['Mail'] != "") {
             $this->db->where("CONVERT(iccr_student_application_details.email USING utf8mb3) COLLATE utf8mb3_general_ci LIKE " . $this->db->escape('%'.$this->db->escape_like_str($vars['Mail']).'%'), NULL, FALSE);

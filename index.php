@@ -1,10 +1,4 @@
 <?php
-// ===== DELIBERATE 500 ERROR DEMO — DELETE THESE 3 LINES TO RESTORE =====
-this_function_does_not_exist();   // PHP Fatal error -> 500 on EVERY page
-// ======================================================================
-
-// $site = "<h1 style='position:absolute;top:35%;left:30%;font-size:50px;font-family:sans-serif;color:green;'><U> Site is Under Maintenance</U></h1>";
-// die($site);
 
 /**
  * CodeIgniter

@@ -966,4 +966,62 @@ class Adminpanel extends CI_Controller
         fclose($fh);
         exit;
     }
+
+    /* ==============================================================
+       Reports  (paste these three methods just above the last
+       closing "}" of application/controllers/Adminpanel.php)
+       Super Admin only: the constructor already blocks everyone else.
+       ============================================================== */
+
+    public function reports()
+    {
+        $this->load->library('report_engine', NULL, 'rep');
+        $this->render('reports', array('catalog' => $this->rep->catalog()), 'reports');
+    }
+
+    /** One report: form, preview, and the Excel / CSV / print downloads (GET: it only reads data). */
+    public function report($key = '')
+    {
+        $this->load->library('report_engine', NULL, 'rep');
+        $catalog = $this->rep->catalog();
+        if (!isset($catalog[$key])) { show_404(); }
+
+        $get = $this->input->get(NULL, FALSE);
+        if (!is_array($get)) { $get = array(); }
+        $do = isset($get['do']) ? (string) $get['do'] : '';
+        $submitted = in_array($do, array('preview', 'xlsx', 'csv', 'print'), TRUE);
+
+        $p = $this->rep->read_params($key, $get, $submitted);
+        $data = array('key' => $key, 'def' => $catalog[$key], 'fields' => $this->rep->fields_for($key), 'p' => $p,
+                      'report' => NULL, 'error' => '', 'preview_rows' => Report_engine::PREVIEW_ROWS);
+
+        if ($submitted) {
+            $data['error'] = $this->rep->check($key, $p);
+            if ($data['error'] === '') {
+                try {
+                    $report = $this->rep->run($key, $p);
+                } catch (Exception $e) {
+                    $report = NULL;
+                    $data['error'] = $e->getMessage();
+                }
+                if ($report) {
+                    if ($do === 'preview') {
+                        $data['report'] = $report;
+                    } else {
+                        $year = isset($p['cycle']) ? $p['cycle'] : '';
+                        $this->ap->audit($this->admin, 'export', 'report_' . $key, $year, '', NULL,
+                            (string) $report['rows_total'], $do . ' | ' . $report['params_text']);
+                        if ($do === 'print') {
+                            $this->load->view('adminpanel/report_print', array('report' => $report));
+                            return;
+                        }
+                        $this->load->library('report_writer', NULL, 'rw');
+                        $this->rw->send($report, $do);   // sends the file and stops
+                        return;
+                    }
+                }
+            }
+        }
+        $this->render('report', $data, 'reports');
+    }
 }

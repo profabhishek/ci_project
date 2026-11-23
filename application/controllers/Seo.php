@@ -33,6 +33,23 @@ class Seo extends CI_Controller {
         $this->load->library('excel'); 
           
     }
+	// XML sitemap for search engines: /sitemap.xml (see config/routes.php)
+	function xml()
+	{
+		$this->load->helper('a2a_sitemap');
+		$seen = array();
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+		foreach (a2a_sitemap_groups() as $links) {
+			foreach ($links as $l) {
+				if (strpos($l[1], '#') === 0 || preg_match('/\.(pdf|xlsx?)$/i', $l[1])) { continue; }
+				$u = site_url($l[1]);
+				if (isset($seen[$u])) { continue; } $seen[$u] = 1;
+				$xml .= '  <url><loc>' . htmlspecialchars($u, ENT_XML1, 'UTF-8') . '</loc></url>' . "\n";
+			}
+		}
+		$xml .= '</urlset>' . "\n";
+		$this->output->set_content_type('application/xml', 'utf-8')->set_output($xml);
+	}
 	function sitemap()
     {
     	$this->load->view('site/header');

@@ -5402,8 +5402,68 @@ else
 			$file_name = base64url_decode($this->uri->segment(3));
 			fileForceDownload($file_name);
 		}
+	/**
+	 * My mapped courses & seats  (added 11 Nov 2026)
+	 * Read-only screen so a logged-in university can SEE and CHECK which
+	 * Programme / Course Type / Course it has been mapped to by ICCR
+	 * (iccr_university_mapping) and the seats it has allotted per course /
+	 * stream (iccr_stream_page). Both tables key on the logged-in
+	 * user_data['university'] id, the same id existing code already uses.
+	 */
+	public function myCourses()
+	{
+		$user_data    = $this->session->userdata('user_data');
+		$universityId = isset($user_data['university']) ? $user_data['university'] : 0;
+		// Demo-only gate (added 12 Nov 2026): this new screen is restricted to the
+		// demo account until it is approved for all universities. Everyone else is
+		// sent back to the dashboard, so the URL cannot be opened by other logins.
+		if (empty($user_data['email']) || $user_data['email'] !== 'a2a_demo_univ@iccr.com') {
+			redirect('university/dashboard');
+			return;
+		}
+
+
+		// 1) Courses mapped to this university by ICCR, with readable names
+		$this->db->select('m.id, m.programme_id, m.course_type, m.course_id, m.nomenclature_id,'
+			.' p.name AS programme_name, ct.course_type AS course_type_name,'
+			.' c.title AS course_title, n.title AS nomenclature_title', FALSE);
+		$this->db->from('iccr_university_mapping m');
+		$this->db->join('iccr_programme p',    'p.id = m.programme_id',   'left');
+		$this->db->join('iccr_course_type ct', 'ct.id = m.course_type',   'left');
+		$this->db->join('iccr_courses c',      'c.id = m.course_id',      'left');
+		$this->db->join('iccr_nomenclature n', 'n.id = m.nomenclature_id','left');
+		$this->db->where('m.university_id', $universityId);
+		$this->db->order_by('p.name, c.title', 'ASC');
+		try { $mapped = $this->db->get()->result_array(); }
+		catch (Exception $e) { $mapped = array(); log_message('error', 'myCourses mapped: '.$e->getMessage()); }
+
+		// 2) Seat allotment this university has created, with readable names
+		$this->db->select('sp.id, sp.programme_id, sp.course_type_id, sp.course_id, sp.stream_id, sp.no_of_seat,'
+			.' p.name AS programme_name, ct.course_type AS course_type_name,'
+			.' c.title AS course_title, s.name AS stream_name', FALSE);
+		$this->db->from('iccr_stream_page sp');
+		$this->db->join('iccr_programme p',    'p.id = sp.programme_id',    'left');
+		$this->db->join('iccr_course_type ct', 'ct.id = sp.course_type_id', 'left');
+		$this->db->join('iccr_courses c',      'c.id = sp.course_id',       'left');
+		$this->db->join('iccr_stream s',       's.id = sp.stream_id',       'left');
+		$this->db->where('sp.user_id', $universityId);
+		$this->db->where('sp.status', 1);
+		$this->db->order_by('p.name, c.title', 'ASC');
+		try { $seats = $this->db->get()->result_array(); }
+		catch (Exception $e) { $seats = array(); log_message('error', 'myCourses seats: '.$e->getMessage()); }
+
+		$data = array(
+			'mapped'         => $mapped,
+			'seats'          => $seats,
+			'universityData' => $this->common_model->getUniversityInfo($universityId),
+		);
+		$this->load->view('university/header_mission');
+		$this->load->view('university/my_courses', $data);
+		$this->load->view('university/footer');
+	}
+
 	public function __destruct() {
     $this->db->close();
     }
-	
+
 }
