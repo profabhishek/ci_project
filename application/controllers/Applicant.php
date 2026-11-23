@@ -973,6 +973,18 @@ class Applicant extends CI_Controller
 			  $clean =  $this->strip_quotes($cleanData);
 				//var_dump($userInfo);die;
 				unset($clean['step-one-application']);
+				// Server-side re-check of DOB + passport validity (cannot be skipped from the browser)
+				$guardMsg = $this->a2aGuardStepOne($clean, $userId);
+				if ($guardMsg !== '') {
+					if ($this->input->is_ajax_request()) {
+						echo json_encode(array('status' => FALSE, 'message' => $guardMsg));
+					} else {
+						$this->session->set_flashdata('message_type', 'error');
+						$this->session->set_flashdata('error', html_escape($guardMsg));
+						redirect(site_url() . 'applicant/applicant_personal_info');
+					}
+					return;
+				}
 				if ($this->common_model->applicationExists($userId)) {
 					//echo "sadasdsad";die;
 					$choice_one = $clean['universty_choice'];
@@ -1071,6 +1083,52 @@ class Applicant extends CI_Controller
 		}
 	}
 
+	/**
+	 * Application step one - second, independent check of eligibility
+	 * (Nov 2026 test cases). Returns '' when OK, else a message.
+	 *  - Removes fields the applicant must never set from the browser
+	 *    (dob/age are display-only; status/uid/application_no are system).
+	 *  - Re-checks the DOB stored at registration against the age band.
+	 *  - Passport must be valid 2 years from the reference date.
+	 */
+	private function a2aGuardStepOne(array &$clean, $userId)
+	{
+		$this->load->helper('a2a_eligibility');
+		foreach (array('dob', 'age', 'date_of_birth', 'status', 'uid', 'id', 'created', 'application_no') as $k) {
+			unset($clean[$k]);
+		}
+
+		$reg = $this->common_model->getUserData($userId);
+		$dobStored = !empty($reg[0]['date_of_birth']) ? $reg[0]['date_of_birth'] : '';
+		$parts = a2a_split_dmy($dobStored);
+		if ($parts === FALSE) {
+			return 'Your registered date of birth is missing or invalid. Please contact the ICCR helpdesk.';
+		}
+		$user_data = $this->session->userdata('user_data');
+		$courseType = isset($user_data['apply_course_type']) ? $user_data['apply_course_type'] : null;
+		list($ok, $msg) = a2a_check_age($parts[0], $parts[1], $parts[2], $courseType);
+		if (!$ok) {
+			return 'Date of birth ' . $dobStored . ': ' . $msg;
+		}
+
+		// ADM-028: the English essay is mandatory (browser 'required' can be removed)
+		if (array_key_exists('english_test_essay', $clean) && trim(strip_tags((string) $clean['english_test_essay'])) === '') {
+			return 'The English essay (item 18) is required.';
+		}
+
+		if (isset($clean['passport_expiry_date']) || isset($clean['passport_expiry_month']) || isset($clean['passport_expiry_year'])) {
+			list($pok, $pmsg) = a2a_check_passport_expiry(
+				isset($clean['passport_expiry_date']) ? $clean['passport_expiry_date'] : '',
+				isset($clean['passport_expiry_month']) ? $clean['passport_expiry_month'] : '',
+				isset($clean['passport_expiry_year']) ? $clean['passport_expiry_year'] : ''
+			);
+			if (!$pok) {
+				return $pmsg;
+			}
+		}
+		return '';
+	}
+
 	public function applicant_education_info_save()
 	{
 
@@ -1115,6 +1173,18 @@ class Applicant extends CI_Controller
                $cleanData = $this->security->xss_clean($this->input->post(NULL, TRUE));
 			  $clean =  $this->strip_quotes($cleanData);
 				unset($clean['step-one-application']);
+				// Server-side re-check of DOB + passport validity (cannot be skipped from the browser)
+				$guardMsg = $this->a2aGuardStepOne($clean, $userId);
+				if ($guardMsg !== '') {
+					if ($this->input->is_ajax_request()) {
+						echo json_encode(array('status' => FALSE, 'message' => $guardMsg));
+					} else {
+						$this->session->set_flashdata('message_type', 'error');
+						$this->session->set_flashdata('error', html_escape($guardMsg));
+						redirect(site_url() . 'applicant/applicant_personal_info');
+					}
+					return;
+				}
 				if ($this->common_model->applicationExists($userId)) {
 
 					$choice_one = $university1;
@@ -1589,6 +1659,17 @@ class Applicant extends CI_Controller
 			if ($typpe != "image/jpg" && $typpe != "image/jpeg" && $typpe != "image/png") {
 				$this->session->set_flashdata('error', 'File Type is not Valid! Only JPEG/PNG/JPG files are allowed');
 				echo json_encode(array('status' => FALSE));
+				return;
+			}
+			// D-11: the file must decode as a real image, not just carry an
+			// image header / MIME type. Tiny images are rejected.
+			$imgInfo = @getimagesize($tempfile);
+			if ($imgInfo === false || !in_array($imgInfo[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), true)) {
+				echo json_encode(array('status' => FALSE, 'message' => 'The file is not a valid JPEG/PNG image.'));
+				return;
+			}
+			if ($imgInfo[0] < 50 || $imgInfo[1] < 20) {
+				echo json_encode(array('status' => FALSE, 'message' => 'Image is too small. Please upload a clear scan of your signature.'));
 				return;
 			}
 
@@ -5955,115 +6036,123 @@ die;
 
 	public function UploadUnderTaking()
 	{
+		// A2A defect fixes (Nov 2026):
+		//  K-01  "Declined" now saves status 12 (was always 11) and no longer
+		//        demands a medical file, so a decline can actually be submitted.
+		//  D-06  The response is only accepted once the scholarship has been
+		//        awarded (scholarship_id set) and not already answered.
+		//  D-10  Medical fitness file must be a real, non-empty PDF.
+		//  Also: the applicant must own the application, and a failed upload
+		//  stops the save instead of continuing with an empty file name.
+		$user_data = $this->session->userdata('user_data');
+		$applicationId = isset($_POST['id']) ? trim($this->input->post('id', TRUE)) : '';
+		$back = site_url() . 'applicant/applicantStatus/' . rawurlencode($applicationId);
+
+		$fail = function ($msg) use ($back) {
+			$this->session->set_flashdata('message_type', 'error');
+			$this->session->set_flashdata('error', $msg);
+			redirect($back);
+		};
+
 		try {
-			$user_data = $this->session->userdata('user_data');
-			// Reject up front if the request didn't send an application id at
-			// all, rather than warning and continuing with an undefined value
-			// that would make every lookup below fail anyway.
-			if (!isset($_POST['id'])) {
-				echo json_encode(array('status' => FALSE, 'message' => 'No application id was submitted! Please try again.'));
-				return;
-			}
-			$applicationId = $_POST['id'];
-			//echo $applicationId;die;
-			if (!empty($_POST)) {
-				
-				try {
-			$imgname = "";
-			$files = $_FILES['file'];
-			$types = $this->config->item('doc_types');
-
-			/*******File Content Check**********/
-			$fnmae = $_FILES['file']['name'];
-			$typpe = $_FILES['file']['type'];
-			$tempfile = $_FILES['file']['tmp_name'];
-			// If no file was actually received (empty/failed upload), $tempfile is
-			// an empty string and fopen()/filesize() throw "Path cannot be empty"
-			// in PHP 8 instead of returning a normal error - bail out gracefully.
-			if (empty($tempfile)) {
-				echo json_encode(array('status' => FALSE, 'message' => 'No file was uploaded! Please choose a file and try again.'));
-				return;
-			}
-			$sizekbb = filesize($tempfile); //10485760= 10mb
-			$head = fgets(fopen($tempfile, "r"), 5);
-			$section = strtoupper(base64_encode(file_get_contents($tempfile)));
-			//echo $section;
-			$nsection = substr($section, 0, 8);
-
-			$frst = strpos($fnmae, ".");
-			$sec = strrpos($fnmae, ".");
-			$handle = fopen($tempfile, "rb");
-			$fsize = filesize($tempfile);
-			$contents = fread($handle, $fsize);
-
-			$pdf = substr($contents, 0, 4);
-			if (strlen($fnmae) != mb_strlen($fnmae, 'utf-8')) {
-				echo json_encode(array('status' => FALSE, "message" => "All file names should be in english language like (signature.jpg..etc.) not in other language like:-> غفران_الحلبي_كشف.jpg."));
-				return;
-			}
-			if ($nsection != "JVBERI0X" && $nsection != "IVBORW0K" && $nsection != "/9J/4AAQ") {
-				$this->session->set_flashdata('error', 'File content is not Valid!');
-				echo json_encode(array('status' => FALSE, 'message' => 'File Type is not Valid! Only JPEG/PNG/JPG files are allowed!'));
-				return;
-			}
-			if ($sizekbb > 200000) {
-				$this->session->set_flashdata('error', 'File size is not Valid!');
-				echo json_encode(array('status' => FALSE, 'message' => 'File size should be less than equal to 200 KB!'));
-				return;
-			}
-			if ($typpe != "application/pdf") {
-				$this->session->set_flashdata('error', 'File Type is not Valid! Only JPEG/PNG/JPG files are allowed');
-				echo json_encode(array('status' => FALSE, "message" => "File Type is not Valid! Only PDF files are allowed"));
+			if ($applicationId === '' || empty($user_data['userid'])) {
+				$fail('No application id was submitted! Please try again.');
 				return;
 			}
 
-			if ($files["name"] != "") {
-				$name = str_replace(" ", "_", $files['name']);
-				$imgname = time() . '_medical_fitness_' . $name;
+			// Ownership: the logged-in applicant must own this application.
+			$stepOne = $this->common_model->getApplicationStepOneByAppno($applicationId);
+			if (empty($stepOne) || (string) $stepOne[0]['uid'] !== (string) $user_data['userid']) {
+				$fail('You are not allowed to respond to this application.');
+				return;
+			}
 
-				if ($user_data['dir'] == "") {
-					$target_file = '2026/medical_fitness/';
+			// D-06: only after award, and only once.
+			$mapping = $this->common_model->getMappingData($applicationId);
+			if (empty($mapping)) {
+				$fail('Application status not found.');
+				return;
+			}
+			$m = $mapping[0];
+			if (empty($m['scholarship_id']) || (int) $m['scholarship_id'] <= 0) {
+				$fail('The scholarship has not been awarded yet. You can accept or decline only after the award.');
+				return;
+			}
+			if (!empty($m['undertaking_doc']) || in_array((string) $m['scholar_acceptance'], array('1', '2'), true)) {
+				$fail('You have already responded to this offer.');
+				return;
+			}
+
+			$choice = (string) $this->input->post('scholar_is_accept', TRUE);
+			if ($choice !== '1' && $choice !== '2') {
+				$fail('Please select Accepted or Declined.');
+				return;
+			}
+
+			$imgname1 = '';
+			if ($choice === '1') {
+				// D-10: medical fitness certificate is mandatory on acceptance.
+				$f = isset($_FILES['file']) ? $_FILES['file'] : null;
+				if (!$f || $f['error'] !== UPLOAD_ERR_OK || empty($f['tmp_name']) || !is_uploaded_file($f['tmp_name'])) {
+					$fail('Please upload the Medical Fitness Certificate (PDF) to accept the offer.');
+					return;
+				}
+				$fname = $f['name'];
+				if (strlen($fname) != mb_strlen($fname, 'utf-8')) {
+					$fail('File name should be in English (e.g. medical.pdf).');
+					return;
+				}
+				$size = filesize($f['tmp_name']);
+				if ($size === false || $size < 5120) { // < 5 KB = blank/empty
+					$fail('The Medical Fitness Certificate appears to be empty. Please upload the signed certificate.');
+					return;
+				}
+				if ($size > 200 * 1024) {
+					$fail('File size should be less than or equal to 200 KB!');
+					return;
+				}
+				$contents = file_get_contents($f['tmp_name']);
+				if (strncmp($contents, '%PDF-', 5) !== 0 || strpos($contents, '%%EOF') === false
+					|| !preg_match('#/Type\s*/Page[^s]#', $contents)) {
+					$fail('Only a valid PDF with at least one page is allowed for the Medical Fitness Certificate.');
+					return;
+				}
+				if (strtolower(pathinfo($fname, PATHINFO_EXTENSION)) !== 'pdf') {
+					$fail('Only PDF files are allowed!');
+					return;
+				}
+
+				$imgname = time() . '_medical_fitness_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $fname);
+				if (empty($user_data['dir'])) {
+					$target_dir = '2026/medical_fitness/';
 				} else {
 					if (!is_dir($user_data['dir'])) {
 						mkdir($user_data['dir'], 0777, TRUE);
 					}
-					$target_file = $user_data['dir'] . '/';
+					$target_dir = $user_data['dir'] . '/';
 				}
-				$target_file = $target_file . $imgname;
-
-				if (iccr_safe_move_upload($_FILES["file"], $target_file)) {					
-						$imgname1 = $imgname;					
-					
-				} else {
-					$imgname1 = '';
-					echo json_encode(array('status' => FALSE, "message" => "Error While Uploading File!. Try Again Later."));
+				if (!iccr_safe_move_upload($f, $target_dir . $imgname)) {
+					$fail('Error while uploading file. Please try again later.');
+					return;
 				}
+				$imgname1 = $imgname;
 			}
-		} catch (Exception $e) {
-			echo json_encode(array('status' => FALSE, "message" => "Error While Uploading File!. Try Again Later."));
-		}
-				
 
-				$data = array(
-					'scholar_acceptance' => $this->input->post('scholar_is_accept'),
-					'undertaking_doc' => time(),
-					'medical_fitness' => $imgname1,
-					'status' => 11
-				);
-				//echo "<pre>";print_r($data);die;
-				$sts = $this->common_model->uploadUndertaking($applicationId, $data);
-				//$confirmMasterData = array(
-				//'status'=>12
-				//);
-				//$stsMater = $this->common_model->UpdateToFinalConfirmationToHqrsbyMissionStatusMaster($confirmMasterData,$appid,$id);
-				if ($sts) {
-					$this->session->set_flashdata('message_type', 'success');
-					$this->session->set_flashdata('success', 'Accepted the offer successfully!');
-					redirect(site_url() . 'applicant/applicantStatus/' . $applicationId);
-				}
+			$data = array(
+				'scholar_acceptance' => $choice,
+				'undertaking_doc'    => time(),
+				'medical_fitness'    => $imgname1,
+				'status'             => ($choice === '1') ? 11 : 12, // K-01
+			);
+			$sts = $this->common_model->uploadUndertaking($applicationId, $data);
+			if ($sts) {
+				$this->session->set_flashdata('message_type', 'success');
+				$this->session->set_flashdata('success', $choice === '1' ? 'Accepted the offer successfully!' : 'You have declined the offer.');
+				redirect($back);
 			}
+			$fail('Could not save your response. Please try again.');
 		} catch (Exception $e) {
-			echo json_encode(array('status' => FALSE));
+			$fail('Some internal error occurred. Please try again.');
 		}
 	}
 

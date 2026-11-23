@@ -159,7 +159,7 @@
 
                
           <div class="col-xs-2 col-md-3 col-sm-3">
-            <label for="exampleInputEmail1">Title <span class="text-red">*</span></label>
+            <label for="student_title">Title <span class="text-red">*</span></label>
             <select id="student_title" name="student_title" class="selectpicker form-control" required="true">
               <?php
               $title = '';
@@ -192,7 +192,7 @@
             </select>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Gender <span class="text-red">*</span></label>
+            <label for="gender">Gender <span class="text-red">*</span></label>
             <div class="form-group">
 
               <select class="form-control select2" title="Select your gender (Male/Female) as per your official records." name="gender" id="gender" style="width: 100%;" read only required="true">
@@ -203,7 +203,7 @@
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Nationality<span class="text-red">*</span></label>
+            <label for="country">Nationality<span class="text-red">*</span></label>
             <div class="form-group">
 
               <select class="form-control select2" title="Mention your nationality/citizenship (e.g., Nepalese, Bangladeshi, Sri Lankan)." name="country" id="country" style="width: 100%;" required="true">
@@ -219,10 +219,10 @@
             </div>
           </div>
 <div class="name-sec col-xs-12 col-sm-3 col-md-3 pdleft1">
-              <label>Date of Birth (MM/DD/YYYY) <span class="text-red">*</span></label>
+              <label for="dob">Date of Birth (MM/DD/YYYY) <span class="text-red">*</span></label>
 
               <!-- Single date input -->
-              <input type="date" class="form-control" id="dob" name="dob" title="Note: If the date of birth is found to be different from the DOB in the passport column at any stage, your application/scholarship will be cancelled." required>
+              <input type="date" class="form-control" id="dob" name="dob" min="1900-01-01" max="2008-07-01" title="Note: If the date of birth is found to be different from the DOB in the passport column at any stage, your application/scholarship will be cancelled." required>
 
               <!-- Hidden fields for existing backend -->
               <input type="hidden" id="applicant_date" name="applicant_date">
@@ -257,10 +257,30 @@ document.getElementById('dob').addEventListener('change', function () {
         age--;
     }
 
+    // D-01: upper age limit per programme (same table as helpers/a2a_eligibility_helper.php)
+    // Diploma/Certificate (12,13 - languages & performing arts): no ICCR upper limit
+    var A2A_MAX_AGE = {1:35, 2:35, 4:40, 8:40, 12:null, 13:null};
+    var ctSel = document.getElementById('apply_course_type');
+    var maxAge = (ctSel && ctSel.value in A2A_MAX_AGE) ? A2A_MAX_AGE[ctSel.value] : 40;
+
     if (age < 18) {
         alert('Applicant must be at least 18 years old as on 01 July 2026.');
         document.getElementById('dob').value = ''; // clear DOB instead of reload
+    } else if (maxAge !== null && (age > maxAge || (age === maxAge && (monthDiff !== 0 || referenceDate.getDate() !== dob.getDate())))) {
+        alert('For the selected programme the maximum age is ' + maxAge + ' years as on 01 July 2026.');
+        document.getElementById('dob').value = '';
     }
+});
+// Re-check the DOB when the programme changes (select2 fires jQuery change)
+document.addEventListener('DOMContentLoaded', function () {
+    var ct = document.getElementById('apply_course_type');
+    if (!ct) return;
+    var recheck = function () {
+        var d = document.getElementById('dob');
+        if (d && d.value) { d.dispatchEvent(new Event('change')); }
+    };
+    if (window.jQuery) { jQuery(ct).on('change', recheck); }
+    else { ct.addEventListener('change', recheck); }
 });
 </script>
 
@@ -269,7 +289,7 @@ document.getElementById('dob').addEventListener('change', function () {
           </div>
         
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Mobile Number <span class="text-red">*</span></label>
+            <label for="mobile_no">Mobile Number <span class="text-red">*</span></label>
             <!-- <span class="note">Please enter country code before your mobile no. Like +91 for India</span> -->
             <div class="form-group">
               <input type="text" class="form-control" id="mobile_no" pattern="^[0-9\+]+$" title="Provide your active mobile number with country code. This will be used for communication." name="mobile_no" placeholder="Like +918750859869" required="true" maxlength="20">
@@ -278,7 +298,7 @@ document.getElementById('dob').addEventListener('change', function () {
           </div>
 
           <div class="name-sec col-xs-12 col-sm-2 col-md-3">
-            <label for="exampleInputEmail1">Email address <span class="text-red">*</span></label>
+            <label for="emailId">Email address <span class="text-red">*</span></label>
             <div class="form-group">
               <input type="email" class="form-control" id="emailId" title="Note: Please note that all updates will be sent on the mail address provided in this column. ICCR will not be responsible if it is incorrect or invalid. No changes would be allowed in this column at any stage." name="emailId" placeholder="Enter email" required="true" maxlength="40" re>
             </div>
@@ -286,31 +306,31 @@ document.getElementById('dob').addEventListener('change', function () {
         
         
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">First Name <span class="text-red">*</span></label>
+            <label for="student_fname">First Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="student_fname" pattern="^[a-zA-Z ]+$" title="Enter your first name exactly as it appears on your passport." name="student_fname" placeholder="Enter First Name" required="true" maxlength="15">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1 ">Middle Name </label>
+            <label for="student_mname">Middle Name </label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="student_mname" pattern="^[a-zA-Z ]+$" title="If you have a middle name, enter it here. Leave blank if not applicable." name="student_mname" placeholder="Enter Middle Name" maxlength="15">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Last Name<span class="text-red">*</span></label>
+            <label for="student_lname">Last Name<span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="student_lname" pattern="^[a-zA-Z ]+$" title="Enter your family/surname as per your passport." name="student_lname" placeholder="Enter Last Name" required="true" maxlength="15">
             </div>
           </div>
 		            <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="comment">Citizenship/Local/Domestic Number<span class="text-red">*</span></label>
+            <label for="unique_id">Citizenship/Local/Domestic Number<span class="text-red">*</span></label>
             <div class="form-group">
-              <input type="text" class="form-control capitalLetter" title="Provide your National identity number/Local ID issued by your country as identity proof." id="unique_id" name="unique_id" placeholder="Citizenship/Unique ID" required="true" maxlength="20"/>
+              <input type="text" class="form-control capitalLetter" title="Provide your National identity number/Local ID issued by your country as identity proof." id="unique_id" name="unique_id" placeholder="Citizenship/Unique ID" required="true" maxlength="20" pattern="^[A-Za-z0-9\/\-]{3,20}$"/>
             </div>
           </div>
         <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Parent Details <span class="text-red">*</span></label>
+            <label for="parentdetail">Parent Details <span class="text-red">*</span></label>
             <div class="form-group">
 
               <select class="form-control select2" title="Select your Parent Details" name="parent_type" id="parentdetail" style="width: 100%;"  required="true">
@@ -325,20 +345,20 @@ document.getElementById('dob').addEventListener('change', function () {
 
           <div id="father_section">
           <div class="name-sec col-xs-12 col-sm-3 col-md-3" >
-            <label for="exampleInputEmail1">Father's First Name <span class="text-red">*</span></label>
+            <label for="father_fname">Father's First Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="father_fname" pattern="^[a-zA-Z ]+$" title="Enter your father’s first name." name="father_fname" placeholder="Enter First Name" required="true" maxlength="15">
             </div>
           </div>
           
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Father's Middle Name </label>
+            <label for="father_mname">Father's Middle Name </label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="father_mname" pattern="^[a-zA-Z ]+$" title="Provide your father’s middle name (if any). Leave blank if not applicable." name="father_mname" placeholder="Enter Middle Name" maxlength="15">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Father's Last Name <span class="text-red">*</span></label>
+            <label for="father_lname">Father's Last Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="father_lname" pattern="^[a-zA-Z ]+$" title="Enter your father’s surname/family name." name="father_lname" placeholder="Enter Last Name" required="true" maxlength="15">
             </div>
@@ -346,19 +366,19 @@ document.getElementById('dob').addEventListener('change', function () {
         </div>
         <div id="mother_section">
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Mother's First Name <span class="text-red">*</span></label>
+            <label for="mother_fname">Mother's First Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="mother_fname" pattern="^[a-zA-Z ]+$" title="Enter your mother’s first name." name="mother_fname" placeholder="Enter First Name" required="true" maxlength="15">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Mother's Middle Name </label>
+            <label for="mother_mname">Mother's Middle Name </label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="mother_mname" pattern="^[a-zA-Z ]+$" title="Provide your mothers middle name (if any). Leave blank if not applicable." name="mother_mname" placeholder="Enter Middle Name" maxlength="15">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Mother's Last Name <span class="text-red">*</span></label>
+            <label for="mother_lname">Mother's Last Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="mother_lname" pattern="^[a-zA-Z ]+$" title="Enter your mother’s surname/family name." name="mother_lname" placeholder="Enter Last Name" required="true" maxlength="15">
             </div>
@@ -367,16 +387,16 @@ document.getElementById('dob').addEventListener('change', function () {
 <div id="guardian_section" style="display:none;">
    <div class="name-sec col-xs-12 col-sm-3 col-md-3">
       <label>Guardian's First Name <span class="text-red">*</span></label>
-      <input class="form-control" name="gurdian_fname" id="guardian_fname" pattern="^[a-zA-Z ]+$" title="Provide your guardian’s first name"  placeholder="Enter First Name" required="true">
+      <input class="form-control capitalLetter" name="gurdian_fname" id="guardian_fname" maxlength="15" pattern="^[a-zA-Z ]+$" title="Provide your guardian’s first name"  placeholder="Enter First Name" required="true">
    </div>
   <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Guardian's Middle Name </label>
+            <label for="gurdian_mname">Guardian's Middle Name </label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="gurdian_mname" pattern="^[a-zA-Z ]+$" title="Provide your guardian’s middle name (if any). Leave blank if not applicable." name="gurdian_mname" placeholder="Enter Middle Name" maxlength="15" required="false">
             </div>
           </div>
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Guardian's Last Name <span class="text-red">*</span></label>
+            <label for="gurdian_lname">Guardian's Last Name <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control capitalLetter" id="gurdian_lname" pattern="^[a-zA-Z ]+$" title="Enter your guardians surname/family name." name="gurdian_lname" placeholder="Enter Last Name"  maxlength="15">
             </div>
@@ -387,24 +407,24 @@ document.getElementById('dob').addEventListener('change', function () {
 
 
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Apply For<span class="text-red">*</span></label>
+            <label for="apply_course_type">Apply For<span class="text-red">*</span></label>
             <div class="form-group">
 
-              <!--<select class="form-control select2" name="apply_course_type" id="apply_course_type" title="Select the program/level you are applying for-> UG(18-40), PG(18-40), PhD(up to 50), Diploma(18-40)." style="width: 100%;" required="true">
+              <select class="form-control select2" name="apply_course_type" id="apply_course_type" title="Select the program/level you are applying for-> UG(18-35), PG(18-35), PhD(18-40), Diploma/Certificate in Languages/Performing Arts (18+, no ICCR upper limit). Age as on 01 July 2026." style="width: 100%;" required="true">
                 <option value="">Select</option>
                 <option value="1">UG(Ayush Scholarship)</option>
                 <option value="2">PG(Ayush Scholarship)</option>
                 <option value="4">PhD(upto 40 yrs)</option>
 				<option value="8">PhD(Ayush Scholarship)</option>
-                <option value="12">Diploma (only for Languages and Performing Arts)(18-35 yrs) </option>
-                <option value="13">Certificate (only for Languages and Performing Arts)(18-35 yrs) </option>                
-              </select>-->
+                <option value="12">Diploma (only for Languages and Performing Arts)(18+ yrs) </option>
+                <option value="13">Certificate (only for Languages and Performing Arts)(18+ yrs) </option>                
+              </select>
             </div>
           </div>
 
 
           <!-- <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Select Course<span class="text-red">*</span></label>
+            <label for="apply_indian_course_type">Select Course<span class="text-red">*</span></label>
             <div class="form-group">
 
               <select class="form-control select2" name="apply_indian_course_type" id="apply_indian_course_type" style="width: 100%;" required="true">
@@ -422,7 +442,7 @@ document.getElementById('dob').addEventListener('change', function () {
 
 
           <!--<div class="name-sec col-xs-12 col-sm-3 col-md-3 pdleft1">
-            <label for="exampleInputEmail1">Date of Birth (DD/MM/YYYY) <span class="text-red">*</span></label>
+            <label for="applicant_date">Date of Birth (DD/MM/YYYY) <span class="text-red">*</span></label>
             <div class="form-group col-md-4 pdleft">
               <select class="form-control" id="applicant_date" name="applicant_date" title="Note: If the date of birth is found to be different from the DOB in the passport column at any stage, your application/scholarship will be cancelled." required="true">
                 <option value="">Date</option>
@@ -538,13 +558,13 @@ document.getElementById('dob').addEventListener('change', function () {
         
 
           <div class="name-sec col-xs-12 col-sm-2 col-md-3">
-            <label for="exampleInputEmail1">Password <span class="text-red">*</span></label>
+            <label for="password">Password <span class="text-red">*</span></label>
             <div class="form-group">
               <input class="form-control" type="password" id="password" title="Create a strong password for your application portal login. Using  letters, numbers, and special characters." name="password" placeholder="Enter Password" required="true" maxlength="40">
               <div id="pswd_info">
                 <h4>Password must meet below requirements:</h4>
                 <ul>
-                  <li id="letter" class="invalid">At least <strong>one letter</strong></li>
+                  <li id="letter" class="invalid">At least <strong>one small letter</strong></li>
                   <li id="capital" class="invalid">At least <strong>one capital letter</strong></li>
                   <li id="number" class="invalid">At least <strong>one numeric value</strong></li>
                   <li id="length" class="invalid">Be at least <strong>8 characters</strong></li>
@@ -555,7 +575,7 @@ document.getElementById('dob').addEventListener('change', function () {
           </div>
 
           <div class="name-sec col-xs-12 col-sm-2 col-md-3">
-            <label for="exampleInputEmail1">Confirm Password <span class="text-red">*</span></label>
+            <label for="cpassword">Confirm Password <span class="text-red">*</span></label>
             <div class="form-group">
 
               <input type="password" data-fv-identical="true" data-fv-identical-field="password" data-fv-identical-message="The password and its confirm are not the same" title="Re-enter the same password to confirm it. Both must match." class="form-control" id="cpassword" name="cpassword" placeholder="Re-Enter Password" required="true">
@@ -564,24 +584,24 @@ document.getElementById('dob').addEventListener('change', function () {
           </div>
 		  
 		  <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Passport No. <span class="text-red">*</span></label>
+            <label for="passport_no">Passport No. <span class="text-red">*</span></label>
             <div class="form-group">
               <input type="text" class="form-control capitalLetter" title="Note: If there is any discrepancy in the passport at any stage, your application/scholarship will be cancelled.
-Note: Please note that no Local Ids to be mentioned in this column." id="passport_no" name="passport_no" placeholder="Enter Passport" maxlength="10" required="true">
+Note: Please note that no Local Ids to be mentioned in this column." id="passport_no" name="passport_no" placeholder="Enter Passport" maxlength="10" pattern="^[A-Za-z0-9]{6,10}$" required="true">
             </div>
           </div>
           
           <div class="name-sec col-xs-12 col-sm-2 col-md-3">
-            <label for="exampleInputEmail1">Upload Passport Image(jpg|jpeg|png)(max 1 MB)<span class="text-red">*</span></label>
+            <label for="fileInput">Upload Passport Image(jpg|jpeg|png)(max 1 MB)<span class="text-red">*</span></label>
             <div class="form-group">
-			<input type="file" name="passport" id="fileInput" class="form-control" title="Note: Upload your passport image. No other file shpuld be uploaded." required>
+			<input type="file" name="passport" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="form-control" title="Note: Upload your passport image. No other file shpuld be uploaded." required>
               
             </div>
           </div>
 
           
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputFile">Currently Staying In India <span class="text-red">*</span></label>
+            <label id="isindian_label">Currently Staying In India <span class="text-red">*</span></label>
             <div class="form-group">
               <input value="1" type="radio" name="isindian" title="Select Yes if you are presently residing in India, otherwise select No." required="true"> Yes
               <input class="minimal" checked="true" value="2" type="radio" name="isindian" required="true"> No
@@ -589,7 +609,7 @@ Note: Please note that no Local Ids to be mentioned in this column." id="passpor
           </div>
 
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
-            <label for="exampleInputEmail1">Enter Text as Displayed Below <span class="text-red">*</span></label><br>
+            <label for="userCaptcha">Enter Text as Displayed Below <span class="text-red">*</span></label><br>
             <div class="form-group col-md-6 pdleft">
               <input type="text" autocomplete="off" title="Type the characters shown in the image/text box (captcha) to verify that you are a genuine applicant." name="userCaptcha" id="userCaptcha" class="form-control" required placeholder="Enter text" required="true" maxlength="7" />
             </div>
@@ -602,9 +622,9 @@ Note: Please note that no Local Ids to be mentioned in this column." id="passpor
 
         <!-- /.box-body -->
 
-        <!--<div class="box-footer">
+        <div class="box-footer">
           <button type="submit" class="btn btn-primary" id="submit">Submit</button>
-        </div>-->
+        </div>
       </form>
 
       <!--<a href="http://a2ascholarships.iccr.gov.in/home/sfs_register"> For Afghanistan Strudents - Click Here</a> -->
@@ -617,7 +637,7 @@ Note: Please note that no Local Ids to be mentioned in this column." id="passpor
 
 <div id="myModal" class="modal fade">
   <div class="modal-dialog">
-    <div class="modal-content" style="width: 1030px;
+    <div class="modal-content" style="width: 1030px; max-width: 95vw;
     margin-left: -190px;">
       <div class="modal-header">
         <h5 class="modal-title">
@@ -741,21 +761,15 @@ Falsification of data or multiple applications will lead to automatic REJECTION 
       });
     });*/
 </script>
-<!--<script>
+<script>
 $(document).ready(function () {
-
     $('#country').on('change', function () {
-        var countryId = $(this).val();
-
-        if (countryId == '10') {
+        if ($(this).val() == '10') {   // Bangladesh
             $('#bangladeshModal').modal('show');
         }
     });
-
 });
-
-
-</script>-->
+</script>
   <script>
 $(document).ready(function () {
 
@@ -790,26 +804,17 @@ $(document).ready(function () {
         $('#mother_section input').prop('required', false);
         $('#guardian_section input').prop('required', false);
 
-        if (value == '1') {  // Father
-            $('#father_section').show();
-            $('#father_section input').prop('required', false);
-        }
-        else if (value == '2') {  // Mother
-            $('#mother_section').show();
-            $('#mother_section input').prop('required', false);
-        }
-        else if (value == '3') {  // Father & Mother
-            $('#father_section').show();
-            $('#mother_section').show();
-            $('#father_section input').prop('required', true);
-            $('#mother_section input').prop('required', true);
-        }
-        else if (value == '4') {  // Guardian
-            $('#guardian_section').show();
-            $('#guardian_section input').prop('required', false);
-        }
+        // First + last name of every shown section are required; middle names optional
+        var need = function (sec) {
+            $(sec + ' input').each(function () {
+                $(this).prop('required', !/_mname$/.test(this.id || ''));
+            });
+        };
+        if (value == '1') { $('#father_section').show(); need('#father_section'); }
+        else if (value == '2') { $('#mother_section').show(); need('#mother_section'); }
+        else if (value == '3') { $('#father_section').show(); $('#mother_section').show(); need('#father_section'); need('#mother_section'); }
+        else if (value == '4') { $('#guardian_section').show(); need('#guardian_section'); }
     }
-
     // On Change
     $('#parentdetail').on('change', function () {
         toggleParentSections($(this).val());
@@ -820,18 +825,47 @@ $(document).ready(function () {
 
 });
 </script>
+<?php $regOld = $this->session->flashdata('reg_old'); if (is_array($regOld)) { ?>
+<script>
+// Refill the form after a server-side validation error (no password/captcha/file)
+$(document).ready(function () {
+  var old = <?php echo json_encode($regOld, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+  $.each(old, function (k, v) {
+    if (v === '' || v === null) return;
+    var $f = $('[name="' + k + '"]');
+    if (!$f.length) return;
+    if ($f.is(':radio')) { $f.filter('[value="' + v + '"]').prop('checked', true); }
+    else { $f.val(v).trigger('change'); }
+  });
+});
+</script>
+<?php } ?>
 <script type="text/javascript" src="<?php echo base_url(); ?>assets/site/main/js/sha.js"></script>
 <script type="text/javascript">
 
 
   function validate_registration() {
+    // Double-submit guard (test 1083)
+    if (window.__a2aSubmitting) { return false; }
+    // DOB must be chosen and copied into the hidden fields
+    var dobVal = $('#dob').val();
+    if (!dobVal) { alert('Please select your Date of Birth.'); return false; }
+    var parts = dobVal.split('-');
+    $('#applicant_year').val(parts[0]); $('#applicant_month').val(parts[1]); $('#applicant_date').val(parts[2]);
+    // Passport image: type and size (server checks again)
+    var pf = document.getElementById('fileInput');
+    if (pf && pf.files && pf.files[0]) {
+      var f = pf.files[0];
+      if (!/\.(jpe?g|png)$/i.test(f.name)) { alert('Passport image must be a JPG, JPEG or PNG file.'); return false; }
+      if (f.size > 1048576) { alert('Passport image must be 1 MB or smaller.'); return false; }
+    }
     var pswd = $("#password").val();
     if (pswd.length < 8) {
       $('#pswd_info').show();
       $('#length').removeClass('valid').addClass('invalid');
       return false;
     }
-    if (pswd.match(/[A-z]/)) {} else {
+    if (pswd.match(/[a-z]/)) {} else {
       $('#pswd_info').show();
       $('#letter').removeClass('valid').addClass('invalid');
       return false;
@@ -873,6 +907,8 @@ $(document).ready(function () {
     var hash1 = shaObj1.getHash("HEX");
 
     $('#cpassword').val(hash1);
+    window.__a2aSubmitting = true;
+    $('#submit').prop('disabled', true).text('Submitting...');
     return true;
   }
 

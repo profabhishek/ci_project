@@ -218,7 +218,7 @@ class User extends CI_Controller {
 							redirect(site_url() . 'regional/dashboard');
 							break;
 							case "Super Admin":
-							redirect(site_url() . 'admin/dashboard');
+							redirect(site_url() . 'adminpanel'); // new Admin Panel (classic admin still at admin/dashboard)
 							break;
 						}         
 		            }
@@ -358,7 +358,7 @@ class User extends CI_Controller {
 							redirect(site_url() . 'agency/dashboard');
 							break;
 							case "Super Admin":
-							redirect(site_url() . 'admin/dashboard');
+							redirect(site_url() . 'adminpanel'); // new Admin Panel (classic admin still at admin/dashboard)
 							break;
 						}         
 		            }
@@ -400,9 +400,14 @@ class User extends CI_Controller {
 	function isValidCaptch($captchText)
 	{
 		$sessionData = $this->session->userdata('captcha_code');
-		$sessionText = !empty($sessionData) ? $sessionData['code'] : null;
-
-		return ($captchText == $sessionText) ? TRUE : FALSE;
+		$sessionText = !empty($sessionData['code']) ? (string) $sessionData['code'] : '';
+		// Security fix: an empty or missing code used to pass ('' == null is TRUE in PHP),
+		// so a script could skip the captcha entirely. The code is also single-use now.
+		$this->session->unset_userdata('captcha_code');
+		if ($sessionText === '' || !is_string($captchText) || $captchText === '') {
+			return FALSE;
+		}
+		return hash_equals($sessionText, $captchText);
 	}
 	
 	
@@ -583,7 +588,7 @@ class User extends CI_Controller {
 							redirect(site_url() . 'regional/dashboard');
 							break;
 							case "Super Admin":
-							redirect(site_url() . 'admin/dashboard');
+							redirect(site_url() . 'adminpanel'); // new Admin Panel (classic admin still at admin/dashboard)
 							break;
 						}
 		            }
@@ -613,111 +618,198 @@ class User extends CI_Controller {
 	}
  public function register()
 {
-    $post = $this->input->post(NULL, TRUE);
-    $parent_type = $post['parent_type'] ?? '';
-
-    $actual_link = $_SERVER['HTTP_REFERER'] ?? site_url();
+    // Registration - every rule the browser checks is checked again here,
+    // because anything in the browser can be bypassed (Nov 2026 test cases).
+    $actual_link = site_url() . 'home/register';
     $year = date("Y");
+    $this->load->helper('a2a_eligibility');
 
-    // ======== Conditional Parents Validation ==========
-    if ($parent_type == '1') { // Father only
-        $this->form_validation->set_rules('father_fname', 'Father Name', 'required');
-    } 
-    else if ($parent_type == '2') { // Mother only
-        $this->form_validation->set_rules('mother_fname', 'Mother Name', 'required');
-    } 
-    else if ($parent_type == '3') { // Father & Mother optional
-        // no required
-    } 
-    else if ($parent_type == '4') { // Guardian
-        $this->form_validation->set_rules('guardian_name', 'Guardian Name', 'required');
+    $raw = $this->input->post(NULL, TRUE);
+    if (!is_array($raw) || empty($raw)) {
+        redirect($actual_link);
+    }
+    // Trim every text value (test 1034/1040: leading/trailing spaces)
+    $in = array();
+    foreach ($raw as $k => $v) {
+        $in[$k] = is_string($v) ? trim(preg_replace('/\s+/', ' ', $v)) : '';
+    }
+    $g = function ($k) use ($in) { return isset($in[$k]) ? $in[$k] : ''; };
+
+    $errors = array();
+    $nameRe = '/^[A-Za-z]+( [A-Za-z]+)*$/';
+    $name = function ($k, $label, $required) use ($g, $nameRe, &$errors) {
+        $v = $g($k);
+        if ($v === '') {
+            if ($required) { $errors[] = "$label is required."; }
+            return;
+        }
+        if (strlen($v) > 15) {
+            $errors[] = "$label can be at most 15 characters.";
+        } elseif (!preg_match($nameRe, $v)) {
+            $errors[] = "$label may contain only English letters and spaces.";
+        }
+    };
+
+    // ----- Choice fields: must be one of the values the form offers -----
+    if (!in_array($g('student_title'), array('1', '2'), true))  { $errors[] = 'Title is required.'; }
+    if (!in_array($g('gender'), array('1', '2'), true))         { $errors[] = 'Gender is required.'; }
+    elseif ($g('student_title') !== '' && $g('student_title') !== $g('gender')) {
+        $errors[] = 'Title and Gender do not match (Mr = M, Ms = F).';
+    }
+    $countryIds = array_map(function ($c) { return (string) $c['id']; }, $this->common_model->getCountriesByIdNotInCurrent());
+    if (!in_array($g('country'), $countryIds, true))            { $errors[] = 'Nationality is required.'; }
+    if (!in_array((int) $g('apply_course_type'), a2a_course_types(), true) || !ctype_digit($g('apply_course_type'))) {
+        $errors[] = 'Apply For is required.';
+    }
+    if (!in_array($g('isindian'), array('1', '2'), true))       { $errors[] = 'Currently Staying In India is required.'; }
+    $parent_type = $g('parent_type');
+    if (!in_array($parent_type, array('1', '2', '3', '4'), true)) { $errors[] = 'Parent Details is required.'; }
+
+    // ----- Names -----
+    $name('student_fname', 'First Name', true);
+    $name('student_mname', 'Middle Name', false);
+    $name('student_lname', 'Last Name', true);
+    $needFather   = in_array($parent_type, array('1', '3'), true);
+    $needMother   = in_array($parent_type, array('2', '3'), true);
+    $needGuardian = ($parent_type === '4');
+    $name('father_fname', "Father's First Name", $needFather);
+    $name('father_mname', "Father's Middle Name", false);
+    $name('father_lname', "Father's Last Name", $needFather);
+    $name('mother_fname', "Mother's First Name", $needMother);
+    $name('mother_mname', "Mother's Middle Name", false);
+    $name('mother_lname', "Mother's Last Name", $needMother);
+    $name('gurdian_fname', "Guardian's First Name", $needGuardian);
+    $name('gurdian_mname', "Guardian's Middle Name", false);
+    $name('gurdian_lname', "Guardian's Last Name", $needGuardian);
+
+    // ----- Contact / identity -----
+    $mobile = $g('mobile_no');
+    if ($mobile === '') { $errors[] = 'Mobile Number is required.'; }
+    elseif (!preg_match('/^\+?[0-9]{6,15}$/', $mobile)) { $errors[] = 'Mobile Number may contain only digits (and a leading +), 6 to 15 digits.'; }
+
+    $email = strtolower($g('emailId'));
+    if ($email === '') { $errors[] = 'Email address is required.'; }
+    elseif (strlen($email) > 40 || !filter_var($email, FILTER_VALIDATE_EMAIL)) { $errors[] = 'Please enter a valid email address (max 40 characters).'; }
+
+    $uniqueId = strtoupper($g('unique_id'));
+    if ($uniqueId === '') { $errors[] = 'Citizenship/Local/Domestic Number is required.'; }
+    elseif (!preg_match('/^[A-Z0-9\/-]{3,20}$/', $uniqueId)) { $errors[] = 'Citizenship/Local/Domestic Number may contain only letters, digits, - and /, 3 to 20 characters.'; }
+
+    $passportNo = strtoupper($g('passport_no'));
+    if ($passportNo === '') { $errors[] = 'Passport No. is required.'; }
+    elseif (!preg_match('/^[A-Z0-9]{6,10}$/', $passportNo)) { $errors[] = 'Passport No. may contain only letters and digits, 6 to 10 characters.'; }
+
+    // ----- Password: the browser sends SHA-1 hex of the password -----
+    $pw = strtolower($g('password'));
+    $cpw = strtolower($g('cpassword'));
+    if ($pw === '') { $errors[] = 'Password is required.'; }
+    elseif (!preg_match('/^[0-9a-f]{40}$/', $pw)) { $errors[] = 'Password was not submitted correctly. Please reload the page and try again.'; }
+    if ($cpw === '') { $errors[] = 'Confirm Password is required.'; }
+    elseif ($pw !== $cpw) { $errors[] = 'Password and Confirm Password do not match.'; }
+
+    // ----- DOB: check 1 - visible field and hidden fields must agree -----
+    if ($g('dob') === '' && $g('applicant_year') === '') {
+        $errors[] = 'Date of Birth is required.';
+    } elseif (!a2a_dob_fields_match($g('dob'), $g('applicant_date'), $g('applicant_month'), $g('applicant_year'))) {
+        $errors[] = 'Date of Birth is not valid. Please select it again.';
+    } else {
+        // DOB: check 2 - real date, not in future, inside the programme age band
+        list($ageOk, $ageMsg) = a2a_check_age($g('applicant_date'), $g('applicant_month'), $g('applicant_year'), $g('apply_course_type'));
+        if (!$ageOk) { $errors[] = $ageMsg; }
     }
 
-    // ===== Other Mandatory Fields =====
-    $this->form_validation->set_rules('country', 'Country', 'required');
-    $this->form_validation->set_rules('student_fname', 'Student Name', 'required');
-    $this->form_validation->set_rules('student_title', 'Title', 'required');
-    $this->form_validation->set_rules('gender', 'Gender', 'required');
-    $this->form_validation->set_rules('applicant_date', 'Date of Birth', 'required');
-    $this->form_validation->set_rules('applicant_month', 'Date of Birth', 'required');
-    $this->form_validation->set_rules('applicant_year', 'Date of Birth', 'required');
-    $this->form_validation->set_rules('mobile_no', 'Mobile Number', 'required');
-    $this->form_validation->set_rules('passport_no', 'Passport No', 'required');
-    $this->form_validation->set_rules('unique_id', 'Unique No', 'required');
-    $this->form_validation->set_rules('emailId', 'Email', 'required|valid_email');
-    $this->form_validation->set_rules('password', 'Password', 'required');
-    $this->form_validation->set_rules('isindian', 'Is Indian', 'required');
+    // ----- Passport image: required, real JPG/PNG, max 1 MB -----
+    $pf = isset($_FILES['passport']) ? $_FILES['passport'] : null;
+    if (!$pf || $pf['error'] === UPLOAD_ERR_NO_FILE || $pf['name'] === '') {
+        $errors[] = 'Passport image is required.';
+    } elseif ($pf['error'] === UPLOAD_ERR_INI_SIZE || $pf['error'] === UPLOAD_ERR_FORM_SIZE || $pf['size'] > 1048576) {
+        $errors[] = 'Passport image must be 1 MB or smaller.';
+    } elseif ($pf['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($pf['tmp_name'])) {
+        $errors[] = 'Passport image could not be uploaded. Please try again.';
+    } else {
+        $ext = strtolower(pathinfo($pf['name'], PATHINFO_EXTENSION));
+        $info = @getimagesize($pf['tmp_name']);
+        if (!in_array($ext, array('jpg', 'jpeg', 'png'), true)) {
+            $errors[] = 'Passport image must be a JPG, JPEG or PNG file.';
+        } elseif ($info === false || !in_array($info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), true)) {
+            $errors[] = 'Passport image is not a valid or readable JPG/PNG image.';
+        } elseif (function_exists('imagecreatefromjpeg')
+               && (($info[2] === IMAGETYPE_JPEG && @imagecreatefromjpeg($pf['tmp_name']) === false)
+               || ($info[2] === IMAGETYPE_PNG && @imagecreatefrompng($pf['tmp_name']) === false))) {
+            $errors[] = 'Passport image file is damaged. Please upload another copy.';
+        }
+    }
 
-    // ===== RUN VALIDATION ONLY ONCE =====
-    if ($this->form_validation->run() == FALSE) {
-        echo "<pre>";
-        echo validation_errors();
-        die;
+    // ----- Captcha (single-use, case-sensitive) -----
+    if ($g('userCaptcha') === '') {
+        $errors[] = 'Please enter the captcha text.';
+    } elseif (!$this->isValidCaptch($g('userCaptcha'))) {
+        $errors[] = 'Wrong captcha text entered.';
+    }
+
+    // ----- Duplicates (only once the format checks pass) -----
+    if (empty($errors)) {
+        if ($this->user_model->isDuplicateEmail($email, $year)) {
+            $errors[] = 'This email address is already registered for this year.';
+        }
+        if ($this->user_model->isDuplicatePassport($passportNo, $year)) {
+            $errors[] = 'This passport number is already registered for this year.';
+        }
+        if ($this->user_model->isDuplicateUniqueId($uniqueId, $year)) {
+            $errors[] = 'This Citizenship/Local/Domestic Number is already registered for this year.';
+        }
+    }
+
+    if (!empty($errors)) {
+        // Keep safe values so the applicant need not retype (no password,
+        // captcha or file); the page escapes them before showing.
+        $keep = array('student_title','gender','country','apply_course_type','isindian','parent_type','dob',
+            'student_fname','student_mname','student_lname','father_fname','father_mname','father_lname',
+            'mother_fname','mother_mname','mother_lname','gurdian_fname','gurdian_mname','gurdian_lname',
+            'mobile_no','emailId','unique_id','passport_no');
+        $old = array();
+        foreach ($keep as $k) { $old[$k] = mb_substr($g($k), 0, 60); }
+        $this->session->set_flashdata('reg_old', $old);
+        $this->session->set_flashdata('message_type', 'error');
+        $this->session->set_flashdata('error', implode('<br>', array_map('html_escape', $errors)));
+        redirect($actual_link);
     }
 
     try {
-
-        // ===== CLEAN DATA =====
-        $cleanData = $this->security->xss_clean($this->input->post(NULL, TRUE));
-        $clean = $this->strip_quotes($cleanData);
-
-        // ===== CAPTCHA CHECK =====
-        if (!$this->isValidCaptch($clean['userCaptcha'])) {
-            $this->session->set_flashdata('message_type', 'error');
-            $this->session->set_flashdata('error', 'Wrong Text Entered!');
-            redirect($actual_link);
-        }
-
-        // ===== DOB =====
-        $dob = $this->input->post('applicant_date') . "/" .
-               $this->input->post('applicant_month') . "/" .
-               $this->input->post('applicant_year');
-
-        // ===== DUPLICATE CHECK =====
-        if (
-            $this->user_model->isDuplicateEmail($clean['emailId'], $year) ||
-            $this->user_model->isDuplicatePassport($clean['passport_no'], $year)
-        ) {
-            $this->session->set_flashdata('message_type', 'error');
-            $this->session->set_flashdata('error', 'Email id and Passport No Already Exist!');
-            redirect($actual_link);
-        }
-
-        // ===== DIRECTORY CREATE =====
+        $clean = array(
+            'parent_type' => $parent_type, 'country' => $g('country'),
+            'student_fname' => $g('student_fname'), 'student_mname' => $g('student_mname'), 'student_lname' => $g('student_lname'),
+            'student_title' => $g('student_title'), 'gender' => $g('gender'),
+            'applicant_date' => $g('applicant_date'), 'applicant_month' => $g('applicant_month'), 'applicant_year' => $g('applicant_year'),
+            'mobile_no' => $mobile, 'passport_no' => $passportNo, 'unique_id' => $uniqueId,
+            'emailId' => $email, 'password' => $pw, 'isindian' => $g('isindian'),
+            'apply_course_type' => (int) $g('apply_course_type'),
+            'father_fname' => $g('father_fname'), 'father_mname' => $g('father_mname'), 'father_lname' => $g('father_lname'),
+            'mother_fname' => $g('mother_fname'), 'mother_mname' => $g('mother_mname'), 'mother_lname' => $g('mother_lname'),
+            'gurdian_fname' => $g('gurdian_fname'), 'gurdian_mname' => $g('gurdian_mname'), 'gurdian_lname' => $g('gurdian_lname'),
+        );
         $clean['username'] = $clean['student_fname'];
         $responseDir = $this->createdir($clean['emailId'], $clean['country'], $year);
-
         $clean['dir'] = $responseDir['status'] ? $responseDir['dir'] : "";
 
-        // ===== PASSPORT FILE UPLOAD =====
-        $passportFile = '';
-
-        if (!empty($_FILES['passport']['name'])) {
-
-            $uploadPath = FCPATH . 'assets/img/register/';
-
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
-
-            $config['upload_path']   = $uploadPath;
-            $config['allowed_types'] = 'jpg|jpeg|png';
-            $config['max_size']      = 2048;
-            $config['encrypt_name']  = TRUE;
-
-            $this->load->library('upload');
-            $this->upload->initialize($config);
-
-            if (!$this->upload->do_upload('passport')) {
-                echo $this->upload->display_errors('<pre>', '</pre>');
-                die;
-            } else {
-                $uploadData   = $this->upload->data();
-                $passportFile = 'assets/img/register/' . $uploadData['file_name'];
-            }
+        // ===== PASSPORT FILE UPLOAD (already validated above) =====
+        $uploadPath = FCPATH . 'assets/img/register/';
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
         }
-
-        $clean['passport_file'] = $passportFile;
+        $config = array(
+            'upload_path' => $uploadPath, 'allowed_types' => 'jpg|jpeg|png',
+            'max_size' => 1024, 'encrypt_name' => TRUE, // random safe file name
+        );
+        $this->load->library('upload');
+        $this->upload->initialize($config);
+        if (!$this->upload->do_upload('passport')) {
+            $this->session->set_flashdata('message_type', 'error');
+            $this->session->set_flashdata('error', 'Passport image: ' . strip_tags($this->upload->display_errors('', '')));
+            redirect($actual_link);
+        }
+        $uploadData = $this->upload->data();
+        $clean['passport_file'] = 'assets/img/register/' . $uploadData['file_name'];
 
         // ===== INSERT DATA =====
         $id = $this->user_model->insertUser($clean);
@@ -726,28 +818,18 @@ class User extends CI_Controller {
 
         // ===== EMAIL =====
         $this->load->library('email');
-
-        $config['protocol'] = 'smtp';
-        $config['smtp_host'] = 'relay.nic.in';
-        $config['smtp_port'] = '25';
-        $config['mailtype'] = 'html';
-        $config['charset'] = 'utf-8';
-        $config['newline'] = "\r\n";
-
-        $this->email->initialize($config);
-
-        $message = "<strong>Hi {$clean['username']},</strong><br><br>";
+        $mcfg = array('protocol' => 'smtp', 'smtp_host' => 'relay.nic.in', 'smtp_port' => '25',
+                      'mailtype' => 'html', 'charset' => 'utf-8', 'newline' => "\r\n");
+        $this->email->initialize($mcfg);
+        $message = "<strong>Hi " . html_escape($clean['username']) . ",</strong><br><br>";
         $message .= "Registration successful.<br>";
-        $message .= "<b>Email:</b> {$clean['emailId']}<br>";
-
+        $message .= "<b>Email:</b> " . html_escape($clean['emailId']) . "<br>";
         $content = $this->load->view('mail_signup', ['content' => $message], true);
-
         $this->email->from($this->config->item('fromEmail'), 'ICCR');
         $this->email->to($clean['emailId']);
         $this->email->subject('ICCR Registration');
         $this->email->message($content);
-
-        $this->email->send();
+        @$this->email->send();
 
         $this->session->set_flashdata('message_type', 'success');
         $this->session->set_flashdata('success', 'Registration Successfully!');

@@ -450,14 +450,14 @@
                         // Convert to Y-m-d if you need
                         $newDate = $birthDateObj->format('Y-m-d'); // 2002-03-25
 
-                        // Calculate Age
-                        $today = new DateTime('today');
+                        // Age as on the ICCR reference date (01 Jul of the admission year), not today
+                        $today = new DateTime('2026-07-01');
                         $age = $birthDateObj->diff($today)->y;
                     }
                 }
                 ?>
                 <input type="text"
-                   title="Valid Age"
+                   title="Age as on 01 July 2026"
                    readonly
                    class="form-control"
                    id="age"
@@ -2581,3 +2581,25 @@ var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
 ?>
 <link rel="stylesheet" href="<?php echo base_url(); ?>assets/site/main/css/iccr-searchable-select.css?v=20260925b">
 <script src="<?php echo base_url(); ?>assets/site/main/js/iccr-searchable-select.js?v=20260925b"></script>
+
+<script>
+// Passport must be valid for at least 2 years as on 01 Jul 2026 (expiry >= 01 Jul 2028)
+(function () {
+  function check() {
+    var d = document.getElementById('passport_expiry_date'), m = document.getElementById('passport_expiry_month'), y = document.getElementById('passport_expiry_year');
+    if (!d || !m || !y || !d.value || !m.value || !y.value) return true;
+    var exp = new Date(parseInt(y.value, 10), parseInt(m.value, 10) - 1, parseInt(d.value, 10));
+    var ok = exp >= new Date(2028, 6, 1);
+    var note = document.getElementById('passport_expiry_note');
+    if (!note) { note = document.createElement('p'); note.id = 'passport_expiry_note'; note.style.color = 'red'; y.parentNode.appendChild(note); }
+    note.textContent = ok ? '' : 'Passport must be valid for at least 2 years as on 01 July 2026 (expiry on or after 01 July 2028).';
+    return ok;
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && /^passport_expiry_(date|month|year)$/.test(e.target.id)) check();
+  });
+  if (window.jQuery) { jQuery(document).on('change', '#passport_expiry_date,#passport_expiry_month,#passport_expiry_year', check); }
+  var f = document.getElementById('form-process-personal-info');
+  if (f) f.addEventListener('submit', function (e) { if (!check()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+})();
+</script>

@@ -164,7 +164,8 @@ class User_model extends CI_Model {
             	'country_of_domicile'=>$d['country'],
                 'gender'=>$d['gender'],	
 				'passport_no'=>$d['passport_no'],
-				'date_of_birth'=>$d['applicant_date']."/".$d['applicant_month']."/".$d['applicant_year'],
+				// D-08: DOB is validated in User::register(); store it in one fixed DD/MM/YYYY form
+				'date_of_birth'=>sprintf('%02d/%02d/%04d', (int)$d['applicant_date'], (int)$d['applicant_month'], (int)$d['applicant_year']),
 				'mobile_number'=>$d['mobile_no'],
                 'currently_in_india'=>$d['isindian'],
                 'created'=>date('Y-m-d h:i:s'),
@@ -289,9 +290,9 @@ class User_model extends CI_Model {
 	public function isDuplicatePassport($passport, $year)
     {     
        //$sql = "select email_id,created from iccr_users where email_id = '".$email."' and YEAR(created) = ".$year."" ;
-	   $sql = "select usrs.email_id,usrs.id,usrs.created from iccr_users usrs join iccr_student_details stds on usrs.id = stds.uid where stds.passport_no = '".$passport."' and YEAR(usrs.created) = ".$year."";
-	   //echo $sql;die;
-	   $rs = $this->db->query($sql)->row();
+	   // Bound parameters - the old string-built query was open to SQL injection
+	   $sql = "select usrs.email_id,usrs.id,usrs.created from iccr_users usrs join iccr_student_details stds on usrs.id = stds.uid where UPPER(stds.passport_no) = UPPER(?) and YEAR(usrs.created) = ?";
+	   $rs = $this->db->query($sql, array((string) $passport, (int) $year))->row();
 	  if(is_object($rs)){
             return true;
 		}else{
@@ -300,10 +301,17 @@ class User_model extends CI_Model {
 		}       
     }
 	
+	public function isDuplicateUniqueId($uid, $year)
+    {
+        $sql = "select id from iccr_users where UPPER(unique_id) = UPPER(?) and YEAR(created) = ? limit 1";
+        $rs = $this->db->query($sql, array((string) $uid, (int) $year))->row();
+        return is_object($rs);
+    }
+
 	public function isDuplicateEmail($email,$year)
     {     
-       $sql = "select email_id,created from iccr_users where email_id = '".$email."' and YEAR(created) = ".$year."" ;
-	   $rs = $this->db->query($sql)->row();
+       $sql = "select email_id,created from iccr_users where LOWER(email_id) = LOWER(?) and YEAR(created) = ?";
+	   $rs = $this->db->query($sql, array((string) $email, (int) $year))->row();
 	   if(is_object($rs)){
             return true;
 		}else{

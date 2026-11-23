@@ -1796,8 +1796,8 @@ function confirmedStudentAPINew(){
 		public function register()
 		{	
 			$data['captcha'] = $this->createCaptcha( array(
-		    'min_length' => 7,
-		    'max_length' => 7,
+		    'min_length' => 5, // 7 characters overflowed the image (last letter cut off)
+		    'max_length' => 5,
 		    'backgrounds' => array(FCPATH.'assets/site/main/images/captcha_bg/white-carbon.png'),
 		    'fonts' => array(FCPATH.'assets/site/main/fonts/captcha_fonts/opensans-semibold-webfont.ttf'),
 		    'characters' => 'ABCDEFGHJKLMNPRSTUVWXYZabcdefghjkmnprstuvwxyz123456789',
@@ -1847,75 +1847,33 @@ function confirmedStudentAPINew(){
 		
 		public function getDob()
 		{
-			
-			$response = array('status'=>FALSE,'jsondata'=>array());
-			$year=$this->input->post('year'); 
-			$month = $this->input->post('month'); 
-			$date = $this->input->post('date');
-			$dob=$date.'/'.$month.'/'.$year;
-			$condate='01/07/2025';
-			$birthdate = new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $dob))))));
-			$today= new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $condate))))));$age = $birthdate->diff($today)->y;
-			
-			if(($age >= 18) && ($age < 40))
-			{
-				$response['status'] = TRUE;
-				//$response['jsondata'] = $data;
-			}
-			else{
-				$response['status'] = FALSE;
-				
-			}
-			echo json_encode($response);
+			// D-01/D-08: shared rules in helpers/a2a_eligibility_helper.php
+			$this->load->helper('a2a_eligibility');
+			$ct = $this->input->post('course_type', TRUE);
+			if ($ct === NULL || $ct === '') { $ct = 0; }
+			list($ok, $msg) = a2a_check_age($this->input->post('date'), $this->input->post('month'), $this->input->post('year'), $ct);
+			echo json_encode(array('status' => $ok, 'message' => $msg, 'jsondata' => array()));
 		}
 
 		public function getAyushDob()
 		{
-			
-			$response = array('status'=>FALSE,'jsondata'=>array());
-			$year=$this->input->post('year'); 
-			$month = $this->input->post('month'); 
-			$date = $this->input->post('date');
-			$dob=$date.'/'.$month.'/'.$year;
-			$condate='01/07/2025';
-			$birthdate = new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $dob))))));
-			$today= new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $condate))))));$age = $birthdate->diff($today)->y;
-			
-			if(($age >= 18) && ($age < 100))
-			{
-				$response['status'] = TRUE;
-				//$response['jsondata'] = $data;
-			}
-			else{
-				$response['status'] = FALSE;
-				
-			}
-			echo json_encode($response);
+			// D-01/D-08: shared rules in helpers/a2a_eligibility_helper.php
+			$this->load->helper('a2a_eligibility');
+			$ct = $this->input->post('course_type', TRUE);
+			if ($ct === NULL || $ct === '') { $ct = 1; }
+			list($ok, $msg) = a2a_check_age($this->input->post('date'), $this->input->post('month'), $this->input->post('year'), $ct);
+			echo json_encode(array('status' => $ok, 'message' => $msg, 'jsondata' => array()));
 		}
 
 		
 		public function getDiplomaDob()
 		{
-			
-			$response = array('status'=>FALSE,'jsondata'=>array());
-			$year=$this->input->post('year'); 
-			$month = $this->input->post('month'); 
-			$date = $this->input->post('date');
-			$dob=$date.'/'.$month.'/'.$year;
-			$condate='01/07/2025';
-			$birthdate = new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $dob))))));
-			$today= new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $condate))))));$age = $birthdate->diff($today)->y;
-			
-			if(($age >= 18) && ($age < 100))
-			{
-				$response['status'] = TRUE;
-				//$response['jsondata'] = $data;
-			}
-			else{
-				$response['status'] = FALSE;
-				
-			}
-			echo json_encode($response);
+			// D-01/D-08: shared rules in helpers/a2a_eligibility_helper.php
+			$this->load->helper('a2a_eligibility');
+			$ct = $this->input->post('course_type', TRUE);
+			if ($ct === NULL || $ct === '') { $ct = 12; }
+			list($ok, $msg) = a2a_check_age($this->input->post('date'), $this->input->post('month'), $this->input->post('year'), $ct);
+			echo json_encode(array('status' => $ok, 'message' => $msg, 'jsondata' => array()));
 		}
 
 		
@@ -2347,6 +2305,10 @@ function confirmedStudentAPINew(){
 		public function notificationList($id=null)
 		{
 		  $data['notifications'] = $this->common_model->getAllNotifications($id);
+		  // Hide drafts / unpublished announcements (status 0) on the public page
+		  $data['notifications'] = array_values(array_filter((array) $data['notifications'], function ($n) {
+		      return !(isset($n['status']) && (string) $n['status'] === '0');
+		  }));
 		  
 			$this->load->view('site/header');
 			$this->load->view('site/notificationList',$data);
@@ -2488,25 +2450,12 @@ function confirmedStudentAPINew(){
 		}
 		public function getPhdDob()
 		{
-			
-			$response = array('status'=>FALSE,'jsondata'=>array());
-			$year=$this->input->post('year'); 
-			$month = $this->input->post('month'); 
-			$date = $this->input->post('date');
-			$dob=$date.'/'.$month.'/'.$year;
-			$condate='01/07/2025';
-			$birthdate = new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $dob))))));
-			$today= new DateTime(date("Y-m-d",  strtotime(implode('-', array_reverse(explode('/', $condate))))));$age = $birthdate->diff($today)->y;
-			
-			if(($age >= 18) && ($age < 50))
-			{
-				$response['status'] = TRUE;
-				//$response['jsondata'] = $data;
-			}else{
-				$response['status'] = FALSE;
-				
-			}
-			echo json_encode($response);
+			// D-01/D-08: shared rules in helpers/a2a_eligibility_helper.php
+			$this->load->helper('a2a_eligibility');
+			$ct = $this->input->post('course_type', TRUE);
+			if ($ct === NULL || $ct === '') { $ct = 4; }
+			list($ok, $msg) = a2a_check_age($this->input->post('date'), $this->input->post('month'), $this->input->post('year'), $ct);
+			echo json_encode(array('status' => $ok, 'message' => $msg, 'jsondata' => array()));
 		}
 
 		public function search()
