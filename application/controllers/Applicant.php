@@ -983,8 +983,18 @@ class Applicant extends CI_Controller
 	}
 
 	/**
-	 * CSRF check for endpoints listed in config csrf_exclude_uris (they skip
-	 * CodeIgniter's automatic check). Same double-submit comparison CI uses.
+	 * Cross-site request check for endpoints listed in config csrf_exclude_uris
+	 * (CodeIgniter skips its own check there).
+	 *
+	 * Passes when EITHER
+	 *  1. the posted token matches the CSRF cookie (CodeIgniter's double-submit), OR
+	 *  2. the request comes from this same site: the browser's Origin header (or,
+	 *     if absent, Referer) has our host. Browsers set these headers themselves
+	 *     and pages on other sites cannot fake them (OWASP "verify origin").
+	 *
+	 * Why both: the Application Form page refreshes the token in the background
+	 * when a course/university is picked, so the form's hidden token can be out
+	 * of date for a genuine applicant. Rule 2 still blocks other websites.
 	 */
 	private function a2aCsrfOk()
 	{
@@ -992,7 +1002,31 @@ class Applicant extends CI_Controller
 		$cookie = $this->config->item('cookie_prefix') . $this->config->item('csrf_cookie_name');
 		$posted = isset($_POST[$name]) ? (string) $_POST[$name] : '';
 		$stored = isset($_COOKIE[$cookie]) ? (string) $_COOKIE[$cookie] : '';
-		return $posted !== '' && $stored !== '' && hash_equals($stored, $posted);
+		if ($posted !== '' && $stored !== '' && hash_equals($stored, $posted)) {
+			return TRUE;
+		}
+		$host = isset($_SERVER['HTTP_HOST']) ? strtolower((string) $_SERVER['HTTP_HOST']) : '';
+		if ($host === '') {
+			return FALSE;
+		}
+		$src = '';
+		if (!empty($_SERVER['HTTP_ORIGIN']) && $_SERVER['HTTP_ORIGIN'] !== 'null') {
+			$src = (string) $_SERVER['HTTP_ORIGIN'];
+		} elseif (!empty($_SERVER['HTTP_REFERER'])) {
+			$src = (string) $_SERVER['HTTP_REFERER'];
+		}
+		if ($src === '') {
+			return FALSE;
+		}
+		$p = parse_url($src);
+		if (empty($p['host']) || empty($p['scheme']) || !in_array(strtolower($p['scheme']), array('http', 'https'), TRUE)) {
+			return FALSE;
+		}
+		$srcHost = strtolower($p['host']) . (isset($p['port']) ? ':' . $p['port'] : '');
+		// Our own host as the browser sees it: request Host header and configured base_url
+		$b = parse_url((string) $this->config->item('base_url'));
+		$baseHost = !empty($b['host']) ? strtolower($b['host']) . (isset($b['port']) ? ':' . $b['port'] : '') : '';
+		return hash_equals($host, $srcHost) || ($baseHost !== '' && hash_equals($baseHost, $srcHost));
 	}
 
 	/**

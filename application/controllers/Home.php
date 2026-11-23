@@ -1213,8 +1213,8 @@ function confirmedStudentAPINew(){
 	
 			//echo "<pre>";print_r($_SERVER);
 		    $data['captcha']= $this->createCaptcha( array(
-		    'min_length' => 7,
-		    'max_length' => 7,
+		    'min_length' => 5, // 7 letters did not fit the 160px image
+		    'max_length' => 5,
 		    'backgrounds' => array(FCPATH.'assets/site/main/images/captcha_bg/white-carbon.png'),
 		    'fonts' => array(FCPATH.'assets/site/main/fonts/captcha_fonts/opensans-semibold-webfont.ttf'),
 		    'characters' => 'ABCDEFGHJKLMNPRSTUVWXYZabcdefghjkmnprstuvwxyz123456789',
@@ -1306,8 +1306,8 @@ function confirmedStudentAPINew(){
 		public function forgotPassword()
 		{
 			$data['captcha'] = $this->createCaptcha( array(
-		    'min_length' => 7,
-		    'max_length' => 7,
+		    'min_length' => 5, // 7 letters did not fit the 160px image
+		    'max_length' => 5,
 		    'backgrounds' => array(FCPATH.'assets/site/main/images/captcha_bg/white-carbon.png'),
 		    'fonts' => array(FCPATH.'assets/site/main/fonts/captcha_fonts/opensans-semibold-webfont.ttf'),
 		    'characters' => 'ABCDEFGHJKLMNPRSTUVWXYZabcdefghjkmnprstuvwxyz123456789',
