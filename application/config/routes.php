@@ -69,3 +69,12 @@ $route['admin/page/view'] = 'Page/viewPage';
 $route['admin/page/add'] = 'Page/addPage';
 $route['admin/page/edit/(:any)'] = 'Page/editPage/$1';
 $route['admin/page/update/(:any)'] = 'Page/update/$1';
+
+// ---------------------------------------------------------------------------
+// Security (Nov 2026): internal helper methods are public in several
+// controllers, so a URL could call them directly - e.g. /home/sendMail/... would
+// send an e-mail from ICCR's mail relay with attacker text. These URLs now go
+// to the normal "page not found" page. The methods still work when called from
+// inside the code. Case-insensitive because PHP method names are.
+// ---------------------------------------------------------------------------
+$route['(?i)(?:[a-z0-9_]+/){1,2}(?:sendmail|createdir|createsfsdir|createcaptcha|strip_quotes|random_num|isvalidcaptch|logindemo1?|__destruct|__construct)(?:/.*)?'] = 'home/not_found';

@@ -8566,9 +8566,26 @@ function educationSfsExists($userid) {
         return $this->db->insert_id();
     }
 
+    /**
+     * Last line of defence against mass assignment (Nov 2026): only the
+     * columns the applicant may edit pass through; insert additionally
+     * keeps the system fields the controller sets (uid, application_no, status).
+     */
+    private function a2aStepOneAllowed(array $data, $insert)
+    {
+        $this->load->library('a2a_application_validator');
+        $allowed = A2a_application_validator::allowedColumns();
+        if ($insert) {
+            $allowed = array_merge($allowed, array('uid', 'application_no', 'status'));
+        }
+        return array_intersect_key($data, array_flip($allowed));
+    }
+
     function updateApplicationStepOne($data, $userid) {
-		//echo "<pre>";print_r($data);die;
-		
+		$data = $this->a2aStepOneAllowed($data, FALSE);
+		if (empty($userid)) {
+			return FALSE;
+		}
 		unset($data['old_passport_file']); 
         $this->db->where('uid', $userid);
 
@@ -8652,7 +8669,10 @@ function educationSfsExists($userid) {
     }
 
     function insertApplicationStepOne($data) {
-		//echo "---------";die;
+		$data = $this->a2aStepOneAllowed($data, TRUE);
+		if (empty($data['uid']) || empty($data['application_no'])) {
+			return FALSE;
+		}
         $date_issue = $data['passport_issue_date'] . '-' . $data['passport_issue_month'] . '-' . $data['passport_issue_year'];
         $date_expiry = $data['passport_expiry_date'] . '-' . $data['passport_expiry_month'] . '-' . $data['passport_expiry_year'];
 		unset($data['csrftestname']);

@@ -1964,7 +1964,3 @@ concat(YEAR(STR_TO_DATE(DATE_FORMAT(FROM_UNIXTIME(created), '%Y-%m-%d'), '%Y-%m-
 		$this->db->close();
 	}
 }
-
-?>
-
-

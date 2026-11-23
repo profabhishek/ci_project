@@ -1,5 +1,4 @@
-
-   <?php
+<?php
    function openUniversityStatus()
     {
 		$appId = $_POST['id'];

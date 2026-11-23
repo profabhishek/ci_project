@@ -32,7 +32,7 @@ class User extends CI_Controller {
         $this->load->model('common_model');
     } 
 
-    public function createdir($email="",$cid="",$year="")
+    private function createdir($email="",$cid="",$year="")
 	{
 		//manoj 21-02-2023
 		$currentyear = date("Y");
@@ -61,7 +61,7 @@ class User extends CI_Controller {
 		}
 		return array('status'=>$status,'dir'=>'./'.$currentyear.'/applications_doc/'.$country."/".$email);
 	}
-	public function createsfsdir($email,$cid,$year)
+	private function createsfsdir($email,$cid,$year)
 	{
 		$currentyearsfs = '2021SFS';
 		$countries = $this->common_model->getCountryById($cid);
@@ -87,6 +87,9 @@ class User extends CI_Controller {
 	
 		public function logindemo()
 	{
+		// Old demo login (no lockout / audit). Closed Nov 2026 - use user/login.
+		show_404();
+		return;
 		try
 		{
 			$this->form_validation->set_rules('username', 'Email', 'required|valid_email');
@@ -248,6 +251,9 @@ class User extends CI_Controller {
 	
 	public function logindemo1()
 	{
+		// Old demo login (no lockout / audit). Closed Nov 2026 - use user/login.
+		show_404();
+		return;
 		try
 		{
 			$this->form_validation->set_rules('username', 'Email', 'required|valid_email');
@@ -426,7 +432,7 @@ class User extends CI_Controller {
     	}
     	return $arr;
 		}
-	 public function sendMail($message_body,$email,$subject,$view)
+	 private function sendMail($message_body,$email,$subject,$view)
    {
    		try{
    	 		$message = '';                
@@ -740,6 +746,11 @@ class User extends CI_Controller {
         }
     }
 
+    // ----- Guidelines acknowledgement (test 1091) -----
+    if ($g('guidelines_ack') !== '1') {
+        $errors[] = 'Please confirm that you have read the Scholarship Guidelines.';
+    }
+
     // ----- Captcha (single-use, case-sensitive) -----
     if ($g('userCaptcha') === '') {
         $errors[] = 'Please enter the captcha text.';
@@ -842,6 +853,13 @@ class User extends CI_Controller {
     }
 }	public function sfs_register()
 	{
+		// The SFS registration page is switched off (Home::sfs_register shows the home page),
+		// so its form handler is closed too. To reopen, set $config['a2a_sfs_registration_open'] = TRUE
+		// AND add the same server-side checks used in register().
+		if ($this->config->item('a2a_sfs_registration_open') !== TRUE) {
+			show_404();
+			return;
+		}
 		try{
 			$this->form_validation->set_rules('country', 'Country', 'required');
 	        $this->form_validation->set_rules('student_name', 'Name', 'required');
@@ -1379,50 +1397,51 @@ class User extends CI_Controller {
 	
 public function uploadPassportAjax()
 {
-
-header('Content-Type: application/json');
-
-$user_data = $this->session->userdata('user_data');
-		$userId = $user_data['userid'];
-
-$uploadPath = FCPATH.'assets/img/register/';
-
-if(!is_dir($uploadPath)){
-mkdir($uploadPath,0777,true);
-}
-
-$config['upload_path'] = $uploadPath;
-$config['allowed_types'] = 'jpg|jpeg|png';
-$config['max_size'] = 2048;
-$config['encrypt_name'] = TRUE;
-
-$this->load->library('upload',$config);
-
-if(!$this->upload->do_upload('passport_file')){
-
-exit(json_encode([
-'status'=>0,
-'message'=>strip_tags($this->upload->display_errors()),
-'new_token'=>$this->security->get_csrf_hash()
-]));
-
-}else{
-
-$data = $this->upload->data();
-
-$imagePath = 'assets/img/register/'.$data['file_name'];
-
-$this->db->where('id',$userId);
-$this->db->update('iccr_users',['passport_file'=>$imagePath]);
-
-exit(json_encode([
-'status'=>1,
-'image_url'=>base_url($imagePath),
-'new_token'=>$this->security->get_csrf_hash()
-]));
-
-}
-
+	// Hardened Nov 2026: login + POST + CSRF required, strict image check,
+	// random file name, old file removed only from the passport folder.
+	header('Content-Type: application/json; charset=utf-8');
+	$out = function ($ok, $msg, $extra = array()) {
+		echo json_encode(array_merge(array('status' => $ok ? 1 : 0, 'message' => $msg,
+			'new_token' => $this->security->get_csrf_hash()), $extra));
+	};
+	$user_data = $this->session->userdata('user_data');
+	if (empty($user_data['userid'])) {
+		$this->output->set_status_header(401);
+		$out(FALSE, 'Your session has expired. Please log in again.');
+		return;
+	}
+	if ($this->input->method(TRUE) !== 'POST') {
+		$out(FALSE, 'Invalid request.');
+		return;
+	}
+	$userId = (int) $user_data['userid'];
+	$pf = isset($_FILES['passport_file']) ? $_FILES['passport_file'] : null;
+	$err = iccr_validate_image_upload($pf, 1048576);
+	if ($err !== '') {
+		$out(FALSE, 'Passport image ' . $err);
+		return;
+	}
+	$dir = FCPATH . 'assets/img/register/';
+	if (!is_dir($dir)) {
+		mkdir($dir, 0755, TRUE);
+	}
+	$info = getimagesize($pf['tmp_name']);
+	$name = bin2hex(random_bytes(16)) . (($info[2] === IMAGETYPE_PNG) ? '.png' : '.jpg');
+	if (!iccr_safe_move_upload($pf, $dir . $name)) {
+		$out(FALSE, 'Passport image could not be stored. Please try again.');
+		return;
+	}
+	$row = $this->db->select('passport_file')->from('iccr_users')->where('id', $userId)->get()->row_array();
+	$old = $row ? (string) $row['passport_file'] : '';
+	$this->db->where('id', $userId)->update('iccr_users', array('passport_file' => 'assets/img/register/' . $name));
+	if ($old !== '' && preg_match('#^assets/img/register/[A-Za-z0-9._-]+$#', $old)) {
+		$full = realpath(FCPATH . $old);
+		$base = realpath($dir);
+		if ($full && $base && strpos($full, $base . DIRECTORY_SEPARATOR) === 0 && is_file($full)) {
+			@unlink($full);
+		}
+	}
+	$out(TRUE, 'Passport image uploaded.', array('image_url' => base_url('assets/img/register/' . $name)));
 }
 
 	public function __destruct() {

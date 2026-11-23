@@ -430,7 +430,7 @@
                      placeholder="yy-mm-dd"
                      id="dob"
                      name="dob"
-                     value="<?php if (!empty($registerData)) echo $registerData[0]['date_of_birth']; ?>" />
+                     value="<?php if (!empty($registerData)) echo html_escape($registerData[0]['date_of_birth']); ?>" />
                </div>
               <div class="col-xs-12 col-sm-3 col-md-3 pdleft">
                   <label title="Please Enter Date of Birth"
@@ -475,7 +475,7 @@
                      onkeypress="return (event.charCode > 64 && 
                      event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)"
                      placeholder="City"
-                     value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['city']; ?>" />
+                     value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['city']); ?>" />
                </div>
                <div class="col-xs-12 col-sm-3 col-md-3 pdleft">
                   <label title="Birth Country"
@@ -545,7 +545,7 @@
     placeholder="Passport No"
     id="passport_no"
     pattern="^[a-zA-Z0-9 ]+$"
-    value="<?php if (!empty($registerData)) echo $registerData[0]['passport_no']; ?>"
+    value="<?php if (!empty($registerData)) echo html_escape($registerData[0]['passport_no']); ?>"
     <?php if (!empty($registerData) && !empty($registerData[0]['passport_file'])) echo "readonly"; ?>
 />
 <?php
@@ -615,7 +615,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                      onkeypress="return (event.charCode > 64 && 
                      event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)"
                      title="Mention the city and country where your passport was issued."
-                     value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['passport_issue_place']; ?>" />
+                     value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['passport_issue_place']); ?>" />
                </div>
                <div class="col-xs-12 col-sm-3 col-md-3">
                   <label for="comment">Passport Issue Country<span
@@ -657,7 +657,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                      event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)"
                      pattern="^[a-zA-Z ]+$"
                      title="Mention the city and country where your passport was issued."
-                     value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['passport_issue_place']; ?>" />
+                     value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['passport_issue_place']); ?>" />
                </div>
                <div class="col-xs-12 col-sm-3 col-md-3">
                   <label for="comment">Passport Issue Country<span
@@ -1014,7 +1014,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                id="postal_address"
                name="postal_address"
                placeholder="Postal Address"
-               required="true"><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['postal_address']; ?></textarea>
+               required="true"><?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['postal_address']); ?></textarea>
          </div>
       </div>
       <div class="formrow">
@@ -1029,7 +1029,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="City"
                id="postal_address_city"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['postal_address_city']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['postal_address_city']); ?>">
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <input name="postal_address_state"
@@ -1042,7 +1042,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="State"
                id="postal_address_state"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['postal_address_state']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['postal_address_state']); ?>">
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <select id="postal_address_country"
@@ -1076,7 +1076,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="Zipcode"
                id="postal_address_pincode"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['postal_address_pincode']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['postal_address_pincode']); ?>">
          </div>
       </div>
       <div class="formrow">
@@ -1084,7 +1084,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
             <label>11. Mobile Number <span class="text-red">*</span></label>
             <input type="text"
                class="form-control"
-               value="<?php if (!empty($registerData)) echo $registerData[0]['mobile_number']; ?>"
+               value="<?php if (!empty($registerData)) echo html_escape($registerData[0]['mobile_number']); ?>"
                id="phone_number"
                pattern="^[0-9\+]+$"
                title="Provide your personal mobile number (with country code). "
@@ -1095,15 +1095,15 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                maxlength="20">
             <!-- <small><b>You&nbsp;want&nbsp;to&nbsp;use&nbsp;same&nbsp;No&nbsp;on&nbsp;WhatsApp</b>&nbsp;<input
                type="checkbox"
-               value="<?php //if (!empty($registerData)) echo $registerData[0]['mobile_number']; ?>"></small> -->
+               value="<?php //if (!empty($registerData)) echo html_escape($registerData[0]['mobile_number']); ?>"></small> -->
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <label>12. WhatsApp Number <span class="text-red">*</span></label>
             <input name="whatsapp_number"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['whatsapp_number']; ?>"
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['whatsapp_number']); ?>"
                pattern="^[0-9\+]+$"
                title="Enter your active WhatsApp number (with country code)."
-               type="number"
+               type="tel" inputmode="tel" maxlength="16"
                class="form-control"
                placeholder="Enter your active WhatsApp number (with country code)."
                maxlength="20"
@@ -1119,7 +1119,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                class="form-control"
                placeholder="Email"
                id="email"
-               value="<?php if (!empty($registerData)) echo $registerData[0]['email_id']; ?>">
+               value="<?php if (!empty($registerData)) echo html_escape($registerData[0]['email_id']); ?>">
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <label for="comment">14. Citizenship/Local/Domestic Number<span class="text-red">*</span></label>
@@ -1132,7 +1132,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                title="Mention your Local/Domestic Number that is given to the citizen of your country."
                placeholder="Unique ID"
                required="true"
-               value="<?php if (!empty($registerData)) echo $registerData[0]['unique_id']; ?>" />
+               value="<?php if (!empty($registerData)) echo html_escape($registerData[0]['unique_id']); ?>" />
          </div>
       </div>
       
@@ -1161,7 +1161,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               id="father_number"
               name="father_number"
               placeholder="Eg. +91**********"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['father_number']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['father_number']); ?>">
         </div>
 
         <div class="col-xs-12 col-sm-3 col-md-4">
@@ -1170,7 +1170,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               name="father_email"
               class="form-control"
               id="father_email"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['father_email']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['father_email']); ?>">
         </div>
       </div>
       <?php } ?>
@@ -1195,7 +1195,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               id="mother_number"
               name="mother_number"
               placeholder="Eg. +91**********"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['mother_number']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['mother_number']); ?>">
         </div>
 
         <div class="col-xs-12 col-sm-3 col-md-4">
@@ -1204,7 +1204,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               name="mother_email"
               class="form-control"
               id="mother_email"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['mother_email']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['mother_email']); ?>">
         </div>
       </div>
       <?php } ?>
@@ -1232,7 +1232,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               id="guardian_number"
               name="guardian_number"
               placeholder="Eg. +91**********"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['guardian_number']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['guardian_number']); ?>">
         </div>
 
         <div class="col-xs-12 col-sm-3 col-md-4">
@@ -1241,7 +1241,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
               name="guardian_email"
               class="form-control"
               id="guardian_email"
-              value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['guardian_email']; ?>">
+              value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['guardian_email']); ?>">
         </div>
       </div>
       <?php } ?>
@@ -1257,7 +1257,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                id="guardian_address"
                name="guardian_address"
                placeholder="Postal Address"
-               required="true"><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['guardian_address']; ?></textarea>
+               required="true"><?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['guardian_address']); ?></textarea>
          </div>
       </div>
       <div class="formrow">
@@ -1272,7 +1272,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="City"
                id="gardiuan_address_city"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_city']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['gardiuan_address_city']); ?>">
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <input name="gardiuan_address_state"
@@ -1285,7 +1285,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="State"
                id="gardiuan_address_state"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_state']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['gardiuan_address_state']); ?>">
          </div>
          <div class="col-xs-12 col-sm-3 col-md-3">
             <select id="gardiuan_address_country"
@@ -1318,7 +1318,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="Zipcode"
                id="gardiuan_address_pincode"
                required="true"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gardiuan_address_pincode']; ?>">
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['gardiuan_address_pincode']); ?>">
          </div>
       </div>
      
@@ -1459,7 +1459,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="TOEFL"
                id="toefl_score"
                name="toefl_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['toefl_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['toefl_score']); ?>" />
            
          </div>
       </div>
@@ -1472,7 +1472,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="IELTS"
                id="ielts_score"
                name="ielts_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['ielts_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['ielts_score']); ?>" />
             
          </div>
       </div>
@@ -1485,7 +1485,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="DUOLINGO"
                id="duolingo_score"
                name="duolingo_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['duolingo_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['duolingo_score']); ?>" />
             
          </div>
       </div>
@@ -1506,7 +1506,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="TOEFL"
                id="toefl_score"
                name="toefl_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['toefl_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['toefl_score']); ?>" />
             
          </div>
          <?php
@@ -1523,7 +1523,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="IELTS"
                id="ielts_score"
                name="ielts_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['ielts_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['ielts_score']); ?>" />
           
          </div>
          <?php
@@ -1540,7 +1540,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="DUOLINGO"
                id="duolingo_score"
                name="duolingo_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['duolingo_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['duolingo_score']); ?>" />
            
          </div>
       </div>
@@ -1581,7 +1581,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                   placeholder="Write an essay in English"
                   id="english_test_essay"
                   name="english_test_essay"
-                  required><?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['english_test_essay']; ?></textarea>
+                  required><?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['english_test_essay']); ?></textarea>
             </div>
             <div class="col-sm-6"><span id="charlimit"><strong class="words-left">500 words
                left</strong></span>
@@ -1787,7 +1787,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="GMAT"
                id="gmat_score"
                name="gmat_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gmat_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['gmat_score']); ?>" />
          </div>
          <?php
             } else {
@@ -1801,7 +1801,7 @@ $passport_file = !empty($registerData[0]['passport_file']) ? $registerData[0]['p
                placeholder="GMAT"
                id="gmat_score"
                name="gmat_score"
-               value="<?php if (!empty($applicaitonStepOne)) echo $applicaitonStepOne[0]['gmat_score']; ?>" />
+               value="<?php if (!empty($applicaitonStepOne)) echo html_escape($applicaitonStepOne[0]['gmat_score']); ?>" />
          </div>
          <?php
             }
@@ -2247,7 +2247,7 @@ if (count($applicaitonStepOne) > 0 && !empty($applicaitonStepOne[0]['nomenclatur
                      ?>
                   <div
                      class="name-sec col-xs-2 col-sm-2 col-md-2 pull-right mt-2">
-                     <a href="<?php echo site_url(); ?>applicant/view_personal_info?appno=<?php echo $applicaitonStepOne[0]['application_no']; ?>"
+                     <a href="<?php echo site_url(); ?>applicant/view_personal_info?appno=<?php echo html_escape($applicaitonStepOne[0]['application_no']); ?>"
                         target="_blank"
                         class="form-control sbmt">Preview</a>
                   </div>
@@ -2599,7 +2599,24 @@ var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
     if (e.target && /^passport_expiry_(date|month|year)$/.test(e.target.id)) check();
   });
   if (window.jQuery) { jQuery(document).on('change', '#passport_expiry_date,#passport_expiry_month,#passport_expiry_year', check); }
+  // Essay (item 18): 50 to 500 words - the server checks the same limits
+  function essayOk() {
+    var t = document.getElementById('english_test_essay');
+    if (!t) return true;
+    var words = (t.value.replace(/<[^>]*>/g, ' ').match(/[A-Za-z0-9\u00C0-\u024F]+(?:['\u2019-][A-Za-z0-9\u00C0-\u024F]+)*/g) || []).length;
+    var msg = '';
+    if (words < 50) { msg = 'The essay must have at least 50 words (it has ' + words + ').'; }
+    else if (words > 500) { msg = 'The essay must not be more than 500 words (it has ' + words + ').'; }
+    var note = document.getElementById('essay_note');
+    if (!note) { note = document.createElement('p'); note.id = 'essay_note'; note.setAttribute('role', 'alert'); note.style.color = 'red'; t.parentNode.appendChild(note); }
+    note.textContent = msg;
+    t.setAttribute('aria-invalid', msg ? 'true' : 'false');
+    return msg === '';
+  }
   var f = document.getElementById('form-process-personal-info');
-  if (f) f.addEventListener('submit', function (e) { if (!check()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  if (f) f.addEventListener('submit', function (e) {
+    var ok = check() && essayOk();
+    if (!ok) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
 })();
 </script>

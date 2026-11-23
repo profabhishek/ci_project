@@ -1030,9 +1030,9 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 									<div id="phyfit" style="display:none;">	
 									<label for="inputEmail3" class="col-sm-2 control-label  pdright pdleft">Medical Fitness Certificate</label>
 									<div class="col-sm-3">
-                                        <input type="file" name="file" class="form-control">
+                                        <input type="file" id="medical_file" name="file" accept=".pdf,application/pdf" class="form-control">
 										<p style="color: red; font-size: 12px; margin-top: 5px;">
-    * Please upload file in PDF format only, maximum size 200KB
+    * PDF only, between 5 KB and 200 KB
 </p>
                                     </div>
                                     
@@ -1048,11 +1048,9 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
 document.getElementById("scholar_is_accept").addEventListener("change", function () {
     var phyfit = document.getElementById("phyfit");
     
-    if (this.value === "1") { 
-        phyfit.style.display = "block";
-    } else {
-        phyfit.style.display = "none";
-    }
+    var show = this.value === "1";
+    phyfit.style.display = show ? "block" : "none";
+    document.getElementById("medical_file").required = show;
 });
 </script>
 

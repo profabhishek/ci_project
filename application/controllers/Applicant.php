@@ -950,137 +950,175 @@ class Applicant extends CI_Controller
 	}
 	public function applicant_education_info()
 	{
-		//echo "<pre>";
-		//print_r($_POST);die;
-		// HTTP_REFERER isn't always sent by the browser (privacy settings, direct
-		// requests, some mobile browsers), so reading it directly was throwing an
-		// "Undefined array key" warning; falls back to the dashboard if missing.
-		$actual_link = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : site_url().'applicant/dashboard';
+		// Old (non-AJAX) save path for the Application Form. Same validated
+		// save as applicant_education_info_save(); then shows the next step.
+		$actual_link = site_url() . 'applicant/applicant_personal_info';
 		try {
-			$year = date('Y');
 			$user_data = $this->session->userdata('user_data');
-			//echo "<pre>";
-			//print_r($user_data);die;
-			$userId = $user_data['userid'];
-			$appno = '';
-			if (isset($_POST['application_no'])) {
-				$appno = $_POST['application_no'];
+			if (empty($user_data['userid'])) {
+				redirect(site_url());
+				return;
 			}
+			$userId = $user_data['userid'];
 			if (!empty($_POST)) {
-
-				//$clean = $this->security->xss_clean($this->input->post(NULL, TRUE));
-                $cleanData = $this->security->xss_clean($this->input->post(NULL, TRUE));
-			  $clean =  $this->strip_quotes($cleanData);
-				//var_dump($userInfo);die;
-				unset($clean['step-one-application']);
-				// Server-side re-check of DOB + passport validity (cannot be skipped from the browser)
-				$guardMsg = $this->a2aGuardStepOne($clean, $userId);
-				if ($guardMsg !== '') {
-					if ($this->input->is_ajax_request()) {
-						echo json_encode(array('status' => FALSE, 'message' => $guardMsg));
-					} else {
-						$this->session->set_flashdata('message_type', 'error');
-						$this->session->set_flashdata('error', html_escape($guardMsg));
-						redirect(site_url() . 'applicant/applicant_personal_info');
-					}
+				list($ok, $msg) = $this->a2aSaveStepOne($userId);
+				if (!$ok) {
+					$this->session->set_flashdata('message_type', 'error');
+					$this->session->set_flashdata('error', $msg);
+					redirect($actual_link);
 					return;
 				}
-				if ($this->common_model->applicationExists($userId)) {
-					//echo "sadasdsad";die;
-					$choice_one = $clean['universty_choice'];
-					$choice_two = $clean['universty_choice_two'];
-					$choice_three = $clean['universty_choice_three'];
-					$choice_fourth = $clean['universty_choice_fourth'];
-					$choice_fifth = $clean['universty_choice_fifth'];
-					$stateId = 0;
-					$stateIdOne = 0;
-					$stateIdtwo = 0;
-					$stateIdthree = 0;
-					$stateIdfour = 0;
-					if ($choice_one > 0) {
-						$stateId = $this->common_model->getUniversityStateById($choice_one);
-						$clean['university_choice_one_state'] = $stateId[0]['state'];
-					}
-					if ($choice_two > 0) {
-						$stateIdOne = $this->common_model->getUniversityStateById($choice_two);
-						$clean['university_choice_two_state'] = $stateIdOne[0]['state'];
-					}
-					if ($choice_three > 0) {
-						$stateIdtwo = $this->common_model->getUniversityStateById($choice_three);
-						$clean['university_choice_three_state'] = $stateIdtwo[0]['state'];
-					}
-					if ($choice_fourth > 0) {
-						$stateIdthree = $this->common_model->getUniversityStateById($choice_fourth);
-						$clean['university_choice_fourth_state'] = $stateIdthree[0]['state'];
-					}
-					if ($choice_fifth > 0) {
-						$stateIdfour = $this->common_model->getUniversityStateById($choice_fifth);
-						$clean['university_choice_fifth_state'] = $stateIdfour[0]['state'];
-					}
-					$this->common_model->updateApplicationStepOne($clean, $userId);
-				} else {
-					$checkyear = $this->user_model->checkYear($clean['passport_no'], $year);
-					//echo "<pre>";
-					//var_dump($checkyear);die;
-					$userInfo = $this->user_model->checkPassportYear($clean['passport_no'], $year);
-					//var_dump($userInfo);die;
-					$clean['status'] = 'Draft';
-					$choice_one = $clean['universty_choice'];
-					$choice_two = $clean['universty_choice_two'];
-					$choice_three = $clean['universty_choice_three'];
-					$choice_fourth = $clean['universty_choice_fourth'];
-					$choice_fifth = $clean['universty_choice_fifth'];
-					$stateId = 0;
-					$stateIdOne = 0;
-					$stateIdtwo = 0;
-					$stateIdthree = 0;
-					$stateIdfour = 0;
-					//var_dump($userInfo);die;
-					if ($userInfo) {
-						$this->session->set_flashdata('message_type', 'error');
-						$this->session->set_flashdata('error', 'Application already exists this passport number');
-						redirect($actual_link);
-						return false;
-					}
-					if ($choice_one > 0) {
-						$stateId = $this->common_model->getUniversityStateById($choice_one);
-						$clean['university_choice_one_state'] = $stateId[0]['state'];
-					}
-					if ($choice_two > 0) {
-						$stateIdOne = $this->common_model->getUniversityStateById($choice_two);
-						$clean['university_choice_two_state'] = $stateIdOne[0]['state'];
-					}
-					if ($choice_three > 0) {
-						$stateIdtwo = $this->common_model->getUniversityStateById($choice_three);
-						$clean['university_choice_three_state'] = $stateIdtwo[0]['state'];
-					}
-					if ($choice_fourth > 0) {
-						$stateIdthree = $this->common_model->getUniversityStateById($choice_fourth);
-						$clean['university_choice_fourth_state'] = $stateIdthree[0]['state'];
-					}
-					if ($choice_fifth > 0) {
-						$stateIdfour = $this->common_model->getUniversityStateById($choice_fifth);
-						$clean['university_choice_fifth_state'] = $stateIdfour[0]['state'];
-					}
-					$clean['uid'] = $userId;
-					$clean['application_no'] = $appno;
-					$id = $this->common_model->insertApplicationStepOne($clean);
-				}
 			}
-			$applicationData = $this->common_model->getApplicationStepOne($userId);
 			$data['apply_course_type'] = $user_data['apply_course_type'];
-            $data['applicaitonStepOne'] = $applicationData;
+			$data['applicaitonStepOne'] = $this->common_model->getApplicationStepOne($userId);
 			$data['applicaitonStepTwo'] = $this->common_model->getApplicationStepTwo($userId);
-			//$this->load->view('site/header');
 			$this->load->view('site/header', array('include' => true));
-			$data = $this->load->view('site/applicant_educaion_info', $data, TRUE);
-			echo $data;
-			//$this->load->view('site/footer');	
+			echo $this->load->view('site/applicant_educaion_info', $data, TRUE);
 		} catch (Exception $e) {
+			log_message('error', 'applicant_education_info: ' . $e->getMessage());
 			$this->session->set_flashdata('message_type', 'error');
 			$this->session->set_flashdata('error', 'Internal Server Error! Try After Some Time.');
 			redirect($actual_link);
 		}
+	}
+
+	/**
+	 * CSRF check for endpoints listed in config csrf_exclude_uris (they skip
+	 * CodeIgniter's automatic check). Same double-submit comparison CI uses.
+	 */
+	private function a2aCsrfOk()
+	{
+		$name = $this->config->item('csrf_token_name');
+		$cookie = $this->config->item('cookie_prefix') . $this->config->item('csrf_cookie_name');
+		$posted = isset($_POST[$name]) ? (string) $_POST[$name] : '';
+		$stored = isset($_COOKIE[$cookie]) ? (string) $_COOKIE[$cookie] : '';
+		return $posted !== '' && $stored !== '' && hash_equals($stored, $posted);
+	}
+
+	/**
+	 * Validated save of Application Form step one (Nov 2026 security fix).
+	 * Returns array(bool ok, string message). Nothing is written unless
+	 * every check passes.
+	 */
+	private function a2aSaveStepOne($userId)
+	{
+		if ($this->input->method(TRUE) !== 'POST') {
+			return array(FALSE, 'Invalid request.');
+		}
+		if (!$this->a2aCsrfOk()) {
+			return array(FALSE, 'Your form has expired. Please reload the page and try again.');
+		}
+		$in = $this->security->xss_clean($this->input->post(NULL, FALSE));
+		if (!is_array($in)) {
+			return array(FALSE, 'Invalid request.');
+		}
+
+		// 1. Eligibility (registered DOB + passport validity)
+		$guardCopy = $in;
+		$guardMsg = $this->a2aGuardStepOne($guardCopy, $userId);
+		if ($guardMsg !== '') {
+			return array(FALSE, $guardMsg);
+		}
+
+		// 2. Preferences: arrays (current form) or single fields (older form)
+		$pairs = array();
+		if (isset($in['nomenclature']) && is_array($in['nomenclature'])) {
+			$unis = (isset($in['universty_choice']) && is_array($in['universty_choice'])) ? $in['universty_choice'] : array();
+			foreach (array_values($in['nomenclature']) as $i => $n) {
+				$pairs[] = array($n, isset(array_values($unis)[$i]) ? array_values($unis)[$i] : '');
+			}
+		} else {
+			foreach (array('', '_two', '_three', '_fourth', '_fifth') as $sfx) {
+				$pairs[] = array(
+					isset($in['nomenclature' . $sfx]) ? $in['nomenclature' . $sfx] : '',
+					isset($in['universty_choice' . $sfx]) ? $in['universty_choice' . $sfx] : '',
+				);
+			}
+		}
+
+		// 3. Field-by-field validation into an allowlisted record
+		$this->load->library('a2a_application_validator');
+		$rec = array();
+		$errors = $this->a2a_application_validator->validateStepOne($in, $pairs, $userId, $rec);
+
+		// 4. Passport image (optional on this form) - checked before any write
+		$newPassport = null;
+		$pf = isset($_FILES['passport_file']) ? $_FILES['passport_file'] : null;
+		if ($pf && $pf['error'] !== UPLOAD_ERR_NO_FILE && $pf['name'] !== '') {
+			$imgErr = iccr_validate_image_upload($pf, 1048576);
+			if ($imgErr !== '') {
+				$errors[] = 'Passport image: ' . $imgErr;
+			} else {
+				$newPassport = $pf;
+			}
+		}
+		if (!empty($errors)) {
+			return array(FALSE, implode(' ', $errors));
+		}
+
+		// 5. Write
+		$this->db->trans_start();
+		if ($this->common_model->applicationExists($userId)) {
+			$this->common_model->updateApplicationStepOne($rec, $userId);
+		} else {
+			$rec['status'] = 'Draft';
+			$rec['uid'] = $userId;
+			$rec['application_no'] = $this->a2aNewApplicationNo(isset($in['application_no']) ? $in['application_no'] : '');
+			$this->common_model->insertApplicationStepOne($rec);
+		}
+		$this->db->trans_complete();
+		if ($this->db->trans_status() === FALSE) {
+			log_message('error', 'Step one save failed for uid ' . (int) $userId);
+			return array(FALSE, 'Could not save your application. Please try again.');
+		}
+
+		// 6. Passport image: store under a random name, then remove the old
+		//    file (path read from the database, never from the browser).
+		if ($newPassport) {
+			$dir = FCPATH . 'assets/img/register/';
+			if (!is_dir($dir)) {
+				mkdir($dir, 0755, TRUE);
+			}
+			$info = getimagesize($newPassport['tmp_name']);
+			$ext = ($info && $info[2] === IMAGETYPE_PNG) ? 'png' : 'jpg';
+			$name = bin2hex(random_bytes(16)) . '.' . $ext;
+			if (!iccr_safe_move_upload($newPassport, $dir . $name)) {
+				return array(FALSE, 'Application saved, but the passport image could not be stored. Please upload it again.');
+			}
+			$reg = $this->common_model->getUserData($userId);
+			$old = !empty($reg[0]['passport_file']) ? $reg[0]['passport_file'] : '';
+			$this->user_model->updateUserPassport(array('userid' => $userId, 'passport_file' => 'assets/img/register/' . $name));
+			if ($old !== '' && preg_match('#^assets/img/register/[A-Za-z0-9._-]+$#', $old)) {
+				$full = realpath(FCPATH . $old);
+				$base = realpath($dir);
+				if ($full && $base && strpos($full, $base . DIRECTORY_SEPARATOR) === 0 && is_file($full)) {
+					@unlink($full);
+				}
+			}
+		}
+		return array(TRUE, 'Success');
+	}
+
+	/** The logged-in applicant's own application number (from the database). */
+	private function a2aOwnApplicationNo($userId)
+	{
+		$row = $this->db->select('application_no')->from('iccr_student_application_details')
+			->where('uid', (int) $userId)->limit(1)->get()->row_array();
+		return $row ? $row['application_no'] : '';
+	}
+
+	/** Application number for a new application: keep the one shown on the form if valid and unused, else make a new one. */
+	private function a2aNewApplicationNo($posted)
+	{
+		$posted = strtoupper(trim((string) $posted));
+		if (preg_match('/^[A-Z]{2}[0-9]{13}$/', $posted)
+			&& $this->db->where('application_no', $posted)->count_all_results('iccr_student_application_details') === 0) {
+			return $posted;
+		}
+		do {
+			$no = $this->random_num(15);
+		} while ($this->db->where('application_no', $no)->count_all_results('iccr_student_application_details') > 0);
+		return $no;
 	}
 
 	/**
@@ -1131,262 +1169,23 @@ class Applicant extends CI_Controller
 
 	public function applicant_education_info_save()
 	{
-
+		// AJAX save of the Application Form (step one). Always answers JSON.
+		header('Content-Type: application/json; charset=utf-8');
 		try {
-			$year = date('Y');
 			$user_data = $this->session->userdata('user_data');
-			$user_country = $user_data['user_country'];
-			$userId = $user_data['userid'];
-			$appno = $_POST['application_no'];
-			
-			$nomenclature = $this->input->post('nomenclature');
-			$university   = $this->input->post('universty_choice');
-			// 4th/5th (and sometimes fewer) choices are legitimately optional -
-			// initialize all five pairs upfront so whichever ones the applicant
-			// didn't fill in stay safely blank instead of triggering "Undefined
-			// variable" further down where they're read unconditionally.
-			$nomenclature1 = $nomenclature2 = $nomenclature3 = $nomenclature4 = $nomenclature5 = '';
-			$university1 = $university2 = $university3 = $university4 = $university5 = '';
-
-			if (!empty($nomenclature) && !empty($university)) {
-                 $i=1;
-				foreach ($nomenclature as $key => $value) {
-						
-					if (!empty($value) && !empty($university[$key])) {
-							if($i=='1'){$nomenclature1= $value ; $university1=$university[$key];}
-							if($i=='2'){$nomenclature2= $value ; $university2=$university[$key];}
-							if($i=='3'){$nomenclature3= $value ; $university3=$university[$key];}
-							if($i=='4'){$nomenclature4= $value ; $university4=$university[$key];}
-							if($i=='5'){$nomenclature5= $value ; $university5=$university[$key];}
-					}
-
-					
-						$i++;			
-						
-					}
-				}
-
-//print_r($_POST);die; 
-			
-			//if (isset($_POST['application_no'])) {
-				//$clean = $this->security->xss_clean($this->input->post(NULL, TRUE));
-               $cleanData = $this->security->xss_clean($this->input->post(NULL, TRUE));
-			  $clean =  $this->strip_quotes($cleanData);
-				unset($clean['step-one-application']);
-				// Server-side re-check of DOB + passport validity (cannot be skipped from the browser)
-				$guardMsg = $this->a2aGuardStepOne($clean, $userId);
-				if ($guardMsg !== '') {
-					if ($this->input->is_ajax_request()) {
-						echo json_encode(array('status' => FALSE, 'message' => $guardMsg));
-					} else {
-						$this->session->set_flashdata('message_type', 'error');
-						$this->session->set_flashdata('error', html_escape($guardMsg));
-						redirect(site_url() . 'applicant/applicant_personal_info');
-					}
-					return;
-				}
-				if ($this->common_model->applicationExists($userId)) {
-
-					$choice_one = $university1;
-
-					$choice_two = $university2;
-
-					$choice_three = $university3;
-
-					$choice_fourth = $university4;
-
-					$choice_fifth = $university5;
-
-					$stateId = 0;
-					$stateIdOne = 0;
-					$stateIdtwo = 0;
-					$stateIdthree = 0;
-					$stateIdfour = 0;
-
-					if ($choice_one > 0) {
-						$stateId = $this->common_model->getUniversityStateById($choice_one);
-
-						$clean['university_choice_one_state'] = $stateId[0]['state'];
-					}
-					if ($choice_two > 0) {
-						$stateIdOne = $this->common_model->getUniversityStateById($choice_two);
-
-						$clean['university_choice_two_state'] = $stateIdOne[0]['state'];
-					}
-					if ($choice_three > 0) {
-						$stateIdtwo = $this->common_model->getUniversityStateById($choice_three);
-
-						$clean['university_choice_three_state'] = $stateIdtwo[0]['state'];
-					}
-					if ($choice_fourth > 0) {
-						$stateIdthree = $this->common_model->getUniversityStateById($choice_fourth);
-						$clean['university_choice_fourth_state'] = $stateIdthree[0]['state'];
-					}
-					if ($choice_fifth > 0) {
-						$stateIdfour = $this->common_model->getUniversityStateById($choice_fifth);
-						$clean['university_choice_fifth_state'] = $stateIdfour[0]['state'];
-					}
-					$clean['nomenclature'] = $nomenclature1;
-					$clean['nomenclature_two'] = $nomenclature2;
-					$clean['nomenclature_three'] = $nomenclature3;
-					$clean['nomenclature_fourth'] = $nomenclature4;
-					$clean['nomenclature_fifth'] = $nomenclature5;
-					$clean['universty_choice'] = $university1;
-					$clean['universty_choice_two'] = $university2;
-					$clean['universty_choice_three'] = $university3;
-					$clean['universty_choice_fourth'] = $university4;
-					$clean['universty_choice_fifth'] = $university5;
-					$passport_file_path = $this->input->post('old_passport_file')??'';
-					//print_r($clean);die;
-					
-					$st = $this->common_model->updateApplicationStepOne($clean, $userId);
-					
-				//var_dump($st);die;
-					//print_r('A1');
-					if ($st) {
-						echo json_encode(array('status' => TRUE, "message" => "Success"));
-						
-						$passportFile = '';
-
-						$passport_file_path = $this->input->post('old_passport_file')??'';
-
-						if (isset($_FILES['passport_file']) && !empty($_FILES['passport_file']['name'])) {
-							//print_r('A2');
-							$uploadPath = FCPATH . 'assets/img/register/';
-							if (!is_dir($uploadPath)) {
-								mkdir($uploadPath, 0777, true);
-							}
-							$config['upload_path']   = $uploadPath;
-							$config['allowed_types'] = 'jpg|jpeg|png';
-							$config['max_size']      = 2048; // 2 MB
-							$config['encrypt_name']  = true;
-
-
-							$this->load->library('upload');
-							$this->upload->initialize($config);
-							
-							
-							if (!$this->upload->do_upload('passport_file')) {
-							$this->session->set_flashdata('error', strip_tags($this->upload->display_errors()));
-							redirect($_SERVER['HTTP_REFERER']);
-							return;
-						} else {
-							$uploadData = $this->upload->data();
-							$passport_file_path = 'assets/img/register/' . $uploadData['file_name'];
-
-							$old_passport_file = $this->input->post('old_passport_file')??'';
-							if (!empty($old_passport_file) && file_exists(FCPATH . $old_passport_file)) {
-								@unlink(FCPATH . $old_passport_file);
-							}
-						}
-					}	
-
-
-								$data1['passport_file'] = $passport_file_path;
-							}
-						
-						
-
-						$data1['userid'] = $userId;
-
-						$this->user_model->updateUserPassport($data1);
-	
-						
-					/*} else {
-						echo json_encode(array('status' => FALSE, "message" => "Error1"));
-						//$this->load->view('site/footer');	
-					}*/
-				} else {
-					$checkyear = $this->user_model->checkYear($clean['passport_no'], $year);
-
-					$uniqueId = $clean['unique_id'];
-					if ($user_country == 75 || $user_country == 10) {
-						$userInfo = $this->user_model->checkUniqueIdYear($uniqueId, $year);
-					} else {
-						$userInfo = $this->user_model->checkPassportYear($clean['passport_no'], $year);
-					}
-
-					//var_dump($userInfo);die;
-					$clean['status'] = 'Draft';
-					$choice_one = $university1;
-
-					$choice_two = $university2;
-
-					$choice_three = $university3;
-
-					$choice_fourth = $university4;
-
-					$choice_fifth = $university5;
-					$stateId = 0;
-					$stateIdOne = 0;
-					$stateIdtwo = 0;
-					$stateIdthree = 0;
-					$stateIdfour = 0;
-					//var_dump($userInfo);die;
-					/* if($userInfo){
-							$this->session->set_flashdata('message_type', 'error');
-							$this->session->set_flashdata('error','Application already exists this passport number');
-							redirect($actual_link);
-							return false;
-			            } */
-					/*if ($userInfo) {
-						echo json_encode(array('status' => FALSE, "message" => "Application already exists this passport/Unique number"));
-						return false;
-					}*/
-
-					if ($choice_one > 0) {
-						$stateId = $this->common_model->getUniversityStateById($choice_one);
-						$clean['university_choice_one_state'] = $stateId[0]['state'];
-					}
-					if ($choice_two > 0) {
-						$stateIdOne = $this->common_model->getUniversityStateById($choice_two);
-						$clean['university_choice_two_state'] = $stateIdOne[0]['state'];
-					}
-					if ($choice_three > 0) {
-						$stateIdtwo = $this->common_model->getUniversityStateById($choice_three);
-						$clean['university_choice_three_state'] = $stateIdtwo[0]['state'];
-					}
-					if ($choice_fourth > 0) {
-						$stateIdthree = $this->common_model->getUniversityStateById($choice_fourth);
-						$clean['university_choice_fourth_state'] = $stateIdthree[0]['state'];
-					}
-					if ($choice_fifth > 0) {
-						$stateIdfour = $this->common_model->getUniversityStateById($choice_fifth);
-						$clean['university_choice_fifth_state'] = $stateIdfour[0]['state'];
-					}
-					$clean['uid'] = $userId;
-					$clean['application_no'] = $appno;
-						$clean['nomenclature'] = $nomenclature1;
-						$clean['nomenclature_two'] = $nomenclature2;
-						$clean['nomenclature_three'] = $nomenclature3;
-						$clean['nomenclature_fourth'] = $nomenclature4;
-						$clean['nomenclature_fifth'] = $nomenclature5;
-						$clean['universty_choice'] = $university1;
-						$clean['universty_choice_two'] = $university2;
-						$clean['universty_choice_three'] = $university3;
-						$clean['universty_choice_fourth'] = $university4;
-						$clean['universty_choice_fifth'] = $university5;
-					$id = $this->common_model->insertApplicationStepOne($clean);
-					if ($id) {
-						echo json_encode(array('status' => TRUE, "message" => "Success"));
-					} else {
-						echo json_encode(array('status' => FALSE, "message" => "Error2"));
-						//$this->load->view('site/footer');	
-					}
-				}
-			
-			$applicationData = $this->common_model->getApplicationStepOne($userId);
-			$data['applicaitonStepOne'] = $applicationData;
-			$data['applicaitonStepTwo'] = $this->common_model->getApplicationStepTwo($userId);
-			//$this->load->view('site/header');
-			//$this->load->view('site/header', array('include'=>true));
-			//$data = $this->load->view('site/applicant_educaion_info',$data,TRUE);
-			//echo $data;
+			if (empty($user_data['userid'])) {
+				$this->output->set_status_header(401);
+				echo json_encode(array('status' => FALSE, 'message' => 'Your session has expired. Please log in again.'));
+				return;
+			}
+			list($ok, $msg) = $this->a2aSaveStepOne($user_data['userid']);
+			echo json_encode(array('status' => $ok, 'message' => $msg));
 		} catch (Exception $e) {
-			echo json_encode(array('status' => FALSE, "message" => "Error" . $e));
+			log_message('error', 'applicant_education_info_save: ' . $e->getMessage());
+			echo json_encode(array('status' => FALSE, 'message' => 'Could not save your application. Please try again.'));
 		}
-		
-		}
+	}
+
 	public function applicant_other_info_save()
 		{
 			//echo "<pre>";print_r($_POST);die;
@@ -1426,7 +1225,7 @@ class Applicant extends CI_Controller
 					else
 					{
 						$clean['uid'] = $userId;
-						$clean['application_no'] = $appno;
+						$clean['application_no'] = $this->a2aOwnApplicationNo($userId); // from DB, never from the browser
 
 						$id = $this->common_model->insertEducation($clean);	
 						if($id)
@@ -1466,7 +1265,7 @@ class Applicant extends CI_Controller
 					$this->common_model->updateEducation($clean, $userId);
 				} else {
 					$clean['uid'] = $userId;
-					$clean['application_no'] = $appno;
+					$clean['application_no'] = $this->a2aOwnApplicationNo($userId); // from DB, never from the browser
 					$id = $this->common_model->insertEducation($clean);
 				}
 			}
@@ -6047,6 +5846,11 @@ die;
 		$user_data = $this->session->userdata('user_data');
 		$applicationId = isset($_POST['id']) ? trim($this->input->post('id', TRUE)) : '';
 		$back = site_url() . 'applicant/applicantStatus/' . rawurlencode($applicationId);
+		// Return to the page the form was on (main or Ayush status page) - same site only
+		$ref = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
+		if ($ref !== '' && strpos($ref, site_url() . 'applicant/') === 0 && !preg_match('/[\r\n<>"]/', $ref)) {
+			$back = $ref;
+		}
 
 		$fail = function ($msg) use ($back) {
 			$this->session->set_flashdata('message_type', 'error');
@@ -6055,6 +5859,10 @@ die;
 		};
 
 		try {
+			if ($this->input->method(TRUE) !== 'POST' || !$this->a2aCsrfOk()) {
+				$fail('Your form has expired. Please reload the page and submit again.');
+				return;
+			}
 			if ($applicationId === '' || empty($user_data['userid'])) {
 				$fail('No application id was submitted! Please try again.');
 				return;

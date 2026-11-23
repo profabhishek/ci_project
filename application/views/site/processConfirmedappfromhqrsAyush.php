@@ -570,7 +570,7 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                         <form id="form-visa" action="<?php echo site_url(); ?>applicant/UploadUnderTaking/<?php echo $this->uri->segment(3); ?>" enctype="multipart/form-data" method="post" class="form-horizontal">
                             <div class="box-body">
                                 <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>"/>	   	 
-								<input type ="hidden" name = 'id' value = "<?php echo $id;?>"
+								<input type="hidden" name="id" value="<?php echo html_escape($id); ?>"/>
 
                                 <div class="form-group col-xs-12" style = "padding-left:10px;">
                                     <!-----<label for="inputEmail3" class="col-sm-4 control-label  pdright pdleft">Upload Scanned Copy of Undertaking by applicant <span class="text-red">*</span></label>
@@ -585,6 +585,21 @@ if (count($applicaitonStepOne) > 0 && $applicaitonStepOne[0]['programme'] != 3 &
                                             <option value="2">Declined</option>
                                         </select>
                                     </div>
+
+                                    <div id="phyfit" style="display:none;">
+                                        <label for="medical_file" class="col-sm-2 control-label pdright pdleft">Medical Fitness Certificate <span class="text-red">*</span></label>
+                                        <div class="col-sm-3">
+                                            <input type="file" id="medical_file" name="file" accept=".pdf,application/pdf" class="form-control" aria-describedby="medical_help">
+                                            <p id="medical_help" style="color: red; font-size: 12px; margin-top: 5px;">* PDF only, between 5 KB and 200 KB</p>
+                                        </div>
+                                    </div>
+                                    <script>
+                                    document.getElementById("scholar_is_accept").addEventListener("change", function () {
+                                        var show = this.value === "1";
+                                        document.getElementById("phyfit").style.display = show ? "block" : "none";
+                                        document.getElementById("medical_file").required = show;
+                                    });
+                                    </script>
 
 									<?php
 									if (count($undertaking) > 0 && $undertaking[0]["undertaking_doc"] != "NULL" && $undertaking[0]["undertaking_doc"] != "") {

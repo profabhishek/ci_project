@@ -36,6 +36,7 @@
     right: 0;
     top: 68px;
     width: 318px;
+    max-width: 90vw;
   }
 
   #pswd_info h4 {
@@ -140,10 +141,17 @@
   }
   if ($this->session->flashdata('message_type') == "error") {
   ?>
-    <div class="alert alert-error" role="alert">
+    <div class="alert alert-error" role="alert" tabindex="-1" id="formErrorBox">
       <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       <strong>Error!</strong> <?php echo $this->session->flashdata('error'); ?>
     </div>
+    <script>
+    // Move keyboard / screen-reader focus to the error message
+    document.addEventListener('DOMContentLoaded', function () {
+      var b = document.getElementById('formErrorBox');
+      if (b) { b.scrollIntoView({block: 'center'}); b.focus(); }
+    });
+    </script>
   <?php
   }
 
@@ -560,8 +568,8 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="name-sec col-xs-12 col-sm-2 col-md-3">
             <label for="password">Password <span class="text-red">*</span></label>
             <div class="form-group">
-              <input class="form-control" type="password" id="password" title="Create a strong password for your application portal login. Using  letters, numbers, and special characters." name="password" placeholder="Enter Password" required="true" maxlength="40">
-              <div id="pswd_info">
+              <input class="form-control" type="password" id="password" title="Create a strong password for your application portal login. Using  letters, numbers, and special characters." name="password" placeholder="Enter Password" required="true" maxlength="40" aria-describedby="pswd_info" autocomplete="new-password">
+              <div id="pswd_info" aria-live="polite">
                 <h4>Password must meet below requirements:</h4>
                 <ul>
                   <li id="letter" class="invalid">At least <strong>one small letter</strong></li>
@@ -578,8 +586,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <label for="cpassword">Confirm Password <span class="text-red">*</span></label>
             <div class="form-group">
 
-              <input type="password" data-fv-identical="true" data-fv-identical-field="password" data-fv-identical-message="The password and its confirm are not the same" title="Re-enter the same password to confirm it. Both must match." class="form-control" id="cpassword" name="cpassword" placeholder="Re-Enter Password" required="true">
-              <span class="note cpassmatch"></span>
+              <input type="password" data-fv-identical="true" data-fv-identical-field="password" data-fv-identical-message="The password and its confirm are not the same" title="Re-enter the same password to confirm it. Both must match." class="form-control" id="cpassword" name="cpassword" placeholder="Re-Enter Password" required="true" autocomplete="new-password">
+              <span class="note cpassmatch" role="status" aria-live="polite"></span>
             </div>
           </div>
 		  
@@ -602,7 +610,7 @@ Note: Please note that no Local Ids to be mentioned in this column." id="passpor
           
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
             <label id="isindian_label">Currently Staying In India <span class="text-red">*</span></label>
-            <div class="form-group">
+            <div class="form-group" role="radiogroup" aria-labelledby="isindian_label">
               <input value="1" type="radio" name="isindian" title="Select Yes if you are presently residing in India, otherwise select No." required="true"> Yes
               <input class="minimal" checked="true" value="2" type="radio" name="isindian" required="true"> No
             </div>
@@ -611,12 +619,22 @@ Note: Please note that no Local Ids to be mentioned in this column." id="passpor
           <div class="name-sec col-xs-12 col-sm-3 col-md-3">
             <label for="userCaptcha">Enter Text as Displayed Below <span class="text-red">*</span></label><br>
             <div class="form-group col-md-6 pdleft">
-              <input type="text" autocomplete="off" title="Type the characters shown in the image/text box (captcha) to verify that you are a genuine applicant." name="userCaptcha" id="userCaptcha" class="form-control" required placeholder="Enter text" required="true" maxlength="7" />
+              <input type="text" autocomplete="off" title="Type the characters shown in the image/text box (captcha) to verify that you are a genuine applicant." name="userCaptcha" id="userCaptcha" class="form-control" required placeholder="Enter text" required="true" maxlength="5" />
             </div>
-            <a href="javascript:void(0);" id="refreshImg" class="reload-captcha">&nbsp;<i class="fa fa-refresh" aria-hidden="true"></i></a>
+            <a href="javascript:void(0);" id="refreshImg" class="reload-captcha" role="button" aria-label="Show a new captcha image">&nbsp;<i class="fa fa-refresh" aria-hidden="true"></i></a>
             <div class="form-group col-md-6">
-              <img id="captchid" src="<?php echo $captcha['image_src']; ?>"  style="max-width: -webkit-fill-available;"/>
+              <img id="captchid" src="<?php echo $captcha['image_src']; ?>" alt="Captcha: type the letters shown in this image" style="max-width:100%;height:auto;"/>
             </div>
+          </div>
+        </div>
+
+        <div class="col-xs-12" style="margin:8px 0 4px;">
+          <div class="checkbox">
+            <label for="guidelines_ack" style="font-weight:normal;">
+              <input type="checkbox" id="guidelines_ack" name="guidelines_ack" value="1" required="true">
+              I have read the <a href="<?php echo base_url(); ?>assets/site/docs/Policy_Guidelines.pdf" target="_blank" rel="noopener noreferrer">Scholarship Guidelines (PDF, opens in a new tab)</a>
+              and confirm that the information I give is correct. <span class="text-red">*</span>
+            </label>
           </div>
         </div>
 

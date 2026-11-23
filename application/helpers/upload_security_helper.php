@@ -92,3 +92,46 @@ if (!function_exists('iccr_safe_move_upload')) {
         return move_uploaded_file($file['tmp_name'], $target_file);
     }
 }
+if (!function_exists('iccr_validate_image_upload')) {
+
+    /**
+     * Strict check for an uploaded JPG/PNG image (Nov 2026).
+     * Returns '' when valid, otherwise a short reason for the user.
+     * Checks: upload status, size, extension, real image signature,
+     * decodable pixels (catches truncated / disguised files).
+     */
+    function iccr_validate_image_upload($file, $maxBytes = 1048576)
+    {
+        if (!is_array($file) || !isset($file['error'], $file['tmp_name'], $file['name'], $file['size'])) {
+            return 'no file received.';
+        }
+        if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE || $file['size'] > $maxBytes) {
+            return 'must be ' . round($maxBytes / 1048576, 1) . ' MB or smaller.';
+        }
+        if ($file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            return 'could not be uploaded, please try again.';
+        }
+        if ((int) $file['size'] < 1024) {
+            return 'file is empty or too small.';
+        }
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, array('jpg', 'jpeg', 'png'), TRUE)) {
+            return 'must be a JPG, JPEG or PNG file.';
+        }
+        $info = @getimagesize($file['tmp_name']);
+        if ($info === FALSE || !in_array($info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), TRUE)) {
+            return 'is not a valid JPG/PNG image.';
+        }
+        if ($info[0] < 50 || $info[1] < 50 || $info[0] > 10000 || $info[1] > 10000) {
+            return 'image size is not acceptable.';
+        }
+        if (function_exists('imagecreatefromjpeg')) {
+            $img = ($info[2] === IMAGETYPE_JPEG) ? @imagecreatefromjpeg($file['tmp_name']) : @imagecreatefrompng($file['tmp_name']);
+            if ($img === FALSE) {
+                return 'file is damaged, please upload another copy.';
+            }
+            imagedestroy($img);
+        }
+        return '';
+    }
+}
