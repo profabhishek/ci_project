@@ -135,3 +135,70 @@ if (!function_exists('iccr_validate_image_upload')) {
         return '';
     }
 }
+
+/*
+ * Nov 2026 hotfix: prod files (Headquarter.php ~894, Mission.php ~4634,
+ * views/mission/viewApplication.php ~1561) call the two functions below,
+ * but no helper defining them was ever uploaded, so every AYUSH forward /
+ * Mission process crashed with "Call to undefined function".
+ * Both are wrapped in function_exists() so a later "real" helper can
+ * replace them without a redeclare error.
+ */
+if (!function_exists('iccr_safe_move_uploaded_file')) {
+
+    /**
+     * Guarded replacement for move_uploaded_file().
+     *
+     * Accepts either style of call:
+     *   iccr_safe_move_uploaded_file($_FILES['x']['tmp_name'], $target)
+     *   iccr_safe_move_uploaded_file($_FILES['x'], $target [, 'pdf|jpg'])
+     * Returns TRUE/FALSE exactly like move_uploaded_file().
+     */
+    function iccr_safe_move_uploaded_file($source, $target_file, $allowed = 'jpg|jpeg|png|gif|pdf|doc|docx')
+    {
+        if (is_array($source)) {
+            return iccr_safe_move_upload($source, $target_file, $allowed);
+        }
+        $tmp = (string) $source;
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            log_message('error', 'Upload rejected (not an uploaded file): ' . $target_file);
+            return FALSE;
+        }
+        // Rebuild a $_FILES-style entry so the same checks run
+        // (extension of the destination, real MIME type, no traversal).
+        $file = array('tmp_name' => $tmp, 'name' => basename(str_replace('\\', '/', (string) $target_file)));
+        foreach ($_FILES as $f) {
+            if (is_array($f) && isset($f['tmp_name']) && $f['tmp_name'] === $tmp && isset($f['name'])) {
+                $file['name'] = $f['name'];
+                break;
+            }
+        }
+        return iccr_safe_move_upload($file, $target_file, $allowed);
+    }
+}
+
+if (!function_exists('iccr_mission_doc_link')) {
+
+    /**
+     * HTML for a document the Mission uploaded (Medical Fitness Certificate /
+     * Undertaking Form, stored in assets/site/main/mission_documents/).
+     * Returns a Download link when the file exists, otherwise a plain label.
+     * Optional 2nd argument: link text (default "Download").
+     */
+    function iccr_mission_doc_link($fileName, $label = 'Download')
+    {
+        $fileName = trim((string) $fileName);
+        if ($fileName === '') {
+            return 'Not uploaded';
+        }
+        $fileName = basename(str_replace('\\', '/', $fileName));
+        $rel = 'assets/site/main/mission_documents/' . $fileName;
+        if (!file_exists(FCPATH . $rel)) {
+            return '<span class="label label-warning" title="'
+                . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '">File not found</span>';
+        }
+        return '<a target="_blank" rel="noopener" href="' . site_url() . 'assets/site/main/mission_documents/'
+            . rawurlencode($fileName) . '"><span class="label label-success">'
+            . htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') . '</span></a>';
+    }
+}
